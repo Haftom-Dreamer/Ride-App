@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- The title will be filled in by other pages that use this template -->
+    <title>{% block title %}Ride App{% endblock %}</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Any other styles or scripts that all pages will share go here -->
+    {% block head %}{% endblock %}
+</head>
+<body class="bg-gray-100 font-sans">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <!-- The main content of each page will be inserted here -->
+        {% block content %}{% endblock %}
+    </div>
+
+</body>
+</html>
