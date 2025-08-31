@@ -3,19 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- The title will be filled in by other pages that use this template -->
     <title>{% block title %}Ride App{% endblock %}</title>
-    <!-- Tailwind CSS for styling -->
+
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Any other styles or scripts that all pages will share go here -->
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+
     {% block head %}{% endblock %}
 </head>
 <body class="bg-gray-100 font-sans">
 
     <div class="container mx-auto p-4 md:p-8">
-        <!-- The main content of each page will be inserted here -->
         {% block content %}{% endblock %}
     </div>
 
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+
+    {% block scripts %}{% endblock %}
 </body>
 </html>
