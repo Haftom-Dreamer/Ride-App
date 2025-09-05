@@ -36,10 +36,12 @@ class Ride(db.Model):
     dest_address = db.Column(db.String(255), nullable=False)
     distance_km = db.Column(db.Float, nullable=False)
     fare = db.Column(db.Float, nullable=False)
-    # NEW: Added vehicle type to the ride
     vehicle_type = db.Column(db.String(50), nullable=False, default='Bajaj')
     status = db.Column(db.String(20), default='Requested', nullable=False)
     request_time = db.Column(db.DateTime, server_default=db.func.now())
+    # NEW: Columns for notes and ratings
+    note = db.Column(db.String(255), nullable=True)
+    rating = db.Column(db.Integer, nullable=True)
     
     user = db.relationship('User', backref=db.backref('rides', lazy=True))
     driver = db.relationship('Driver', backref=db.backref('rides', lazy=True))
@@ -70,8 +72,9 @@ def request_ride():
         dest_address=data.get('dest_address'),
         distance_km=data.get('distance_km'),
         fare=data.get('fare'),
-        # NEW: Save the selected vehicle type
-        vehicle_type=data.get('vehicle_type', 'Bajaj') 
+        vehicle_type=data.get('vehicle_type', 'Bajaj'),
+        # NEW: Save the note
+        note=data.get('note')
     )
     db.session.add(new_ride)
     db.session.commit()
@@ -92,28 +95,31 @@ def get_pending_rides():
             'pickup_lon': ride.pickup_lon, 
             'dest_address': ride.dest_address, 
             'fare': ride.fare, 
-            # NEW: Return the vehicle type to the dispatcher
             'vehicle_type': ride.vehicle_type,
+            # NEW: Return the note to the dispatcher
+            'note': ride.note,
             'request_time': ride.request_time.strftime('%Y-%m-%d %H:%M:%S')
         })
     return jsonify(rides_data)
 
-# ... (All other endpoints from get_assigned_rides to cancel_ride are unchanged) ...
 @app.route('/api/assigned-rides')
 def get_assigned_rides():
     rides = Ride.query.filter_by(status='Assigned').order_by(Ride.request_time.desc()).all()
-    rides_data = [{'id': ride.id, 'driver_name': ride.driver.name if ride.driver else 'N/A', 'user_phone': ride.user.phone_number, 'dest_address': ride.dest_address,} for ride in rides]
+    rides_data = [{'id': ride.id, 'driver_name': ride.driver.name if ride.driver else 'N/A', 'user_phone': ride.user.phone_number, 'dest_address': ride.dest_address} for ride in rides]
     return jsonify(rides_data)
+
 @app.route('/api/drivers')
 def get_all_drivers():
     drivers = Driver.query.all()
     drivers_data = [{'id': driver.id, 'name': driver.name, 'phone_number': driver.phone_number, 'vehicle_details': driver.vehicle_details, 'status': driver.status} for driver in drivers]
     return jsonify(drivers_data)
+
 @app.route('/api/available-drivers')
 def get_available_drivers():
     drivers = Driver.query.filter_by(status='Available').all()
     drivers_data = [{'id': driver.id, 'name': driver.name} for driver in drivers]
     return jsonify(drivers_data)
+
 @app.route('/api/assign-ride', methods=['POST'])
 def assign_ride():
     data = request.json
@@ -128,6 +134,7 @@ def assign_ride():
     driver.status = 'On Trip'
     db.session.commit()
     return jsonify({'message': 'Ride assigned successfully'})
+
 @app.route('/api/add-driver', methods=['POST'])
 def add_driver():
     data = request.json
@@ -135,6 +142,7 @@ def add_driver():
     db.session.add(new_driver)
     db.session.commit()
     return jsonify({'message': 'Driver added successfully'}), 201
+
 @app.route('/api/update-driver-status', methods=['POST'])
 def update_driver_status():
     data = request.json
@@ -146,6 +154,7 @@ def update_driver_status():
     driver.status = new_status
     db.session.commit()
     return jsonify({'message': f'Driver status updated to {new_status}'})
+
 @app.route('/api/complete-ride', methods=['POST'])
 def complete_ride():
     data = request.json
@@ -158,6 +167,7 @@ def complete_ride():
         ride.driver.status = 'Available'
     db.session.commit()
     return jsonify({'message': 'Ride marked as completed'})
+
 @app.route('/api/cancel-ride', methods=['POST'])
 def cancel_ride():
     data = request.json
@@ -175,23 +185,13 @@ def cancel_ride():
 @app.route('/api/fare-estimate', methods=['POST'])
 def fare_estimate():
     data = request.json
-    
-    # NEW: Dynamic pricing based on vehicle type
     vehicle_type = data.get('vehicle_type', 'Bajaj')
-    
-    # --- Pricing Configuration ---
     base_fare = 25
-    per_km_rates = {
-        "Bajaj": 8,
-        "Car": 12 
-    }
-    per_km_rate = per_km_rates.get(vehicle_type, 8) # Default to Bajaj rate
-
+    per_km_rates = {"Bajaj": 8, "Car": 12}
+    per_km_rate = per_km_rates.get(vehicle_type, 8)
     pickup_lon, pickup_lat = data['pickup_lon'], data['pickup_lat']
     dest_lon, dest_lat = data['dest_lon'], data['dest_lat']
-    
     osrm_url = f"http://router.project-osrm.org/route/v1/driving/{pickup_lon},{pickup_lat};{dest_lon},{dest_lat}?overview=false"
-    
     try:
         response = requests.get(osrm_url)
         response.raise_for_status()
@@ -199,12 +199,7 @@ def fare_estimate():
         distance_meters = route_data['routes'][0]['distance']
         distance_km = distance_meters / 1000.0
         estimated_fare = round(base_fare + (distance_km * per_km_rate))
-        
-        return jsonify({
-            'distance_km': round(distance_km, 2),
-            'estimated_fare': estimated_fare
-        })
-        
+        return jsonify({'distance_km': round(distance_km, 2), 'estimated_fare': estimated_fare})
     except requests.exceptions.RequestException as e:
         print(f"Error calling OSRM API: {e}")
         return jsonify({'error': 'Could not calculate route distance.'}), 500
@@ -216,10 +211,42 @@ def get_ride_status(ride_id):
     ride = Ride.query.get(ride_id)
     if not ride:
         return jsonify({'error': 'Ride not found'}), 404
+    
     driver_info = None
     if ride.driver:
         driver_info = {'name': ride.driver.name, 'phone_number': ride.driver.phone_number, 'vehicle_details': ride.driver.vehicle_details}
-    return jsonify({'status': ride.status, 'driver': driver_info})
+        
+    ride_details_for_summary = None
+    if ride.status == 'Completed':
+         ride_details_for_summary = {
+             'fare': ride.fare,
+             'distance_km': ride.distance_km,
+             'dest_address': ride.dest_address
+         }
+
+    return jsonify({
+        'status': ride.status,
+        'driver': driver_info,
+        'ride_details': ride_details_for_summary
+    })
+
+# --- NEW: RATE RIDE ENDPOINT ---
+@app.route('/api/rate-ride', methods=['POST'])
+def rate_ride():
+    data = request.json
+    ride_id = data.get('ride_id')
+    rating = data.get('rating')
+
+    ride = Ride.query.get(ride_id)
+    if not ride:
+        return jsonify({'error': 'Ride not found'}), 404
+    
+    if ride.status != 'Completed':
+        return jsonify({'error': 'Only completed rides can be rated'}), 400
+
+    ride.rating = rating
+    db.session.commit()
+    return jsonify({'message': 'Thank you for your feedback!'})
 
 # --- Main Execution ---
 if __name__ == '__main__':

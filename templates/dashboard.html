@@ -9,7 +9,6 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        <!-- Column 1: Pending & Assigned Rides -->
         <div class="lg:col-span-2 space-y-8">
             <!-- Pending Rides -->
             <div>
@@ -28,7 +27,6 @@
             </div>
         </div>
 
-        <!-- Column 2: Driver Management -->
         <div class="space-y-8">
             <!-- Add New Driver -->
             <div>
@@ -97,10 +95,10 @@
         }
         container.innerHTML = rides.map(ride => `
             <div class="bg-white p-4 rounded-lg shadow">
-                <p><strong>Ride ID:</strong> ${ride.id}</p>
-                <p><strong>From:</strong> Lat: ${ride.pickup_lat}, Lon: ${ride.pickup_lon}</p>
+                <p><strong>Ride ID:</strong> ${ride.id} (${ride.vehicle_type})</p>
                 <p><strong>To:</strong> ${ride.dest_address}</p>
                 <p><strong>Fare:</strong> ${ride.fare} ETB</p>
+                ${ride.note ? `<p class="mt-2 text-sm text-gray-600 bg-yellow-100 p-2 rounded"><strong>Note:</strong> ${ride.note}</p>` : ''}
                 <div class="mt-2 flex items-center">
                     <label for="driver-select-${ride.id}" class="sr-only">Assign Driver</label>
                     <select id="driver-select-${ride.id}" class="rounded-md border-gray-300">
