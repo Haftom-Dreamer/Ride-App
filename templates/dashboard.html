@@ -1,240 +1,186 @@
 <!-- dashboard.html -->
 {% extends "base.html" %}
 
-{% block title %}Dispatcher Dashboard{% endblock %}
+{% block title %}Advanced Dispatcher Dashboard{% endblock %}
+
+{% block head %}
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --sidebar-bg: #111827; --main-bg: #f3f4f6; --text-primary: #1f2937; --text-secondary: #6b7280; --card-bg: #ffffff; --border-color: #e5e7eb; }
+        .dark { --sidebar-bg: #030712; --main-bg: #111827; --text-primary: #f9fafb; --text-secondary: #9ca3af; --card-bg: #1f2937; --border-color: #4b5563; }
+        body { background-color: var(--main-bg); color: var(--text-primary); font-family: 'Inter', sans-serif; font-size: 14px; }
+        .sidebar { background-color: var(--sidebar-bg); } .main-content { background-color: var(--main-bg); } .card { background-color: var(--card-bg); border: 1px solid var(--border-color); }
+        .sidebar-link { transition: all 0.2s ease-in-out; } .sidebar-link.active, .sidebar-link[aria-current="page"] { background-color: #f97316; color: white; font-weight: 600; } .sidebar-link:not(.active):hover { background-color: #374151; }
+        .pane { display: none; } .pane.active { display: block; animation: fadeIn 0.3s ease-in-out; } @keyframes fadeIn { from { opacity: 0.8; } to { opacity: 1; } }
+        .modal { background-color: rgba(0, 0, 0, 0.6); }
+        .status-badge { padding: 3px 10px; border-radius: 9999px; font-weight: 600; font-size: 11px; text-transform: uppercase; }
+        .status-Available { background-color: #dcfce7; color: #166534; } .status-On\.Trip, .status-Assigned { background-color: #ffedd5; color: #9a3412; }
+        .status-Offline { background-color: #e5e7eb; color: #4b5563; } .status-Requested { background-color: #dbeafe; color: #1e40af; }
+        .status-Completed { background-color: #d1fae5; color: #065f46; } .status-Canceled { background-color: #fee2e2; color: #991b1b; }
+    </style>
+{% endblock %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-8">
-    <h1 class="text-3xl font-bold text-gray-800 mb-6">Dispatcher Dashboard</h1>
-
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        <div class="lg:col-span-2 space-y-8">
-            <!-- Pending Rides -->
-            <div>
-                <h2 class="text-2xl font-semibold text-gray-700 mb-4">Pending Ride Requests</h2>
-                <div id="pending-rides" class="space-y-4">
-                    <p class="text-gray-500">No pending rides at the moment.</p>
-                </div>
-            </div>
-
-            <!-- Assigned Rides -->
-            <div>
-                <h2 class="text-2xl font-semibold text-gray-700 mb-4">Assigned Rides</h2>
-                <div id="assigned-rides" class="space-y-4">
-                     <p class="text-gray-500">No rides currently assigned.</p>
-                </div>
-            </div>
+<div class="flex h-screen bg-gray-100 font-sans">
+    <!-- Sidebar -->
+    <aside class="w-64 sidebar text-gray-300 flex flex-col flex-shrink-0">
+        <div class="p-4 text-center border-b border-gray-700">
+            <h1 class="text-2xl font-bold text-white">Ride App</h1>
+            <p class="text-xs text-gray-400">Dispatcher Panel</p>
         </div>
+        <nav class="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
+            <a href="#" class="sidebar-link flex items-center p-3 rounded-lg active" data-pane="dashboard"><svg class="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"/></svg>Dashboard</a>
+            <a href="#" class="sidebar-link flex items-center p-3 rounded-lg" data-pane="live-map"><svg class="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Live Map</a>
+            <details class="group"><summary class="sidebar-link flex items-center p-3 rounded-lg cursor-pointer"><svg class="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Drivers<svg class="h-4 w-4 ml-auto transform group-open:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></summary><a href="#" class="sidebar-link flex items-center pl-11 pr-3 py-2 rounded-lg text-sm" data-pane="drivers">Driver List</a></details>
+            <a href="#" class="sidebar-link flex items-center p-3 rounded-lg" data-pane="rides"><svg class="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10l2 2h8a1 1 0 001-1zM3 11h10"/></svg>Ride History</a>
+            <a href="#" class="sidebar-link flex items-center p-3 rounded-lg" data-pane="settings"><svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924-1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.096 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>Settings</a>
+        </nav>
+        <div class="p-4 border-t border-gray-700 mt-auto"><div class="flex items-center justify-between"><div class="flex items-center"><img src="/static/image/default_avatar.png" class="h-10 w-10 rounded-full object-cover" alt="Dispatcher"><div class="ml-3"><p class="text-sm font-semibold text-white">Dispatcher</p><a href="#" class="text-xs text-red-400 hover:underline">Logout</a></div></div><label for="dark-mode-toggle" class="cursor-pointer"><input type="checkbox" id="dark-mode-toggle" class="hidden"><span id="dark-mode-icon">☀️</span></label></div></div>
+    </aside>
 
-        <div class="space-y-8">
-            <!-- Add New Driver -->
-            <div>
-                <h2 class="text-2xl font-semibold text-gray-700 mb-4">Add New Driver</h2>
-                <form id="add-driver-form" class="bg-white p-6 rounded-lg shadow-md space-y-4">
-                    <div>
-                        <label for="name" class="block text-sm font-medium text-gray-700">Driver Name</label>
-                        <input type="text" id="name" name="name" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
-                    </div>
-                    <div>
-                        <label for="phone" class="block text-sm font-medium text-gray-700">Phone Number</label>
-                        <input type="text" id="phone" name="phone" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
-                    </div>
-                    <div>
-                        <label for="vehicle" class="block text-sm font-medium text-gray-700">Vehicle Details</label>
-                        <input type="text" id="vehicle" name="vehicle" required placeholder="e.g., Blue Toyota Corolla, #1234" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
-                    </div>
-                    <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">Add Driver</button>
-                </form>
-            </div>
-
-            <!-- All Drivers List -->
-            <div>
-                <h2 class="text-2xl font-semibold text-gray-700 mb-4">All Drivers</h2>
-                <div id="all-drivers" class="space-y-2">
-                    <p class="text-gray-500">No drivers added yet.</p>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div id="error-message" class="mt-6 p-4 bg-red-100 text-red-700 rounded-lg hidden"></div>
+    <!-- Main Content -->
+    <main class="flex-1 p-6 lg:p-8 overflow-y-auto main-content">
+        <div id="dashboard-pane" class="pane active"><h2 class="text-3xl font-bold text-primary mb-6">Dashboard</h2><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"><div class="card p-6 rounded-lg shadow"><p class="text-sm text-secondary">Total Revenue</p><p id="stat-revenue" class="text-3xl font-bold text-green-500">0 ETB</p></div><div class="card p-6 rounded-lg shadow"><p class="text-sm text-secondary">Total Rides</p><p id="stat-rides" class="text-3xl font-bold text-blue-500">0</p></div><div class="card p-6 rounded-lg shadow"><p class="text-sm text-secondary">Drivers Online</p><p id="stat-drivers" class="text-3xl font-bold text-yellow-500">0</p></div><div class="card p-6 rounded-lg shadow"><p class="text-sm text-secondary">Pending Requests</p><p id="stat-pending" class="text-3xl font-bold text-red-500">0</p></div></div><div class="grid grid-cols-1 lg:grid-cols-5 gap-8 mb-8"><div class="lg:col-span-3 card p-6 rounded-lg shadow"><h3 class="font-semibold mb-4 text-primary">Live Ride Requests</h3><div id="dashboard-map" class="h-96 w-full rounded"></div></div><div class="lg:col-span-2 card p-6 rounded-lg shadow"><h3 class="font-semibold mb-4 text-primary">Pending Rides</h3><div id="pending-rides-list" class="space-y-3 overflow-y-auto h-96"></div></div></div><div class="grid grid-cols-1 lg:grid-cols-2 gap-8"><div class="card p-6 rounded-lg shadow"><h3 class="font-semibold mb-4 text-primary">Rides per Day</h3><canvas id="rides-by-day-chart"></canvas></div><div class="card p-6 rounded-lg shadow"><h3 class="font-semibold mb-4 text-primary">Rides by Vehicle</h3><canvas id="rides-by-vehicle-chart"></canvas></div></div></div>
+        <div id="live-map-pane" class="pane h-full flex flex-col"><h2 class="text-3xl font-bold text-primary mb-6">Full Screen Live Map</h2><div id="full-live-map" class="flex-grow w-full rounded-lg shadow card"></div></div>
+        <div id="drivers-pane" class="pane"><h2 class="text-3xl font-bold text-primary mb-6">Driver Management</h2><div class="card p-6 rounded-lg shadow"><div class="flex justify-between items-center mb-4"><input type="text" id="driver-search" placeholder="Search drivers..." class="border p-2 rounded w-1/3"><button id="add-driver-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold">Add New Driver</button></div><table class="w-full text-left"><thead><tr class="border-b border-border"><th class="p-2">Name</th><th>Contact</th><th>Vehicle</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead><tbody id="drivers-table-body"></tbody></table></div></div>
+        <div id="rides-pane" class="pane"><h2 class="text-3xl font-bold text-primary mb-6">Ride History</h2><div class="card p-6 rounded-lg shadow"><table class="w-full text-left"><thead><tr class="border-b border-border"><th class="p-2">ID</th><th>Passenger</th><th>Driver</th><th>Fare</th><th>Status</th><th>Rating</th><th>Date</th></tr></thead><tbody id="rides-history-table-body"></tbody></table></div></div>
+        <div id="settings-pane" class="pane"><h2 class="text-3xl font-bold text-primary mb-6">Settings</h2><div class="card p-6 rounded-lg shadow max-w-lg"><h3 class="text-xl font-semibold mb-4 text-primary">Fare Configuration</h3><form id="settings-form" class="space-y-4"><div><label for="base-fare" class="block">Base Fare (ETB)</label><input type="number" step="any" name="base_fare" class="border p-2 rounded-md w-full"></div><div><label for="per-km-bajaj" class="block">Per/KM Rate - Bajaj (ETB)</label><input type="number" step="any" name="per_km_bajaj" class="border p-2 rounded-md w-full"></div><div><label for="per-km-car" class="block">Per/KM Rate - Car (ETB)</label><input type="number" step="any" name="per_km_car" class="border p-2 rounded-md w-full"></div><button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">Save Settings</button></form></div></div>
+    </main>
 </div>
 
+<!-- Modals -->
+<div id="add-driver-modal" class="modal fixed inset-0 z-50 items-center justify-center hidden"><div class="absolute inset-0 bg-black opacity-50"></div><div class="bg-white p-8 rounded-lg shadow-xl z-10 w-full max-w-md"><h2 class="text-2xl font-bold mb-4">Add New Driver</h2><form id="add-driver-form"><div class="space-y-4"><div><label class="block text-sm font-medium">Name</label><input type="text" name="name" required class="mt-1 block w-full p-2 border rounded-md"></div><div><label class="block text-sm font-medium">Phone</label><input type="text" name="phone_number" required class="mt-1 block w-full p-2 border rounded-md"></div><div><label class="block text-sm font-medium">Vehicle</label><input type="text" name="vehicle_details" required class="mt-1 block w-full p-2 border rounded-md"></div><div class="flex justify-end space-x-4"><button type="button" class="cancel-modal-btn px-4 py-2 bg-gray-200 rounded-lg">Cancel</button><button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">Save</button></div></div></form></div></div>
+<div id="driver-details-modal" class="modal fixed inset-0 z-50 items-center justify-center hidden"><div class="absolute inset-0 bg-black opacity-50"></div><div class="bg-white p-8 rounded-lg shadow-xl z-10 w-full max-w-2xl"><h2 class="text-2xl font-bold mb-4">Driver Details</h2><div id="driver-details-content"></div><div class="flex justify-end mt-4"><button type="button" class="cancel-modal-btn px-4 py-2 bg-gray-200 rounded-lg">Close</button></div></div></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- STATE & CONFIG ---
     const API_BASE_URL = 'http://127.0.0.1:5000/api';
-    const errorMessageDiv = document.getElementById('error-message');
+    let dashboardMap, fullMap, ridesByDayChart, ridesByVehicleChart;
+    let pendingRideMarkers = {};
 
-    function showError(message) {
-        errorMessageDiv.textContent = message;
-        errorMessageDiv.classList.remove('hidden');
+    // --- ELEMENT SELECTORS ---
+    const panes = document.querySelectorAll('.pane');
+    const sidebarLinks = document.querySelectorAll('.sidebar-link');
+    const modals = document.querySelectorAll('.modal');
+    const darkModeToggle = document.getElementById('dark-mode-toggle');
+    const darkModeIcon = document.getElementById('dark-mode-icon');
+    
+    // --- HELPER FUNCTIONS ---
+    const fetchData = async (endpoint) => { try { const r = await fetch(`${API_BASE_URL}/${endpoint}`); if (!r.ok) throw new Error(`HTTP error ${r.status}`); return await r.json(); } catch (e) { console.error(`Fetch error for ${endpoint}:`, e); return null; } };
+    const postData = async (endpoint, data) => { try { const r = await fetch(`${API_BASE_URL}/${endpoint}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); if (!r.ok) throw new Error(`HTTP error ${r.status}`); return await r.json(); } catch (e) { console.error(`Post error for ${endpoint}:`, e); return null; } };
+    
+    // --- UI & NAVIGATION ---
+    const showPane = (paneId) => {
+        panes.forEach(p => p.classList.remove('active'));
+        const targetPane = document.getElementById(`${paneId}-pane`);
+        if (targetPane) targetPane.classList.add('active');
+        sidebarLinks.forEach(l => l.classList.toggle('active', l.dataset.pane === paneId));
+        if (paneId === 'dashboard' && dashboardMap) setTimeout(() => dashboardMap.invalidateSize(), 10);
+        if (paneId === 'live-map') { if (!fullMap) initMaps(); setTimeout(() => fullMap.invalidateSize(), 10); }
+    };
+    sidebarLinks.forEach(link => link.addEventListener('click', e => { e.preventDefault(); showPane(link.dataset.pane); }));
+
+    // --- DARK MODE ---
+    const setDarkMode = (isDark) => { if (isDark) { document.documentElement.classList.add('dark'); darkModeIcon.textContent = '🌙'; localStorage.setItem('darkMode', 'true'); } else { document.documentElement.classList.remove('dark'); darkModeIcon.textContent = '☀️'; localStorage.setItem('darkMode', 'false'); } };
+    darkModeToggle.addEventListener('change', (e) => setDarkMode(e.target.checked));
+    if (localStorage.getItem('darkMode') === 'true') { darkModeToggle.checked = true; setDarkMode(true); }
+
+    // --- MODAL LOGIC ---
+    document.getElementById('add-driver-btn').addEventListener('click', () => { document.getElementById('add-driver-modal').classList.remove('hidden'); document.getElementById('add-driver-modal').classList.add('flex'); });
+    modals.forEach(modal => modal.addEventListener('click', e => { if (e.target.classList.contains('modal') || e.target.classList.contains('cancel-modal-btn')) { modal.classList.add('hidden'); modal.classList.remove('flex'); } }));
+    document.getElementById('add-driver-form').addEventListener('submit', async e => { e.preventDefault(); await postData('add-driver', Object.fromEntries(new FormData(e.target).entries())); document.getElementById('add-driver-modal').classList.add('hidden'); document.getElementById('add-driver-modal').classList.remove('flex'); e.target.reset(); refreshAllData(); });
+
+    // --- DATA RENDERING ---
+    const updateDashboardStats = stats => { if(stats){ document.getElementById('stat-revenue').textContent = `${stats.revenue.total} ETB`; document.getElementById('stat-rides').textContent = stats.rides.total; document.getElementById('stat-drivers').textContent = stats.drivers_online; document.getElementById('stat-pending').textContent = stats.pending_requests; }};
+    const updatePendingRides = (rides, drivers) => {
+        const listContainer = document.getElementById('pending-rides-list');
+        listContainer.innerHTML = ''; 
+        Object.values(pendingRideMarkers).forEach(marker => { if (dashboardMap?.hasLayer(marker)) dashboardMap.removeLayer(marker); if (fullMap?.hasLayer(marker)) fullMap.removeLayer(marker); });
+        pendingRideMarkers = {};
+        if (!rides || rides.length === 0) { listContainer.innerHTML = `<p class="text-gray-500 text-sm">No pending rides.</p>`; return; }
+        rides.forEach(ride => {
+            const popupContent = `<b>Request #${ride.id}</b><br>${ride.user_name}<br>Note: ${ride.note || 'None'}`;
+            const marker = L.marker([ride.pickup_lat, ride.pickup_lon]).bindPopup(popupContent);
+            pendingRideMarkers[ride.id] = marker;
+            if (dashboardMap) marker.addTo(dashboardMap);
+            if (fullMap) marker.addTo(fullMap);
+            const rideEl = document.createElement('div');
+            rideEl.className = 'border-b pb-3';
+            rideEl.innerHTML = `<p class="font-semibold">${ride.user_name} (${ride.user_phone})</p><p class="text-xs">To: ${ride.dest_address}</p><p class="text-xs text-indigo-600 font-medium">Note: ${ride.note || 'None'}</p><div class="mt-2 flex items-center"><select id="driver-select-${ride.id}" class="p-1 border rounded text-xs w-full">${drivers.map(d => `<option value="${d.id}">${d.name}</option>`).join('')}</select><button class="assign-ride-btn ml-2 px-3 py-1 bg-blue-500 text-white text-xs rounded" data-ride-id="${ride.id}">Assign</button></div>`;
+            listContainer.appendChild(rideEl);
+        });
+    };
+    const updateDriversTable = (drivers) => {
+        const tableBody = document.getElementById('drivers-table-body');
+        tableBody.innerHTML = '';
+        if (!drivers || drivers.length === 0) return;
+        drivers.forEach(driver => {
+            const row = tableBody.insertRow();
+            row.innerHTML = `<td class="p-2 flex items-center"><img src="/${driver.profile_picture}" class="h-8 w-8 rounded-full mr-3 object-cover">${driver.name}</td><td>${driver.phone_number}</td><td>${driver.vehicle_details}</td><td><span class="status-badge status-${driver.status.replace(' ','.')}">${driver.status}</span></td><td>${driver.join_date}</td><td><button class="driver-details-btn text-indigo-600 hover:underline text-sm" data-driver-id="${driver.id}">Details</button></td>`;
+        });
+    };
+    const updateRideHistoryTable = (rides) => {
+        const tableBody = document.getElementById('rides-history-table-body');
+        tableBody.innerHTML = '';
+        if (!rides || rides.length === 0) return;
+        rides.forEach(ride => {
+            const row = tableBody.insertRow();
+            row.innerHTML = `<td class="p-2">${ride.id}</td><td>${ride.user_name}</td><td>${ride.driver_name}</td><td>${ride.fare} ETB</td><td><span class="status-badge status-${ride.status}">${ride.status}</span></td><td>${ride.rating ? '★'.repeat(ride.rating) : 'N/A'}</td><td>${ride.request_time}</td>`;
+        });
+    };
+    const updateCharts = (ridesByDay, ridesByVehicle) => {
+        if(ridesByDayChart) ridesByDayChart.destroy();
+        ridesByDayChart = new Chart(document.getElementById('rides-by-day-chart'), { type: 'line', data: { labels: ridesByDay.labels, datasets: [{ label: 'Rides', data: ridesByDay.data, borderColor: '#4f46e5', tension: 0.1 }] } });
+        if(ridesByVehicleChart) ridesByVehicleChart.destroy();
+        ridesByVehicleChart = new Chart(document.getElementById('rides-by-vehicle-chart'), { type: 'doughnut', data: { labels: Object.keys(ridesByVehicle), datasets: [{ data: Object.values(ridesByVehicle), backgroundColor: ['#f97316', '#3b82f6'] }] } });
+    };
+
+    // --- EVENT LISTENERS ---
+    document.getElementById('pending-rides-list').addEventListener('click', async (e) => { if (e.target.classList.contains('assign-ride-btn')) { const rideId = e.target.dataset.rideId; const driverId = document.getElementById(`driver-select-${rideId}`).value; if (driverId) { await postData('assign-ride', { ride_id: rideId, driver_id: driverId }); refreshAllData(); } else { alert('Please select a driver.'); } } });
+    document.getElementById('drivers-table-body').addEventListener('click', async (e) => { if (e.target.classList.contains('driver-details-btn')) { const driverId = e.target.dataset.driverId; const data = await fetchData(`driver-details/${driverId}`); if (data) showDriverDetails(data); } });
+    document.getElementById('settings-form').addEventListener('submit', async (e) => { e.preventDefault(); await postData('settings', Object.fromEntries(new FormData(e.target).entries())); alert('Settings Saved!'); });
+    
+    // --- DRIVER DETAILS LOGIC ---
+    const showDriverDetails = (data) => {
+        const content = document.getElementById('driver-details-content');
+        content.innerHTML = `<div class="grid grid-cols-3 gap-6"><div class="col-span-1"><img src="/${data.profile.avatar}" class="rounded-lg w-full"><h3 class="text-xl font-bold mt-4">${data.profile.name}</h3><p>${data.profile.status}</p></div><div class="col-span-2"><h4 class="font-bold">Performance</h4><p>Completed Rides: ${data.stats.completed_rides}</p><p>Total Earnings: ${data.stats.total_earnings} ETB</p><p>Avg. Rating: ${data.stats.avg_rating} ★</p><h4 class="font-bold mt-4">Recent Rides</h4><ul>${data.history.map(r => `<li>#${r.id} - ${r.status} - ${r.fare} ETB</li>`).join('')}</ul></div></div>`;
+        document.getElementById('driver-details-modal').classList.add('flex');
+    };
+
+    // --- DATA FETCH & REFRESH ---
+    const refreshAllData = async () => {
+        const [stats, pendingRides, availableDrivers, allDrivers, ridesHistory, ridesByDay, ridesByVehicle, settings] = await Promise.all([
+            fetchData('dashboard-stats'), fetchData('pending-rides'), fetchData('available-drivers'),
+            fetchData('drivers'), fetchData('all-rides-data'), fetchData('rides-by-day'), 
+            fetchData('rides-by-vehicle'), fetchData('settings')
+        ]);
+        if (stats) updateDashboardStats(stats);
+        if (pendingRides && availableDrivers) updatePendingRides(pendingRides, availableDrivers);
+        if (allDrivers) updateDriversTable(allDrivers);
+        if (ridesHistory) updateRideHistoryTable(ridesHistory);
+        if (ridesByDay && ridesByVehicle) updateCharts(ridesByDay, ridesByVehicle);
+        if (settings) {
+            const form = document.getElementById('settings-form');
+            form.base_fare.value = settings.base_fare || 25;
+            form.per_km_bajaj.value = settings.per_km_bajaj || 8;
+            form.per_km_car.value = settings.per_km_car || 12;
+        }
+    };
+
+    // --- INITIALIZATION ---
+    const initMaps = () => {
+        if (!dashboardMap) { dashboardMap = L.map('dashboard-map').setView([14.275, 39.46], 13); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(dashboardMap); }
+        if (!fullMap) { fullMap = L.map('full-live-map').setView([14.275, 39.46], 13); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(fullMap); }
     }
-
-    async function fetchData(endpoint) {
-        try {
-            const url = `${API_BASE_URL}/${endpoint}`;
-            const response = await fetch(url);
-            if (!response.ok) throw new Error(`Network error: Status ${response.status}`);
-            const textResponse = await response.text();
-            try {
-                return JSON.parse(textResponse);
-            } catch (e) {
-                console.error("Non-JSON response:", textResponse);
-                throw new Error('Could not fetch data. Backend did not return valid JSON.');
-            }
-        } catch (error) {
-            showError(error.message);
-            return [];
-        }
-    }
-
-    const renderPendingRides = (rides) => {
-        const container = document.getElementById('pending-rides');
-        if (!rides || rides.length === 0) {
-            container.innerHTML = '<p class="text-gray-500">No pending rides at the moment.</p>';
-            return;
-        }
-        container.innerHTML = rides.map(ride => `
-            <div class="bg-white p-4 rounded-lg shadow">
-                <p><strong>Ride ID:</strong> ${ride.id} (${ride.vehicle_type})</p>
-                <p><strong>To:</strong> ${ride.dest_address}</p>
-                <p><strong>Fare:</strong> ${ride.fare} ETB</p>
-                ${ride.note ? `<p class="mt-2 text-sm text-gray-600 bg-yellow-100 p-2 rounded"><strong>Note:</strong> ${ride.note}</p>` : ''}
-                <div class="mt-2 flex items-center">
-                    <label for="driver-select-${ride.id}" class="sr-only">Assign Driver</label>
-                    <select id="driver-select-${ride.id}" class="rounded-md border-gray-300">
-                        <option value="">Assign a driver...</option>
-                    </select>
-                    <button onclick="assignRide(${ride.id})" class="ml-2 px-3 py-1 bg-blue-500 text-white rounded-md text-sm">Assign</button>
-                    <button onclick="cancelRide(${ride.id})" class="ml-2 px-3 py-1 bg-red-500 text-white rounded-md text-sm">Cancel</button>
-                </div>
-            </div>
-        `).join('');
-    };
-
-    const renderAssignedRides = (rides) => {
-        const container = document.getElementById('assigned-rides');
-        if (!rides || rides.length === 0) {
-            container.innerHTML = '<p class="text-gray-500">No rides currently assigned.</p>';
-            return;
-        }
-        container.innerHTML = rides.map(ride => `
-            <div class="bg-white p-4 rounded-lg shadow">
-                <p><strong>Ride ID:</strong> ${ride.id} -> <strong>Driver:</strong> ${ride.driver_name}</p>
-                 <button onclick="completeRide(${ride.id})" class="mt-2 px-3 py-1 bg-green-500 text-white rounded-md text-sm">Mark as Complete</button>
-            </div>
-        `).join('');
-    };
-
-    const renderAllDrivers = (drivers) => {
-        const container = document.getElementById('all-drivers');
-        if (!drivers || drivers.length === 0) {
-             container.innerHTML = '<p class="text-gray-500">No drivers added yet.</p>';
-             return;
-        }
-        container.innerHTML = drivers.map(driver => `
-            <div class="bg-white p-3 rounded-lg shadow flex justify-between items-center">
-                <div>
-                    <p class="font-semibold">${driver.name} - <span class="text-sm font-normal">${driver.status}</span></p>
-                    <p class="text-xs text-gray-600">${driver.vehicle_details}</p>
-                </div>
-                <div>
-                    <button onclick="updateDriverStatus(${driver.id}, 'Available')" class="px-2 py-1 bg-green-200 text-green-800 rounded-md text-xs">Available</button>
-                    <button onclick="updateDriverStatus(${driver.id}, 'Offline')" class="ml-1 px-2 py-1 bg-red-200 text-red-800 rounded-md text-xs">Offline</button>
-                </div>
-            </div>
-        `).join('');
-    };
-
-    const populateDriverDropdowns = async () => {
-        const drivers = await fetchData('available-drivers');
-        const selects = document.querySelectorAll('select[id^="driver-select-"]');
-        selects.forEach(select => {
-            select.innerHTML = '<option value="">Assign a driver...</option>';
-            drivers.forEach(driver => {
-                const option = document.createElement('option');
-                option.value = driver.id;
-                option.textContent = driver.name;
-                select.appendChild(option);
-            });
-        });
-    };
     
-    const refreshData = async () => {
-        errorMessageDiv.classList.add('hidden');
-        const pendingRides = await fetchData('pending-rides');
-        renderPendingRides(pendingRides);
-
-        const assignedRides = await fetchData('assigned-rides');
-        renderAssignedRides(assignedRides);
-
-        const allDrivers = await fetchData('drivers');
-        renderAllDrivers(allDrivers);
-
-        await populateDriverDropdowns();
-    };
-
-    const assignRide = async (rideId) => {
-        const driverId = document.getElementById(`driver-select-${rideId}`).value;
-        if (!driverId) {
-            alert('Please select a driver.');
-            return;
-        }
-        await fetch(`${API_BASE_URL}/assign-ride`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ride_id: rideId, driver_id: driverId })
-        });
-        refreshData();
-    };
-    
-    const completeRide = async (rideId) => {
-        await fetch(`${API_BASE_URL}/complete-ride`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ride_id: rideId })
-        });
-        refreshData();
-    };
-
-    const cancelRide = async (rideId) => {
-        if (!confirm('Are you sure you want to cancel this ride?')) return;
-        await fetch(`${API_BASE_URL}/cancel-ride`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ride_id: rideId })
-        });
-        refreshData();
-    };
-    
-    const updateDriverStatus = async (driverId, status) => {
-        await fetch(`${API_BASE_URL}/update-driver-status`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ driver_id: driverId, status: status })
-        });
-        refreshData();
-    };
-    
-    document.getElementById('add-driver-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const form = e.target;
-        const name = form.name.value;
-        const phone = form.phone.value;
-        const vehicle = form.vehicle.value;
-        
-        await fetch(`${API_BASE_URL}/add-driver`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: name, phone_number: phone, vehicle_details: vehicle })
-        });
-        form.reset();
-        refreshData();
-    });
-
-    window.onload = () => {
-        refreshData();
-        setInterval(refreshData, 5000);
-    };
+    initMaps();
+    showPane('dashboard');
+    refreshAllData();
+    setInterval(refreshAllData, 10000);
+});
 </script>
 {% endblock %}
 

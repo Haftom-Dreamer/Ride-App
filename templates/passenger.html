@@ -81,8 +81,8 @@
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Select Vehicle</label>
                 <div id="vehicle-options" class="grid grid-cols-2 gap-4">
-                    <button class="vehicle-option p-2 border rounded-lg flex flex-col items-center justify-center" data-vehicle="Bajaj"><img src="{{ url_for('static', filename='image/bajaj.png') }}" alt="Bajaj" class="h-16 mb-1 pointer-events-none"><p class="font-semibold pointer-events-none">Regular</p></button>
-                    <button class="vehicle-option p-2 border rounded-lg flex flex-col items-center justify-center disabled" data-vehicle="Car"><img src="{{ url_for('static', filename='image/car.png') }}" alt="Car" class="h-16 mb-1 pointer-events-none"><p class="font-semibold pointer-events-none">Comfort</p><p class="text-xs text-gray-400 pointer-events-none">Coming Soon</p></button>
+                    <button class="vehicle-option p-2 border rounded-lg flex flex-col items-center justify-center" data-vehicle="Bajaj"><img src="{{ url_for('static', filename='img/bajaj.png') }}" alt="Bajaj" class="h-16 mb-1 pointer-events-none"><p class="font-semibold pointer-events-none">Regular</p></button>
+                    <button class="vehicle-option p-2 border rounded-lg flex flex-col items-center justify-center disabled" data-vehicle="Car"><img src="{{ url_for('static', filename='img/car.png') }}" alt="Car" class="h-16 mb-1 pointer-events-none"><p class="font-semibold pointer-events-none">Comfort</p><p class="text-xs text-gray-400 pointer-events-none">Coming Soon</p></button>
                 </div>
             </div>
 
@@ -141,9 +141,20 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- App State ---
     let selectedVehicle = 'Bajaj';
     let selectedRating = 0;
+    let pollingInterval = null, currentRideId = null;
+    let userPickup = null, userDestination = null, rideDetails = null;
+    let map, pickupMarker, destinationMarker, routeLayer;
+    let searchTimeout;
+
+    // --- Constants ---
     const API_BASE_URL = 'http://127.0.0.1:5000/api';
+    const commonLandmarks = [{"name": "Adigrat University", "lat": 14.283, "lon": 39.462, "display_name": "Adigrat University, Adigrat"}, {"name": "St. George's Church", "lat": 14.276, "lon": 39.459, "display_name": "St. George's Church, Adigrat"}, {"name": "Adigrat General Hospital", "lat": 14.270, "lon": 39.465, "display_name": "Adigrat General Hospital, Adigrat"}, {"name": "Martyrs Memorial Monument", "lat": 14.278, "lon": 39.468, "display_name": "Martyrs Memorial Monument, Adigrat"}, {"name": "Central Market (Mercato)", "lat": 14.275, "lon": 39.461, "display_name": "Central Market (Mercato), Adigrat"}, {"name": "Adigrat Bus Station", "lat": 14.272, "lon": 39.458, "display_name": "Adigrat Bus Station, Adigrat"}, {"name": "Medhane Alem Cathedral", "lat": 14.279, "lon": 39.455, "display_name": "Medhane Alem Cathedral, Adigrat"}, {"name": "Gebre's Hotel", "lat": 14.277, "lon": 39.462, "display_name": "Gebre's Hotel, Adigrat"}, {"name": "Agazi School", "lat": 14.274, "lon": 39.463, "display_name": "Agazi School, Adigrat"}, {"name": "Commercial Bank of Ethiopia", "lat": 14.275, "lon": 39.460, "display_name": "Commercial Bank of Ethiopia, Adigrat"}, {"name": "Total Gas Station", "lat": 14.271, "lon": 39.459, "display_name": "Total Gas Station, Adigrat"}, {"name": "Adigrat Stadium", "lat": 14.280, "lon": 39.470, "display_name": "Adigrat Stadium, Adigrat"}, {"name": "Abune Aregawi Church", "lat": 14.281, "lon": 39.458, "display_name": "Abune Aregawi Church, Adigrat"}];
+
+    // --- Element Selectors ---
     const bookingContainer = document.getElementById('booking-container');
     const waitingScreen = document.getElementById('waiting-screen');
     const assignedScreen = document.getElementById('assigned-screen');
@@ -170,61 +181,73 @@
     const ratingThanks = document.getElementById('rating-thanks');
     const doneBtn = document.getElementById('done-btn');
 
-    let pollingInterval = null, currentRideId = null;
-    let userPickup = null, userDestination = null, rideDetails = null;
-    let map, pickupMarker, destinationMarker, routeLayer;
-    let searchTimeout;
-    const commonLandmarks = [{"name": "Adigrat University", "lat": 14.283, "lon": 39.462, "display_name": "Adigrat University, Adigrat"}, {"name": "St. George's Church", "lat": 14.276, "lon": 39.459, "display_name": "St. George's Church, Adigrat"}, {"name": "Adigrat General Hospital", "lat": 14.270, "lon": 39.465, "display_name": "Adigrat General Hospital, Adigrat"}, {"name": "Martyrs Memorial Monument", "lat": 14.278, "lon": 39.468, "display_name": "Martyrs Memorial Monument, Adigrat"}, {"name": "Central Market (Mercato)", "lat": 14.275, "lon": 39.461, "display_name": "Central Market (Mercato), Adigrat"}, {"name": "Adigrat Bus Station", "lat": 14.272, "lon": 39.458, "display_name": "Adigrat Bus Station, Adigrat"}, {"name": "Medhane Alem Cathedral", "lat": 14.279, "lon": 39.455, "display_name": "Medhane Alem Cathedral, Adigrat"}, {"name": "Gebre's Hotel", "lat": 14.277, "lon": 39.462, "display_name": "Gebre's Hotel, Adigrat"}, {"name": "Agazi School", "lat": 14.274, "lon": 39.463, "display_name": "Agazi School, Adigrat"}, {"name": "Commercial Bank of Ethiopia", "lat": 14.275, "lon": 39.460, "display_name": "Commercial Bank of Ethiopia, Adigrat"}, {"name": "Total Gas Station", "lat": 14.271, "lon": 39.459, "display_name": "Total Gas Station, Adigrat"}, {"name": "Adigrat Stadium", "lat": 14.280, "lon": 39.470, "display_name": "Adigrat Stadium, Adigrat"}, {"name": "Abune Aregawi Church", "lat": 14.281, "lon": 39.458, "display_name": "Abune Aregawi Church, Adigrat"}];
+    // --- Helper Functions ---
+    const showScreen = (screenName) => {
+        [bookingContainer, waitingScreen, assignedScreen, canceledScreen, summaryScreen].forEach(el => el.style.display = 'none');
+        const screenToShow = document.getElementById(`${screenName}-container`) || document.getElementById(`${screenName}-screen`);
+        if (screenToShow) screenToShow.style.display = 'block';
+    };
 
-    function showScreen(screenName) {
-        bookingContainer.style.display = 'none';
-        waitingScreen.style.display = 'none';
-        assignedScreen.style.display = 'none';
-        canceledScreen.style.display = 'none';
-        summaryScreen.style.display = 'none';
+    const setStatus = (message, color) => {
+        locationStatus.textContent = message;
+        locationStatus.className = `text-xs text-${color}-500 mt-1`;
+    };
 
-        if (screenName === 'booking') {
-            bookingContainer.style.display = 'block';
-        } else {
-            const screenToShow = document.getElementById(`${screenName}-screen`);
-            if (screenToShow) screenToShow.style.display = 'block';
-        }
-    }
-
-    function startPolling(rideId) {
-        pollingInterval = setInterval(() => {
-            checkRideStatus(rideId);
-        }, 3000);
-    }
-
-    window.onload = () => {
+    // --- Main Logic ---
+    const init = () => {
         initLeafletMap('map');
         updateMapInstruction();
         requestRideBtn.disabled = true;
+
         document.getElementById('get-location-btn').addEventListener('click', getUserLocation);
         requestRideBtn.addEventListener('click', handleRideRequest);
         cancelRequestBtn.addEventListener('click', handleCancelRequest);
         newRideBtn.addEventListener('click', () => window.location.reload());
         doneBtn.addEventListener('click', () => window.location.reload());
-        setupAutocomplete(pickupInput, pickupSuggestions, (place) => { userPickup = { lat: parseFloat(place.lat), lon: parseFloat(place.lon), address: place.display_name }; updateMapAndFare(); });
-        setupAutocomplete(destinationInput, destinationSuggestions, (place) => { userDestination = { lat: parseFloat(place.lat), lon: parseFloat(place.lon), address: place.display_name }; updateMapAndFare(); });
+        
+        setupAutocomplete(pickupInput, pickupSuggestions, (place) => {
+            userPickup = { lat: parseFloat(place.lat), lon: parseFloat(place.lon), address: place.display_name };
+            updateMapAndFare();
+        });
+        setupAutocomplete(destinationInput, destinationSuggestions, (place) => {
+            userDestination = { lat: parseFloat(place.lat), lon: parseFloat(place.lon), address: place.display_name };
+            updateMapAndFare();
+        });
+
         const vehicleOptions = document.getElementById('vehicle-options');
-        vehicleOptions.addEventListener('click', (e) => { const button = e.target.closest('.vehicle-option'); if (button && !button.classList.contains('disabled')) { vehicleOptions.querySelectorAll('.vehicle-option').forEach(opt => opt.classList.remove('selected')); button.classList.add('selected'); selectedVehicle = button.dataset.vehicle; if (userPickup && userDestination) calculateFare(); } });
+        vehicleOptions.addEventListener('click', (e) => {
+            const button = e.target.closest('.vehicle-option');
+            if (button && !button.classList.contains('disabled')) {
+                vehicleOptions.querySelectorAll('.vehicle-option').forEach(opt => opt.classList.remove('selected'));
+                button.classList.add('selected');
+                selectedVehicle = button.dataset.vehicle;
+                if (userPickup && userDestination) calculateFare();
+            }
+        });
         vehicleOptions.querySelector('[data-vehicle="Bajaj"]').classList.add('selected');
         
         ratingStars.addEventListener('mouseover', (e) => { if (e.target.classList.contains('star')) highlightStars(e.target.dataset.value); });
         ratingStars.addEventListener('mouseout', () => highlightStars(selectedRating));
-        ratingStars.addEventListener('click', (e) => { if (e.target.classList.contains('star')) { selectedRating = e.target.dataset.value; highlightStars(selectedRating); ratingComment.classList.remove('hidden'); submitRatingBtn.classList.remove('hidden'); } });
+        ratingStars.addEventListener('click', (e) => {
+            if (e.target.classList.contains('star')) {
+                selectedRating = e.target.dataset.value;
+                highlightStars(selectedRating);
+                ratingComment.classList.remove('hidden');
+                submitRatingBtn.classList.remove('hidden');
+            }
+        });
         submitRatingBtn.addEventListener('click', () => submitRating(selectedRating, ratingComment.value));
     };
 
-    function handleRideRequest() {
+    const handleRideRequest = () => {
         if (!userPickup || !userDestination || !rideDetails) return;
         const phone = phoneInput.value.trim();
         if (!phone || phone.length < 9) return alert('Please enter a valid phone number.');
         const rideData = { phone_number: `+251${phone}`, pickup_lat: userPickup.lat, pickup_lon: userPickup.lon, dest_address: userDestination.address, distance_km: rideDetails.distance_km, fare: rideDetails.estimated_fare, vehicle_type: selectedVehicle, note: noteInput.value.trim() };
+        
         requestRideBtn.disabled = true;
         requestRideBtn.textContent = 'Requesting...';
+
         fetch(`${API_BASE_URL}/ride-request`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(rideData) })
             .then(res => res.json())
             .then(result => {
@@ -234,63 +257,68 @@
                 startPolling(currentRideId);
             })
             .catch(error => { alert(`Error: ${error.message}`); requestRideBtn.disabled = false; requestRideBtn.textContent = 'Request Ride'; });
-    }
+    };
 
-    async function calculateFare() { 
+    const calculateFare = async () => {
         if (!userPickup || !userDestination || !selectedVehicle) return;
-        fareDisplay.textContent = "..."; 
-        distanceDisplay.textContent = "..."; 
-        try { 
-            const response = await fetch(`${API_BASE_URL}/fare-estimate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pickup_lat: userPickup.lat, pickup_lon: userPickup.lon, dest_lat: userDestination.lat, dest_lon: userDestination.lon, vehicle_type: selectedVehicle }) }); 
-            const data = await response.json(); 
-            if (!response.ok) throw new Error(data.error || 'Could not calculate fare.'); 
-            rideDetails = data; 
-            fareDisplay.textContent = rideDetails.estimated_fare; 
-            distanceDisplay.textContent = rideDetails.distance_km; 
-        } catch (error) { setStatus(error.message, 'red'); } 
-    }
-    
-    function checkRideStatus(rideId) {
+        fareDisplay.textContent = "...";
+        distanceDisplay.textContent = "...";
+        try {
+            const response = await fetch(`${API_BASE_URL}/fare-estimate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pickup_lat: userPickup.lat, pickup_lon: userPickup.lon, dest_lat: userDestination.lat, dest_lon: userDestination.lon, vehicle_type: selectedVehicle }) });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Could not calculate fare.');
+            rideDetails = data;
+            fareDisplay.textContent = rideDetails.estimated_fare;
+            distanceDisplay.textContent = rideDetails.distance_km;
+        } catch (error) { setStatus(error.message, 'red'); }
+    };
+
+    const startPolling = (rideId) => {
+        pollingInterval = setInterval(() => checkRideStatus(rideId), 3000);
+    };
+
+    const checkRideStatus = (rideId) => {
         fetch(`${API_BASE_URL}/ride-status/${rideId}`)
             .then(res => res.json())
             .then(data => {
                 if (data.status === 'Completed') {
                     clearInterval(pollingInterval);
                     displayRideSummary(data.ride_details);
-                    return; 
+                    return;
                 }
                 if (data.status === 'Canceled') {
                     clearInterval(pollingInterval);
                     showScreen('canceled');
                     return;
                 }
-                
                 if (data.status === 'Assigned' && assignedScreen.style.display === 'none') {
                     displayAssignedDriver(data.driver);
                 }
-            }).catch(err => { 
-                console.error('Polling error:', err); 
-                clearInterval(pollingInterval); 
+            }).catch(err => {
+                console.error('Polling error:', err);
+                clearInterval(pollingInterval);
             });
-    }
+    };
 
-    function displayAssignedDriver(driverInfo) {
+    const displayAssignedDriver = (driverInfo) => {
         showScreen('assigned');
         document.getElementById('driver-name').textContent = driverInfo.name;
         document.getElementById('driver-phone').textContent = driverInfo.phone_number;
         document.getElementById('driver-vehicle').textContent = driverInfo.vehicle_details;
         callDriverBtn.href = `tel:${driverInfo.phone_number}`;
-    }
+    };
 
-    function displayRideSummary(details) { 
-        showScreen('summary'); 
-        document.getElementById('summary-dest').textContent = details.dest_address; 
-        document.getElementById('summary-fare').textContent = details.fare; 
-    }
+    const displayRideSummary = (details) => {
+        showScreen('summary');
+        document.getElementById('summary-dest').textContent = details.dest_address;
+        document.getElementById('summary-fare').textContent = details.fare;
+    };
 
-    function highlightStars(rating) { ratingStars.querySelectorAll('.star').forEach(star => star.classList.toggle('highlight', star.dataset.value <= rating)); }
-    
-    async function submitRating(rating, comment) {
+    const highlightStars = (rating) => {
+        ratingStars.querySelectorAll('.star').forEach(star => star.classList.toggle('highlight', star.dataset.value <= rating));
+    };
+
+    const submitRating = async (rating, comment) => {
         try {
             await fetch(`${API_BASE_URL}/rate-ride`, {
                 method: 'POST',
@@ -301,17 +329,22 @@
             ratingComment.style.display = 'none';
             submitRatingBtn.style.display = 'none';
             ratingThanks.classList.remove('hidden');
-        } catch(error) { console.error("Failed to submit rating", error); }
-    }
-    
-    function initLeafletMap(mapId) { 
+        } catch (error) { console.error("Failed to submit rating", error); }
+    };
+
+    const initLeafletMap = (mapId) => {
         const targetMapEl = document.getElementById(mapId);
         if (targetMapEl && targetMapEl._leaflet_id) { return; }
-        const newMap = L.map(mapId).setView([14.275, 39.46], 15); 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(newMap); 
-        if (mapId === 'map') { map = newMap; map.on('click', handleMapClick); }
-    }
-
+        const newMap = L.map(mapId).setView([14.275, 39.46], 15);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(newMap);
+        if (mapId === 'map') {
+            map = newMap;
+            map.on('click', handleMapClick);
+        }
+    };
+    
+    // ... Other functions (handleMapClick, setupAutocomplete, etc.) remain unchanged ...
+    function handleCancelRequest() { if (!currentRideId) return; fetch(`${API_BASE_URL}/cancel-ride`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ride_id: currentRideId }) }); }
     function handleMapClick(e) { const { lat, lng } = e.latlng; const isSettingPickup = !userPickup || (userPickup && userDestination); const targetInput = isSettingPickup ? pickupInput : destinationInput; setStatus('Fetching address...', 'blue'); fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`).then(res => res.json()).then(data => { if (!data || !data.display_name) throw new Error('Could not find address.'); const location = { lat: lat, lon: lng, address: data.display_name }; targetInput.value = location.address; if (isSettingPickup) { userPickup = location; userDestination = null; destinationInput.value = ''; } else { userDestination = location; } setStatus(isSettingPickup ? 'Pickup set!' : 'Destination set!', 'green'); updateMapAndFare(); }).catch(err => setStatus(err.message, 'red')); }
     function setupAutocomplete(inputEl, suggestionsEl, callback) { suggestionsEl.addEventListener('click', (e) => { if (e.target && e.target.classList.contains('autocomplete-suggestion')) { const placeData = JSON.parse(e.target.dataset.place); inputEl.value = placeData.display_name; suggestionsEl.innerHTML = ''; callback(placeData); } }); inputEl.addEventListener('input', () => { clearTimeout(searchTimeout); const query = inputEl.value.toLowerCase(); suggestionsEl.innerHTML = ''; if (query.length < 1) return; const localResults = commonLandmarks.filter(place => place.name.toLowerCase().includes(query)); localResults.forEach(place => renderSuggestion(place, suggestionsEl)); const searchingMsg = document.createElement('div'); searchingMsg.className = 'autocomplete-searching'; searchingMsg.textContent = 'Searching for more...'; suggestionsEl.appendChild(searchingMsg); searchTimeout = setTimeout(async () => { const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&viewbox=39.44,14.26,39.48,14.29&bounded=1&countrycodes=et`; try { const response = await fetch(url); const apiResults = await response.json(); searchingMsg.remove(); apiResults.slice(0, 5).forEach(place => { if (!localResults.some(local => local.name === place.name)) { renderSuggestion(place, suggestionsEl); } }); } catch (error) { console.error("Autocomplete API error:", error); searchingMsg.textContent = 'Search error.'; } }, 300); }); document.addEventListener('click', e => { if (e.target !== inputEl) suggestionsEl.innerHTML = ''; }); }
     function renderSuggestion(place, suggestionsEl) { const div = document.createElement('div'); div.innerHTML = place.display_name; div.className = 'autocomplete-suggestion'; div.dataset.place = JSON.stringify({ lat: place.lat, lon: place.lon, display_name: place.display_name }); suggestionsEl.appendChild(div); }
@@ -319,7 +352,10 @@
     function updateMapAndFare() { if(pickupMarker) map.removeLayer(pickupMarker); if(destinationMarker) map.removeLayer(destinationMarker); if(routeLayer) map.removeLayer(routeLayer); if(userPickup) pickupMarker = L.marker([userPickup.lat, userPickup.lon]).addTo(map).bindPopup('Pickup').openPopup(); if(userDestination) destinationMarker = L.marker([userDestination.lat, userDestination.lon]).addTo(map).bindPopup('Destination'); if(userPickup && userDestination) { drawRouteOnMap(userPickup, userDestination, map); calculateFare(); fareInfo.classList.remove('hidden'); requestRideBtn.disabled = false; } else { fareInfo.classList.add('hidden'); requestRideBtn.disabled = true; } if (userPickup) map.setView([userPickup.lat, userPickup.lon], 16); updateMapInstruction(); }
     function updateMapInstruction() { mapInstruction.classList.remove('hidden'); if (!userPickup) { mapInstruction.textContent = 'Click on the map or search to set your pickup location.'; } else if (!userDestination) { mapInstruction.textContent = 'Now, click on the map or search to set your destination.'; } else { mapInstruction.classList.add('hidden'); } }
     async function drawRouteOnMap(pickup, destination, targetMap) { const currentMap = targetMap || map; const url = `https://router.project-osrm.org/route/v1/driving/${pickup.lon},${pickup.lat};${destination.lon},${destination.lat}?overview=full&geometries=geojson`; try { const response = await fetch(url); const data = await response.json(); if (data.routes && data.routes.length > 0) { const routeCoords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]); const routeLine = L.polyline(routeCoords, { color: '#6d28d9', weight: 5 }).addTo(currentMap); currentMap.fitBounds(routeLine.getBounds(), { padding: [50, 50] }); } } catch (error) { console.error('Error fetching route:', error); } }
-    function setStatus(message, color) { locationStatus.textContent = message; locationStatus.className = `text-xs text-${color}-500 mt-1`; }
+    
+    // --- Initialize the App ---
+    init();
+});
 </script>
 {% endblock %}
 
