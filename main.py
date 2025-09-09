@@ -29,7 +29,7 @@ class Driver(db.Model):
     phone_number = db.Column(db.String(20), nullable=False)
     vehicle_details = db.Column(db.String(150), nullable=False)
     status = db.Column(db.String(20), default='Offline', nullable=False)
-    profile_picture = db.Column(db.String(255), nullable=True, default='static/image/default_avatar.png')
+    profile_picture = db.Column(db.String(255), nullable=True, default='static/img/default_avatar.png')
     join_date = db.Column(db.DateTime, server_default=db.func.now())
     current_lat = db.Column(db.Float, nullable=True)
     current_lon = db.Column(db.Float, nullable=True)
@@ -153,15 +153,44 @@ def cancel_ride():
 @app.route('/api/add-driver', methods=['POST'])
 def add_driver():
     data = request.json
+    profile_pic = data.get('profile_picture')
+    if not profile_pic or profile_pic.strip() == '':
+        profile_pic = 'static/img/default_avatar.png'
+        
     new_driver = Driver(
         name=data.get('name'),
         phone_number=data.get('phone_number'),
         vehicle_details=data.get('vehicle_details'),
+        profile_picture=profile_pic,
         status='Offline'
     )
     db.session.add(new_driver)
     db.session.commit()
     return jsonify({'message': 'Driver added successfully'}), 201
+
+@app.route('/api/update-driver/<int:driver_id>', methods=['POST'])
+def update_driver(driver_id):
+    driver = Driver.query.get_or_404(driver_id)
+    data = request.json
+    driver.name = data.get('name', driver.name)
+    driver.phone_number = data.get('phone_number', driver.phone_number)
+    driver.vehicle_details = data.get('vehicle_details', driver.vehicle_details)
+    profile_pic = data.get('profile_picture')
+    if profile_pic and profile_pic.strip() != '':
+        driver.profile_picture = profile_pic
+    db.session.commit()
+    return jsonify({'message': 'Driver updated successfully'})
+
+
+@app.route('/api/delete-driver', methods=['POST'])
+def delete_driver():
+    data = request.json
+    driver = Driver.query.get(data.get('driver_id'))
+    if not driver:
+        return jsonify({'error': 'Driver not found'}), 404
+    db.session.delete(driver)
+    db.session.commit()
+    return jsonify({'message': 'Driver deleted successfully'})
 
 
 @app.route('/api/update-driver-status', methods=['POST'])
@@ -210,6 +239,22 @@ def get_pending_rides():
     ])
 
 
+@app.route('/api/active-rides')
+def get_active_rides():
+    rides = Ride.query.filter(Ride.status.in_(['Assigned', 'On Trip'])).order_by(Ride.request_time.asc()).all()
+    return jsonify([
+        {
+            'id': r.id,
+            'user_name': r.user.name,
+            'driver_name': r.driver.name if r.driver else "N/A",
+            'dest_address': r.dest_address,
+            'status': r.status,
+            'request_time': r.request_time.strftime('%Y-%m-%d %H:%M')
+        }
+        for r in rides
+    ])
+
+
 @app.route('/api/drivers')
 def get_all_drivers():
     drivers = Driver.query.all()
@@ -227,6 +272,18 @@ def get_all_drivers():
         }
         for d in drivers
     ])
+
+
+@app.route('/api/driver/<int:driver_id>')
+def get_driver(driver_id):
+    driver = Driver.query.get_or_404(driver_id)
+    return jsonify({
+        "id": driver.id,
+        "name": driver.name,
+        "phone_number": driver.phone_number,
+        "vehicle_details": driver.vehicle_details,
+        "profile_picture": driver.profile_picture
+    })
 
 
 @app.route('/api/available-drivers')
@@ -366,3 +423,4 @@ if __name__ == '__main__':
             db.session.add(Setting(key='per_km_car', value='12'))
             db.session.commit()
     app.run(debug=True)
+
