@@ -13,6 +13,7 @@
         .sidebar { background-color: var(--sidebar-bg); } .main-content { background-color: var(--main-bg); } .card { background-color: var(--card-bg); border: 1px solid var(--border-color); }
         .sidebar-link { transition: all 0.2s ease-in-out; } .sidebar-link.active, .sidebar-link[aria-current="page"] { background-color: #f97316; color: white; font-weight: 600; } .sidebar-link:not(.active):hover { background-color: #374151; }
         .pane { display: none; } .pane.active { display: block; animation: fadeIn 0.3s ease-in-out; } @keyframes fadeIn { from { opacity: 0.8; } to { opacity: 1; } }
+        .pane:not(.active) .leaflet-container { display: none !important; }
         .modal { background-color: rgba(0, 0, 0, 0.6); }
         .status-badge { padding: 3px 10px; border-radius: 9999px; font-weight: 600; font-size: 11px; text-transform: uppercase; }
         .status-Available { background-color: #dcfce7; color: #166534; } .status-On\.Trip, .status-Assigned { background-color: #ffedd5; color: #9a3412; }
@@ -78,8 +79,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const targetPane = document.getElementById(`${paneId}-pane`);
         if (targetPane) targetPane.classList.add('active');
         sidebarLinks.forEach(l => l.classList.toggle('active', l.dataset.pane === paneId));
-        if (paneId === 'dashboard' && dashboardMap) setTimeout(() => dashboardMap.invalidateSize(), 10);
-        if (paneId === 'live-map') { if (!fullMap) initMaps(); setTimeout(() => fullMap.invalidateSize(), 10); }
+        if (paneId === 'dashboard') { if (!dashboardMap) initDashboardMap(); setTimeout(() => dashboardMap.invalidateSize(), 10); }
+        if (paneId === 'live-map') { if (!fullMap) initFullMap(); setTimeout(() => fullMap.invalidateSize(), 10); }
     };
     sidebarLinks.forEach(link => link.addEventListener('click', e => { e.preventDefault(); showPane(link.dataset.pane); }));
 
@@ -171,12 +172,13 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- INITIALIZATION ---
-    const initMaps = () => {
+    const initDashboardMap = () => {
         if (!dashboardMap) { dashboardMap = L.map('dashboard-map').setView([14.275, 39.46], 13); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(dashboardMap); }
+    }
+    const initFullMap = () => {
         if (!fullMap) { fullMap = L.map('full-live-map').setView([14.275, 39.46], 13); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(fullMap); }
     }
     
-    initMaps();
     showPane('dashboard');
     refreshAllData();
     setInterval(refreshAllData, 10000);
