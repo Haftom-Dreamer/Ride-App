@@ -5,6 +5,7 @@ import os
 import requests
 from sqlalchemy import func, case
 from datetime import datetime, timedelta
+from werkzeug.utils import secure_filename
 
 # --- App and Database Setup ---
 base_dir = os.path.abspath(os.path.dirname(__file__))
@@ -13,6 +14,7 @@ CORS(app)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(base_dir, 'app.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['UPLOAD_FOLDER'] = os.path.join(base_dir, 'static/uploads')
 db = SQLAlchemy(app)
 
 
@@ -141,7 +143,7 @@ def cancel_ride():
     ride = Ride.query.get(request.json.get('ride_id'))
     if not ride:
         return jsonify({'error': 'Ride not found'}), 404
-    if ride.status not in ['Requested', 'Assigned']:
+    if ride.status not in ['Requested', 'Assigned', 'On Trip']:
         return jsonify({'error': 'This ride cannot be canceled'}), 400
     if ride.driver:
         ride.driver.status = 'Available'
@@ -152,16 +154,24 @@ def cancel_ride():
 
 @app.route('/api/add-driver', methods=['POST'])
 def add_driver():
-    data = request.json
-    profile_pic = data.get('profile_picture')
-    if not profile_pic or profile_pic.strip() == '':
-        profile_pic = 'static/img/default_avatar.png'
-        
+    name = request.form.get('name')
+    phone_number = request.form.get('phone_number')
+    vehicle_details = request.form.get('vehicle_details')
+    
+    profile_picture_path = 'static/img/default_avatar.png'
+    if 'profile_picture' in request.files:
+        file = request.files['profile_picture']
+        if file and file.filename != '':
+            filename = secure_filename(file.filename)
+            upload_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(upload_path)
+            profile_picture_path = os.path.join('static/uploads', filename).replace("\\", "/")
+
     new_driver = Driver(
-        name=data.get('name'),
-        phone_number=data.get('phone_number'),
-        vehicle_details=data.get('vehicle_details'),
-        profile_picture=profile_pic,
+        name=name,
+        phone_number=phone_number,
+        vehicle_details=vehicle_details,
+        profile_picture=profile_picture_path,
         status='Offline'
     )
     db.session.add(new_driver)
@@ -171,13 +181,18 @@ def add_driver():
 @app.route('/api/update-driver/<int:driver_id>', methods=['POST'])
 def update_driver(driver_id):
     driver = Driver.query.get_or_404(driver_id)
-    data = request.json
-    driver.name = data.get('name', driver.name)
-    driver.phone_number = data.get('phone_number', driver.phone_number)
-    driver.vehicle_details = data.get('vehicle_details', driver.vehicle_details)
-    profile_pic = data.get('profile_picture')
-    if profile_pic and profile_pic.strip() != '':
-        driver.profile_picture = profile_pic
+    driver.name = request.form.get('name', driver.name)
+    driver.phone_number = request.form.get('phone_number', driver.phone_number)
+    driver.vehicle_details = request.form.get('vehicle_details', driver.vehicle_details)
+    
+    if 'profile_picture' in request.files:
+        file = request.files['profile_picture']
+        if file and file.filename != '':
+            filename = secure_filename(file.filename)
+            upload_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(upload_path)
+            driver.profile_picture = os.path.join('static/uploads', filename).replace("\\", "/")
+
     db.session.commit()
     return jsonify({'message': 'Driver updated successfully'})
 
@@ -366,19 +381,82 @@ def fare_estimate():
         return jsonify({'error': 'Could not calculate route.'}), 500
 
 
-# --- UPDATED: Analytics Endpoint ---
 @app.route('/api/dashboard-stats')
 def get_dashboard_stats():
     total_revenue = db.session.query(func.sum(Ride.fare)).filter(Ride.status == 'Completed').scalar() or 0
     total_rides = Ride.query.count()
-    drivers_online = Driver.query.filter_by(status='Available').count()
-    pending_requests = Ride.query.filter_by(status='Requested').count()
+    drivers_online = Driver.query.filter(Driver.status == 'Available').count()
+    pending_requests = Ride.query.filter(Ride.status == 'Requested').count()
 
     return jsonify({
         'total_revenue': round(total_revenue, 2),
         'total_rides': total_rides,
         'drivers_online': drivers_online,
         'pending_requests': pending_requests,
+    })
+
+@app.route('/api/analytics-data')
+def get_analytics_data():
+    period = request.args.get('period')
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+
+    now = datetime.utcnow()
+    end_date = now.replace(hour=23, minute=59, second=59)
+    start_date = None
+
+    if period == 'today':
+        start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    elif period == 'week':
+        start_date = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+    elif period == 'month':
+        start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    elif start_date_str and end_date_str:
+        try:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
+        except (ValueError, TypeError):
+            start_date = None
+            
+    # Base query for the selected period
+    base_query = Ride.query
+    if start_date:
+        base_query = base_query.filter(Ride.request_time.between(start_date, end_date))
+
+    # Create subqueries for different statuses within the period
+    completed_rides_sq = base_query.filter(Ride.status == 'Completed').subquery()
+    canceled_rides_sq = base_query.filter(Ride.status == 'Canceled').subquery()
+
+    # Calculate KPIs using the subqueries
+    completed_rides_in_period = db.session.query(func.count(completed_rides_sq.c.id)).scalar()
+    canceled_rides_in_period = db.session.query(func.count(canceled_rides_sq.c.id)).scalar()
+    
+    revenue_in_period = db.session.query(func.sum(completed_rides_sq.c.fare)).scalar() or 0
+    avg_fare_in_period = db.session.query(func.avg(completed_rides_sq.c.fare)).scalar() or 0
+
+    # Current State KPI (not affected by date range)
+    active_rides_now = Ride.query.filter(Ride.status.in_(['Assigned', 'On Trip'])).count()
+
+    # Chart data for the period
+    revenue_by_day_query = db.session.query(
+        func.date(completed_rides_sq.c.request_time).label('day'),
+        func.sum(completed_rides_sq.c.fare)
+    ).group_by('day').order_by('day').all()
+    
+    revenue_chart_data = {
+        'labels': [item[0] for item in revenue_by_day_query],
+        'data': [float(item[1]) if item[1] is not None else 0 for item in revenue_by_day_query]
+    }
+    
+    return jsonify({
+        'kpis': {
+            'rides_completed': completed_rides_in_period,
+            'rides_canceled': canceled_rides_in_period,
+            'total_revenue': round(revenue_in_period, 2),
+            'avg_fare': round(avg_fare_in_period, 2),
+            'active_rides_now': active_rides_now
+        },
+        'revenue_chart': revenue_chart_data
     })
 
 
@@ -416,6 +494,7 @@ def handle_settings():
 # --- Main Execution ---
 if __name__ == '__main__':
     with app.app_context():
+        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
         db.create_all()
         if not Setting.query.first():
             db.session.add(Setting(key='base_fare', value='25'))
