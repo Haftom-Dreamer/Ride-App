@@ -124,6 +124,18 @@
         background-color: #4f46e5;
         color: white;
     }
+    .kpi-card-icon {
+        font-size: 1.5rem;
+        padding: 0.75rem;
+        border-radius: 9999px;
+        margin-right: 1rem;
+    }
+    .kpi-trend {
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 2px 6px;
+        border-radius: 9999px;
+    }
 
 </style>
 {% endblock %}
@@ -230,16 +242,6 @@
                     <div id="pending-rides-list" class="space-y-3 overflow-y-auto h-96"></div>
                 </div>
             </div>
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div class="card p-6 rounded-lg shadow">
-                    <h3 class="font-semibold mb-4 text-primary">Rides per Day</h3>
-                    <canvas id="rides-by-day-chart"></canvas>
-                </div>
-                <div class="card p-6 rounded-lg shadow">
-                    <h3 class="font-semibold mb-4 text-primary">Rides by Vehicle</h3>
-                    <canvas id="rides-by-vehicle-chart"></canvas>
-                </div>
-            </div>
         </div>
         
         <div id="analytics-pane" class="pane">
@@ -264,31 +266,64 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-                <div class="card p-6 rounded-lg shadow">
-                    <p class="text-sm text-secondary">Total Revenue</p>
-                    <p id="kpi-total-revenue" class="text-3xl font-bold text-green-500">0 ETB</p>
+                <div class="card p-4 rounded-lg shadow flex items-center">
+                    <span class="kpi-card-icon bg-green-100 text-green-600">💰</span>
+                    <div>
+                        <p class="text-sm text-secondary">Total Revenue</p>
+                        <p id="kpi-total-revenue" class="text-2xl font-bold text-green-600">0 ETB</p>
+                        <span id="kpi-trend-revenue" class="kpi-trend"></span>
+                    </div>
                 </div>
-                <div class="card p-6 rounded-lg shadow">
-                    <p class="text-sm text-secondary">Rides Completed</p>
-                    <p id="kpi-rides-completed" class="text-3xl font-bold text-blue-500">0</p>
+                <div class="card p-4 rounded-lg shadow flex items-center">
+                    <span class="kpi-card-icon bg-blue-100 text-blue-600">✅</span>
+                    <div>
+                        <p class="text-sm text-secondary">Rides Completed</p>
+                        <p id="kpi-rides-completed" class="text-2xl font-bold text-blue-600">0</p>
+                        <span id="kpi-trend-rides" class="kpi-trend"></span>
+                    </div>
                 </div>
-                <div class="card p-6 rounded-lg shadow">
-                    <p class="text-sm text-secondary">Rides Canceled</p>
-                    <p id="kpi-rides-canceled" class="text-3xl font-bold text-red-500">0</p>
+                <div class="card p-4 rounded-lg shadow flex items-center">
+                    <span class="kpi-card-icon bg-red-100 text-red-600">❌</span>
+                    <div>
+                        <p class="text-sm text-secondary">Rides Canceled</p>
+                        <p id="kpi-rides-canceled" class="text-2xl font-bold text-red-600">0</p>
+                    </div>
                 </div>
-                 <div class="card p-6 rounded-lg shadow">
-                    <p class="text-sm text-secondary">Average Fare</p>
-                    <p id="kpi-avg-fare" class="text-3xl font-bold text-purple-500">0 ETB</p>
+                 <div class="card p-4 rounded-lg shadow flex items-center">
+                    <span class="kpi-card-icon bg-purple-100 text-purple-600">📊</span>
+                    <div>
+                        <p class="text-sm text-secondary">Average Fare</p>
+                        <p id="kpi-avg-fare" class="text-2xl font-bold text-purple-600">0 ETB</p>
+                    </div>
                 </div>
-                <div class="card p-6 rounded-lg shadow">
-                    <p class="text-sm text-secondary">Active Rides (Now)</p>
-                    <p id="kpi-active-rides-now" class="text-3xl font-bold text-yellow-500">0</p>
+                <div class="card p-4 rounded-lg shadow flex items-center">
+                    <span class="kpi-card-icon bg-yellow-100 text-yellow-600">🚖</span>
+                    <div>
+                        <p class="text-sm text-secondary">Active Rides (Now)</p>
+                        <p id="kpi-active-rides-now" class="text-2xl font-bold text-yellow-600">0</p>
+                    </div>
                 </div>
             </div>
-            <div class="card p-6 rounded-lg shadow">
-                <h3 class="font-semibold mb-4 text-primary">Revenue Over Time</h3>
-                <div class="relative h-96">
-                    <canvas id="revenue-by-day-chart"></canvas>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="lg:col-span-2 card p-6 rounded-lg shadow">
+                    <h3 class="font-semibold mb-4 text-primary">Revenue Over Time</h3>
+                    <div class="relative h-80">
+                        <canvas id="revenue-by-day-chart"></canvas>
+                    </div>
+                </div>
+                <div class="grid grid-rows-2 gap-8">
+                    <div class="card p-6 rounded-lg shadow">
+                        <h3 class="font-semibold mb-4 text-primary">Rides by Vehicle</h3>
+                        <div class="relative h-32">
+                            <canvas id="vehicle-dist-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="card p-6 rounded-lg shadow">
+                        <h3 class="font-semibold mb-4 text-primary">Payment Methods</h3>
+                        <div class="relative h-32">
+                            <canvas id="payment-dist-chart"></canvas>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -448,8 +483,8 @@
     document.addEventListener('DOMContentLoaded', () => {
         // --- STATE & CONFIG ---
         const API_BASE_URL = 'http://127.0.0.1:5000/api';
-        let dashboardMap, ridesByDayChart, ridesByVehicleChart, revenueChart;
-        let pendingRideMarkers = {};
+        let dashboardMap, revenueChart, vehicleDistChart, paymentDistChart;
+        let pendingRideLayers = {};
         let currentAnalyticsParams = 'period=week'; // Default filter
 
         // --- ELEMENT SELECTORS ---
@@ -462,60 +497,25 @@
         const activeRidesTableBody = document.getElementById('active-rides-table-body');
 
         // --- HELPER FUNCTIONS ---
-        const fetchData = async (endpoint) => {
-            try {
-                const r = await fetch(`${API_BASE_URL}/${endpoint}`, { cache: "no-store" });
-                if (!r.ok) throw new Error(`HTTP error ${r.status}`);
-                return await r.json();
-            } catch (e) { console.error(`Fetch error for ${endpoint}:`, e); return null; }
-        };
-        const postData = async (endpoint, data) => {
-            try {
-                const r = await fetch(`${API_BASE_URL}/${endpoint}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-                if (!r.ok) throw new Error(`HTTP error ${r.status}`);
-                return await r.json();
-            } catch (e) { console.error(`Post error for ${endpoint}:`, e); return null; }
-        };
-        const postFormData = async (endpoint, formData) => {
-            try {
-                const r = await fetch(`${API_BASE_URL}/${endpoint}`, { method: 'POST', body: formData });
-                if (!r.ok) throw new Error(`HTTP error ${r.status}`);
-                return await r.json();
-            } catch (e) { console.error(`Post Form error for ${endpoint}:`, e); return null; }
-        };
-
-        const showModal = (id) => {
-            hideModals();
-            document.getElementById(id).classList.remove('hidden');
-            document.getElementById(id).classList.add('flex');
-        }
-        const hideModals = () => modals.forEach(m => {
-            m.classList.add('hidden');
-            m.classList.remove('flex');
-        });
+        const fetchData = async (endpoint) => { try { const r = await fetch(`${API_BASE_URL}/${endpoint}`, { cache: "no-store" }); if (!r.ok) throw new Error(`HTTP error ${r.status}`); return await r.json(); } catch (e) { console.error(`Fetch error for ${endpoint}:`, e); return null; } };
+        const postData = async (endpoint, data) => { try { const r = await fetch(`${API_BASE_URL}/${endpoint}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); if (!r.ok) throw new Error(`HTTP error ${r.status}`); return await r.json(); } catch (e) { console.error(`Post error for ${endpoint}:`, e); return null; } };
+        const postFormData = async (endpoint, formData) => { try { const r = await fetch(`${API_BASE_URL}/${endpoint}`, { method: 'POST', body: formData }); if (!r.ok) throw new Error(`HTTP error ${r.status}`); return await r.json(); } catch (e) { console.error(`Post Form error for ${endpoint}:`, e); return null; } };
+        const showModal = (id) => { hideModals(); document.getElementById(id).classList.remove('hidden'); document.getElementById(id).classList.add('flex'); }
+        const hideModals = () => modals.forEach(m => { m.classList.add('hidden'); m.classList.remove('flex'); });
 
         // --- UI & NAVIGATION ---
         const showPane = (paneId) => {
             panes.forEach(p => p.classList.remove('active'));
             const targetPane = document.getElementById(`${paneId}-pane`);
             if (targetPane) targetPane.classList.add('active');
-            
             document.querySelectorAll('.sidebar-link[data-pane]').forEach(l => l.classList.remove('active'));
             const activeLink = document.querySelector(`.sidebar-link[data-pane="${paneId}"]`);
-            if (activeLink) {
-                activeLink.classList.add('active');
-                const details = activeLink.closest('details');
-                if (details) details.open = true;
-            }
+            if (activeLink) { activeLink.classList.add('active'); const details = activeLink.closest('details'); if (details) details.open = true; }
             if (paneId === 'dashboard' && !dashboardMap) initDashboardMap();
             if (paneId === 'analytics') updateAnalytics();
             if (dashboardMap) setTimeout(() => dashboardMap.invalidateSize(), 10);
         };
-        sidebarLinks.forEach(link => {
-            if (link.dataset.pane) {
-                link.addEventListener('click', e => { e.preventDefault(); showPane(link.dataset.pane); });
-            }
-        });
+        sidebarLinks.forEach(link => { if (link.dataset.pane) { link.addEventListener('click', e => { e.preventDefault(); showPane(link.dataset.pane); }); } });
 
         // --- DARK MODE ---
         const setDarkMode = (isDark) => { if (isDark) { document.documentElement.classList.add('dark'); darkModeIcon.textContent = '🌙'; } else { document.documentElement.classList.remove('dark'); darkModeIcon.textContent = '☀️'; } localStorage.setItem('darkMode', isDark); };
@@ -530,42 +530,31 @@
         document.getElementById('confirm-delete-btn').addEventListener('click', async e => { await postData('delete-driver', { driver_id: e.target.dataset.driverId }); hideModals(); refreshAllData(); });
 
         // --- ANALYTICS LOGIC ---
-        const setAnalyticsFilter = (params) => {
-            currentAnalyticsParams = params;
-            updateAnalytics();
-        };
-
+        const setAnalyticsFilter = (params) => { currentAnalyticsParams = params; updateAnalytics(); };
         document.getElementById('analytics-period-btns').addEventListener('click', e => {
             if (e.target.matches('.analytics-filter-btn')) {
                 document.querySelectorAll('.analytics-filter-btn').forEach(btn => btn.classList.remove('active-filter'));
                 e.target.classList.add('active-filter');
-                document.getElementById('start-date-input').value = '';
-                document.getElementById('end-date-input').value = '';
+                document.getElementById('start-date-input').value = ''; document.getElementById('end-date-input').value = '';
                 setAnalyticsFilter(`period=${e.target.dataset.period}`);
             }
         });
-
         document.getElementById('custom-range-btn').addEventListener('click', () => {
-            const start = document.getElementById('start-date-input').value;
-            const end = document.getElementById('end-date-input').value;
-            if (start && end) {
-                document.querySelectorAll('.analytics-filter-btn').forEach(btn => btn.classList.remove('active-filter'));
-                setAnalyticsFilter(`start_date=${start}&end_date=${end}`);
-            } else {
-                alert('Please select both a start and end date.');
-            }
+            const start = document.getElementById('start-date-input').value; const end = document.getElementById('end-date-input').value;
+            if (start && end) { document.querySelectorAll('.analytics-filter-btn').forEach(btn => btn.classList.remove('active-filter')); setAnalyticsFilter(`start_date=${start}&end_date=${end}`); } 
+            else { alert('Please select both a start and end date.'); }
         });
 
         // --- DATA RENDERING ---
-        const updateDashboardStats = stats => {
-            if (stats) {
-                document.getElementById('stat-revenue').textContent = `${stats.total_revenue} ETB`;
-                document.getElementById('stat-rides').textContent = stats.total_rides;
-                document.getElementById('stat-drivers').textContent = stats.drivers_online;
-                document.getElementById('stat-pending').textContent = stats.pending_requests;
-            }
+        const updateDashboardStats = stats => { if (stats) { ['total_revenue', 'total_rides', 'drivers_online', 'pending_requests'].forEach(key => { const el = document.getElementById(`stat-${key.split('_')[0]}`); if(el) el.textContent = `${stats[key]}` + (key === 'total_revenue' ? ' ETB' : ''); }); } };
+        
+        const renderTrend = (el, trend) => {
+            if (trend === null || trend === undefined) { el.innerHTML = ''; return; }
+            const color = trend >= 0 ? 'green' : 'red';
+            const icon = trend >= 0 ? '↑' : '↓';
+            el.innerHTML = `${icon} ${Math.abs(trend)}%`;
+            el.className = `kpi-trend bg-${color}-100 text-${color}-800`;
         };
-
         const updateAnalyticsKPIs = (kpis) => {
             if(kpis) {
                 document.getElementById('kpi-total-revenue').textContent = `${kpis.total_revenue} ETB`;
@@ -573,112 +562,84 @@
                 document.getElementById('kpi-rides-canceled').textContent = kpis.rides_canceled;
                 document.getElementById('kpi-avg-fare').textContent = `${kpis.avg_fare} ETB`;
                 document.getElementById('kpi-active-rides-now').textContent = kpis.active_rides_now;
+                renderTrend(document.getElementById('kpi-trend-revenue'), kpis.trends.revenue);
+                renderTrend(document.getElementById('kpi-trend-rides'), kpis.trends.rides);
             }
         };
 
-        const updateRevenueChart = (chartData) => {
-            const ctx = document.getElementById('revenue-by-day-chart').getContext('2d');
-            if (revenueChart) revenueChart.destroy();
-            revenueChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: chartData.labels,
-                    datasets: [{
-                        label: 'Daily Revenue (ETB)',
-                        data: chartData.data,
-                        backgroundColor: '#4f46e5',
-                        borderColor: '#3c34b1',
-                        borderWidth: 1,
-                        borderRadius: 4,
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: { beginAtZero: true }
-                    }
-                }
-            });
+        const updateChart = (chartInstance, chartId, type, data, options = {}) => {
+            if (chartInstance) chartInstance.destroy();
+            const ctx = document.getElementById(chartId).getContext('2d');
+            return new Chart(ctx, { type, data, options });
         };
-
         const updatePendingRides = (rides, drivers) => {
             const listContainer = document.getElementById('pending-rides-list');
             listContainer.innerHTML = '';
-            Object.values(pendingRideMarkers).forEach(marker => { if (dashboardMap?.hasLayer(marker)) dashboardMap.removeLayer(marker); });
-            pendingRideMarkers = {};
+            Object.values(pendingRideLayers).forEach(layerGroup => dashboardMap.removeLayer(layerGroup));
+            pendingRideLayers = {};
             if (!rides || rides.length === 0) { listContainer.innerHTML = `<p class="text-gray-500 text-sm p-4">No pending rides.</p>`; return; }
             rides.forEach(ride => {
-                const lat = ride.pickup_lat || 0, lon = ride.pickup_lon || 0;
-                if (dashboardMap) pendingRideMarkers[ride.id] = L.marker([lat, lon]).addTo(dashboardMap).bindPopup(`<b>Request #${ride.id}</b>`);
+                const layerGroup = L.layerGroup().addTo(dashboardMap);
+                pendingRideLayers[ride.id] = layerGroup;
+                if (ride.pickup_lat && ride.dest_lat) {
+                    L.marker([ride.pickup_lat, ride.pickup_lon]).addTo(layerGroup).bindPopup(`<b>Pickup:</b> ${ride.user_name}`);
+                    L.marker([ride.dest_lat, ride.dest_lon], { icon: L.icon({ iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png', shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png', iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41] }) }).addTo(layerGroup).bindPopup(`<b>Destination</b>`);
+                    drawRouteOnMap(ride, layerGroup);
+                }
                 const rideEl = document.createElement('div');
                 rideEl.className = 'border-b pb-3 p-2';
                 rideEl.innerHTML = `<p class="font-semibold">${ride.user_name} (${ride.user_phone})</p><p class="text-xs">To: ${ride.dest_address}</p><p class="text-xs text-indigo-600 font-medium">Note: ${ride.note || 'None'}</p><div class="mt-2 flex items-center"><select id="driver-select-${ride.id}" class="p-1 border rounded text-xs w-full">${drivers.map(d => `<option value="${d.id}">${d.name}</option>`).join('')}</select><button class="assign-ride-btn ml-2 px-3 py-1 bg-blue-500 text-white text-xs rounded" data-ride-id="${ride.id}">Assign</button></div>`;
                 listContainer.appendChild(rideEl);
             });
         };
+        const drawRouteOnMap = async (ride, layerGroup) => {
+            const url = `https://router.project-osrm.org/route/v1/driving/${ride.pickup_lon},${ride.pickup_lat};${ride.dest_lon},${ride.dest_lat}?overview=full&geometries=geojson`;
+            try {
+                const response = await fetch(url); const data = await response.json();
+                if (data.routes && data.routes.length > 0) {
+                    const routeCoords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+                    L.polyline(routeCoords, { color: '#6d28d9', weight: 4, opacity: 0.7 }).addTo(layerGroup);
+                }
+            } catch (error) { console.error('Error fetching route:', error); }
+        };
+
         const updateDriversTable = (drivers) => {
-            driversTableBody.innerHTML = '';
-            if (!drivers || drivers.length === 0) return;
+            driversTableBody.innerHTML = ''; if (!drivers || drivers.length === 0) return;
             drivers.forEach(driver => {
                 const statusOptions = ['Available', 'On Trip', 'Offline'].map(s => `<option value="${s}" ${driver.status === s ? 'selected' : ''}>${s}</option>`).join('');
                 const row = driversTableBody.insertRow();
                 row.innerHTML = `
                     <td class="p-2 flex items-center"><img src="/${driver.profile_picture}" class="h-8 w-8 rounded-full mr-3 object-cover" alt="Driver" onerror="this.src='/static/img/default_avatar.png'">${driver.name}</td>
-                    <td>${driver.phone_number}</td>
-                    <td>${driver.vehicle_details}</td>
+                    <td>${driver.phone_number}</td> <td>${driver.vehicle_details}</td>
                     <td><select class="driver-status-select" data-driver-id="${driver.id}">${statusOptions}</select></td>
                     <td>${driver.join_date}</td>
-                    <td class="text-lg space-x-2">
-                        <button class="action-btn view" data-driver-id="${driver.id}" title="View Details">👁️</button>
-                        <button class="action-btn edit" data-driver-id="${driver.id}" title="Edit Driver">✏️</button>
-                        <button class="action-btn delete" data-driver-id="${driver.id}" title="Delete Driver">🗑️</button>
-                    </td>`;
+                    <td class="text-lg space-x-2"> <button class="action-btn view" data-driver-id="${driver.id}" title="View Details">👁️</button> <button class="action-btn edit" data-driver-id="${driver.id}" title="Edit Driver">✏️</button> <button class="action-btn delete" data-driver-id="${driver.id}" title="Delete Driver">🗑️</button> </td>`;
                 const select = row.querySelector('.driver-status-select');
                 const updateColor = () => { select.className = 'driver-status-select status-select-' + select.value.replace(' ', '-'); };
-                select.addEventListener('change', updateColor);
-                updateColor();
+                select.addEventListener('change', updateColor); updateColor();
             });
         };
         const updateActiveRidesTable = (rides) => {
-            activeRidesTableBody.innerHTML = '';
-            if (!rides || rides.length === 0) { activeRidesTableBody.innerHTML = '<tr><td colspan="5" class="text-center p-4 text-gray-500">No active rides</td></tr>'; return; }
+            activeRidesTableBody.innerHTML = ''; if (!rides || rides.length === 0) { activeRidesTableBody.innerHTML = '<tr><td colspan="5" class="text-center p-4 text-gray-500">No active rides</td></tr>'; return; }
             rides.forEach(ride => {
                 const row = activeRidesTableBody.insertRow();
-                row.innerHTML = `
-                    <td class="p-2">${ride.user_name}</td>
-                    <td>${ride.driver_name}</td>
-                    <td class="text-xs max-w-xs truncate">${ride.dest_address}</td>
-                    <td><span class="status-badge status-${ride.status.replace(' ', '-')}">${ride.status}</span></td>
-                    <td class="space-x-2">
-                        <button class="px-3 py-1 bg-green-500 text-white text-xs rounded complete-ride-btn" data-ride-id="${ride.id}">Complete</button>
-                        <button class="px-3 py-1 bg-red-500 text-white text-xs rounded cancel-ride-btn" data-ride-id="${ride.id}">Cancel</button>
-                    </td>`;
+                row.innerHTML = `<td class="p-2">${ride.user_name}</td><td>${ride.driver_name}</td><td class="text-xs max-w-xs truncate">${ride.dest_address}</td><td><span class="status-badge status-${ride.status.replace(' ', '-')}">${ride.status}</span></td><td class="space-x-2"><button class="px-3 py-1 bg-green-500 text-white text-xs rounded complete-ride-btn" data-ride-id="${ride.id}">Complete</button><button class="px-3 py-1 bg-red-500 text-white text-xs rounded cancel-ride-btn" data-ride-id="${ride.id}">Cancel</button></td>`;
             });
         };
         const updateRideHistoryTable = (rides) => {
             const tableBody = document.getElementById('rides-history-table-body');
-            tableBody.innerHTML = '';
-            if (!rides || rides.length === 0) return;
+            tableBody.innerHTML = ''; if (!rides || rides.length === 0) return;
             rides.forEach(ride => {
                 const row = tableBody.insertRow();
                 row.innerHTML = `<td class="p-2">${ride.id}</td><td>${ride.user_name}</td><td>${ride.driver_name}</td><td>${ride.fare} ETB</td><td><span class="status-badge status-${ride.status}">${ride.status}</span></td><td>${ride.rating ? '★'.repeat(ride.rating) : 'N/A'}</td><td>${ride.request_time}</td>`;
             });
-        };
-        const updateDashboardCharts = (ridesByDay, ridesByVehicle) => {
-            if (ridesByDayChart) ridesByDayChart.destroy();
-            ridesByDayChart = new Chart(document.getElementById('rides-by-day-chart'), { type: 'line', data: { labels: ridesByDay.labels, datasets: [{ label: 'Rides', data: ridesByDay.data, borderColor: '#4f46e5', tension: 0.1 }] } });
-            if (ridesByVehicleChart) ridesByVehicleChart.destroy();
-            ridesByVehicleChart = new Chart(document.getElementById('rides-by-vehicle-chart'), { type: 'doughnut', data: { labels: Object.keys(ridesByVehicle), datasets: [{ data: Object.values(ridesByVehicle), backgroundColor: ['#f97316', '#3b82f6'] }] } });
         };
 
         // --- EVENT LISTENERS ---
         document.getElementById('pending-rides-list').addEventListener('click', async (e) => { if (e.target.classList.contains('assign-ride-btn')) { const rideId = e.target.dataset.rideId; const driverId = document.getElementById(`driver-select-${rideId}`).value; if (driverId) await postData('assign-ride', { ride_id: rideId, driver_id: driverId }); else alert('Please select a driver.'); refreshAllData(); } });
         driversTableBody.addEventListener('change', async (e) => { if (e.target.classList.contains('driver-status-select')) { await postData('update-driver-status', { driver_id: e.target.dataset.driverId, status: e.target.value }); refreshAllData(); } });
         driversTableBody.addEventListener('click', async (e) => {
-            const button = e.target.closest('.action-btn');
-            if (!button) return;
-            const driverId = button.dataset.driverId;
+            const button = e.target.closest('.action-btn'); if (!button) return; const driverId = button.dataset.driverId;
             if (button.classList.contains('view')) { const data = await fetchData(`driver-details/${driverId}`); if (data) showDriverDetails(data); } 
             else if (button.classList.contains('edit')) { const driver = await fetchData(`driver/${driverId}`); if (driver) { const form = document.getElementById('edit-driver-form'); form.reset(); Object.keys(driver).forEach(key => { if (form.elements[key]) form.elements[key].value = driver[key]; }); showModal('edit-driver-modal'); } } 
             else if (button.classList.contains('delete')) { document.getElementById('confirm-delete-btn').dataset.driverId = driverId; showModal('delete-driver-modal'); }
@@ -698,30 +659,33 @@
             const data = await fetchData(`analytics-data?${currentAnalyticsParams}`);
             if (data) {
                 updateAnalyticsKPIs(data.kpis);
-                updateRevenueChart(data.revenue_chart);
+                revenueChart = updateChart(revenueChart, 'revenue-by-day-chart', 'bar', {
+                    labels: data.charts.revenue_over_time.labels,
+                    datasets: [{ label: 'Daily Revenue (ETB)', data: data.charts.revenue_over_time.data, backgroundColor: '#4f46e5' }]
+                }, { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } });
+                
+                vehicleDistChart = updateChart(vehicleDistChart, 'vehicle-dist-chart', 'doughnut', {
+                    labels: Object.keys(data.charts.vehicle_distribution),
+                    datasets: [{ data: Object.values(data.charts.vehicle_distribution), backgroundColor: ['#f97316', '#3b82f6', '#10b981'] }]
+                }, { responsive: true, maintainAspectRatio: false });
+                
+                paymentDistChart = updateChart(paymentDistChart, 'payment-dist-chart', 'doughnut', {
+                    labels: Object.keys(data.charts.payment_method_distribution),
+                    datasets: [{ data: Object.values(data.charts.payment_method_distribution), backgroundColor: ['#ef4444', '#f59e0b', '#84cc16'] }]
+                }, { responsive: true, maintainAspectRatio: false });
             }
         };
 
-        // --- DATA FETCH & REFRESH ---
         const refreshAllData = async () => {
-            const [stats, pendingRides, availableDrivers, allDrivers, ridesHistory, ridesByDay, ridesByVehicle, settings, activeRides] = await Promise.all([
+            const [stats, pendingRides, availableDrivers, allDrivers, ridesHistory, activeRides] = await Promise.all([
                 fetchData('dashboard-stats'), fetchData('pending-rides'), fetchData('available-drivers'), 
-                fetchData('drivers'), fetchData('all-rides-data'), fetchData('rides-by-day'), 
-                fetchData('rides-by-vehicle'), fetchData('settings'), fetchData('active-rides')
+                fetchData('drivers'), fetchData('all-rides-data'), fetchData('active-rides')
             ]);
             updateDashboardStats(stats || {});
             updatePendingRides(pendingRides || [], availableDrivers || []);
             updateDriversTable(allDrivers || []);
             updateActiveRidesTable(activeRides || []);
             updateRideHistoryTable(ridesHistory || []);
-            if (ridesByDay && ridesByVehicle) updateDashboardCharts(ridesByDay, ridesByVehicle);
-            if (settings) {
-                const form = document.getElementById('settings-form');
-                form.base_fare.value = settings.base_fare || 25;
-                form.per_km_bajaj.value = settings.per_km_bajaj || 8;
-                form.per_km_car.value = settings.per_km_car || 12;
-            }
-            // Also refresh analytics if that pane is active
             if (document.getElementById('analytics-pane').classList.contains('active')) {
                 updateAnalytics();
             }
@@ -731,7 +695,6 @@
         const initDashboardMap = () => { if (!dashboardMap) { dashboardMap = L.map('dashboard-map').setView([14.275, 39.46], 13); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(dashboardMap); } }
         
         document.querySelector('.analytics-filter-btn[data-period="week"]').classList.add('active-filter');
-
         showPane('dashboard');
         refreshAllData();
         setInterval(refreshAllData, 10000);

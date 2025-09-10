@@ -44,6 +44,8 @@ class Ride(db.Model):
     pickup_lat = db.Column(db.Float, nullable=False)
     pickup_lon = db.Column(db.Float, nullable=False)
     dest_address = db.Column(db.String(255), nullable=False)
+    dest_lat = db.Column(db.Float, nullable=True)
+    dest_lon = db.Column(db.Float, nullable=True)
     distance_km = db.Column(db.Float, nullable=False)
     fare = db.Column(db.Float, nullable=False)
     vehicle_type = db.Column(db.String(50), nullable=False, default='Bajaj')
@@ -52,6 +54,8 @@ class Ride(db.Model):
     note = db.Column(db.String(255), nullable=True)
     rating = db.Column(db.Integer, nullable=True)
     comment = db.Column(db.String(500), nullable=True)
+    payment_method = db.Column(db.String(20), nullable=False, default='Cash')
+
 
     user = db.relationship('User', backref=db.backref('rides', lazy=True))
     driver = db.relationship('Driver', backref=db.backref('rides', lazy=True))
@@ -98,10 +102,13 @@ def request_ride():
         pickup_lat=data.get('pickup_lat'),
         pickup_lon=data.get('pickup_lon'),
         dest_address=data.get('dest_address'),
+        dest_lat=data.get('dest_lat'),
+        dest_lon=data.get('dest_lon'),
         distance_km=data.get('distance_km'),
         fare=data.get('fare'),
         vehicle_type=data.get('vehicle_type', 'Bajaj'),
-        note=data.get('note')
+        note=data.get('note'),
+        payment_method=data.get('payment_method', 'Cash')
     )
     db.session.add(new_ride)
     db.session.commit()
@@ -245,6 +252,8 @@ def get_pending_rides():
             'pickup_lat': r.pickup_lat,
             'pickup_lon': r.pickup_lon,
             'dest_address': r.dest_address,
+            'dest_lat': r.dest_lat,
+            'dest_lon': r.dest_lon,
             'fare': r.fare,
             'vehicle_type': r.vehicle_type,
             'note': r.note,
@@ -395,6 +404,31 @@ def get_dashboard_stats():
         'pending_requests': pending_requests,
     })
 
+def _get_previous_period(start_date, end_date):
+    if not start_date or not end_date:
+        return None, None
+    delta = end_date - start_date
+    prev_end_date = start_date - timedelta(microseconds=1)
+    prev_start_date = prev_end_date - delta
+    return prev_start_date, prev_end_date
+
+def _calculate_kpis_for_period(start, end):
+    query = Ride.query
+    if start and end:
+        query = query.filter(Ride.request_time.between(start, end))
+    
+    completed_sq = query.filter(Ride.status == 'Completed').subquery()
+    
+    revenue = db.session.query(func.sum(completed_sq.c.fare)).scalar() or 0
+    completed_rides = db.session.query(func.count(completed_sq.c.id)).scalar()
+    
+    return revenue, completed_rides
+
+def _calculate_trend(current, previous):
+    if previous == 0:
+        return 100 if current > 0 else 0
+    return round(((current - previous) / previous) * 100)
+
 @app.route('/api/analytics-data')
 def get_analytics_data():
     period = request.args.get('period')
@@ -418,47 +452,56 @@ def get_analytics_data():
         except (ValueError, TypeError):
             start_date = None
             
-    # Base query for the selected period
     base_query = Ride.query
     if start_date:
         base_query = base_query.filter(Ride.request_time.between(start_date, end_date))
 
-    # Create subqueries for different statuses within the period
     completed_rides_sq = base_query.filter(Ride.status == 'Completed').subquery()
     canceled_rides_sq = base_query.filter(Ride.status == 'Canceled').subquery()
 
-    # Calculate KPIs using the subqueries
     completed_rides_in_period = db.session.query(func.count(completed_rides_sq.c.id)).scalar()
     canceled_rides_in_period = db.session.query(func.count(canceled_rides_sq.c.id)).scalar()
-    
     revenue_in_period = db.session.query(func.sum(completed_rides_sq.c.fare)).scalar() or 0
     avg_fare_in_period = db.session.query(func.avg(completed_rides_sq.c.fare)).scalar() or 0
-
-    # Current State KPI (not affected by date range)
     active_rides_now = Ride.query.filter(Ride.status.in_(['Assigned', 'On Trip'])).count()
 
-    # Chart data for the period
+    prev_start_date, prev_end_date = _get_previous_period(start_date, end_date)
+    prev_revenue, prev_completed_rides = 0, 0
+    if prev_start_date:
+        prev_revenue, prev_completed_rides = _calculate_kpis_for_period(prev_start_date, prev_end_date)
+    
+    revenue_trend = _calculate_trend(revenue_in_period, prev_revenue)
+    rides_trend = _calculate_trend(completed_rides_in_period, prev_completed_rides)
+
     revenue_by_day_query = db.session.query(
         func.date(completed_rides_sq.c.request_time).label('day'),
         func.sum(completed_rides_sq.c.fare)
     ).group_by('day').order_by('day').all()
-    
-    revenue_chart_data = {
-        'labels': [item[0] for item in revenue_by_day_query],
-        'data': [float(item[1]) if item[1] is not None else 0 for item in revenue_by_day_query]
-    }
+
+    vehicle_dist = dict(base_query.with_entities(Ride.vehicle_type, func.count(Ride.id)).group_by(Ride.vehicle_type).all())
+    payment_dist = dict(base_query.with_entities(Ride.payment_method, func.count(Ride.id)).group_by(Ride.payment_method).all())
     
     return jsonify({
         'kpis': {
             'rides_completed': completed_rides_in_period,
             'rides_canceled': canceled_rides_in_period,
             'total_revenue': round(revenue_in_period, 2),
-            'avg_fare': round(avg_fare_in_period, 2),
-            'active_rides_now': active_rides_now
+            'avg_fare': round(avg_fare_in_period or 0, 2),
+            'active_rides_now': active_rides_now,
+            'trends': {
+                'revenue': revenue_trend,
+                'rides': rides_trend
+            }
         },
-        'revenue_chart': revenue_chart_data
+        'charts': {
+            'revenue_over_time': {
+                'labels': [item[0] for item in revenue_by_day_query],
+                'data': [float(item[1]) if item[1] is not None else 0 for item in revenue_by_day_query]
+            },
+            'vehicle_distribution': vehicle_dist,
+            'payment_method_distribution': payment_dist,
+        }
     })
-
 
 @app.route('/api/rides-by-day')
 def get_rides_by_day():

@@ -437,7 +437,18 @@
             if (!userPickup || !userDestination || !rideDetails) return;
             const phone = phoneInput.value.trim();
             if (!phone || phone.length < 9) return alert('Please enter a valid phone number.');
-            const rideData = { phone_number: `+251${phone}`, pickup_lat: userPickup.lat, pickup_lon: userPickup.lon, dest_address: userDestination.address, distance_km: rideDetails.distance_km, fare: rideDetails.estimated_fare, vehicle_type: selectedVehicle, note: noteInput.value.trim() };
+            const rideData = { 
+                phone_number: `+251${phone}`, 
+                pickup_lat: userPickup.lat, 
+                pickup_lon: userPickup.lon, 
+                dest_address: userDestination.address, 
+                dest_lat: userDestination.lat,
+                dest_lon: userDestination.lon,
+                distance_km: rideDetails.distance_km, 
+                fare: rideDetails.estimated_fare, 
+                vehicle_type: selectedVehicle, 
+                note: noteInput.value.trim() 
+            };
 
             requestRideBtn.disabled = true;
             requestRideBtn.textContent = 'Requesting...';
