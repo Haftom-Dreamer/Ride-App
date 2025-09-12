@@ -6,6 +6,13 @@ import requests
 from sqlalchemy import func, case
 from datetime import datetime, timedelta
 from werkzeug.utils import secure_filename
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib import colors
+import io
+import openpyxl
+from openpyxl.styles import Font, Alignment
 
 # --- App and Database Setup ---
 base_dir = os.path.abspath(os.path.dirname(__file__))
@@ -428,9 +435,8 @@ def _calculate_trend(current, previous):
     if previous == 0:
         return 100 if current > 0 else 0
     return round(((current - previous) / previous) * 100)
-
-@app.route('/api/analytics-data')
-def get_analytics_data():
+    
+def _get_date_range_from_request():
     period = request.args.get('period')
     start_date_str = request.args.get('start_date')
     end_date_str = request.args.get('end_date')
@@ -451,6 +457,12 @@ def get_analytics_data():
             end_date = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
         except (ValueError, TypeError):
             start_date = None
+    
+    return start_date, end_date
+
+@app.route('/api/analytics-data')
+def get_analytics_data():
+    start_date, end_date = _get_date_range_from_request()
             
     base_query = Ride.query
     if start_date:
@@ -480,7 +492,30 @@ def get_analytics_data():
 
     vehicle_dist = dict(base_query.with_entities(Ride.vehicle_type, func.count(Ride.id)).group_by(Ride.vehicle_type).all())
     payment_dist = dict(base_query.with_entities(Ride.payment_method, func.count(Ride.id)).group_by(Ride.payment_method).all())
+
+    now = datetime.utcnow()
     
+    now_week_start = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+    top_drivers_query = db.session.query(
+        Driver.name,
+        Driver.profile_picture,
+        func.count(Ride.id).label('completed_rides'),
+        func.avg(Ride.rating).label('avg_rating')
+    ).join(Ride, Driver.id == Ride.driver_id).filter(
+        Ride.status == 'Completed',
+        Ride.request_time >= now_week_start
+    ).group_by(Driver.id).order_by(
+        func.count(Ride.id).desc()
+    ).limit(5).all()
+
+    top_drivers = [{
+        'name': d.name,
+        'avatar': d.profile_picture,
+        'completed_rides': d.completed_rides,
+        'avg_rating': round(d.avg_rating or 0, 2)
+    } for d in top_drivers_query]
+
+
     return jsonify({
         'kpis': {
             'rides_completed': completed_rides_in_period,
@@ -500,8 +535,76 @@ def get_analytics_data():
             },
             'vehicle_distribution': vehicle_dist,
             'payment_method_distribution': payment_dist,
+        },
+        'performance': {
+            'top_drivers': top_drivers
         }
     })
+
+@app.route('/api/export-report/<file_format>')
+def export_report(file_format):
+    start_date, end_date = _get_date_range_from_request()
+    
+    analytics_data = get_analytics_data().get_json()
+    
+    if file_format == 'pdf':
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=letter)
+        elements = []
+        styles = getSampleStyleSheet()
+
+        elements.append(Paragraph("Analytics Report", styles['h1']))
+        
+        kpis = analytics_data['kpis']
+        kpi_data = [
+            ["Metric", "Value"],
+            ["Rides Completed", kpis['rides_completed']],
+            ["Rides Canceled", kpis['rides_canceled']],
+            ["Total Revenue", f"{kpis['total_revenue']} ETB"],
+            ["Average Fare", f"{kpis['avg_fare']} ETB"],
+        ]
+        
+        table = Table(kpi_data)
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.grey),
+            ('TEXTCOLOR',(0,0),(-1,0),colors.whitesmoke),
+            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('BOTTOMPADDING', (0,0), (-1,0), 12),
+            ('BACKGROUND', (0,1), (-1,-1), colors.beige),
+            ('GRID', (0,0), (-1,-1), 1, colors.black)
+        ]))
+        elements.append(table)
+        
+        doc.build(elements)
+        buffer.seek(0)
+        return buffer.read(), 200, {
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': 'attachment; filename="report.pdf"'
+        }
+
+    elif file_format == 'excel':
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Analytics Report"
+        
+        kpis = analytics_data['kpis']
+        ws.append(["Metric", "Value"])
+        ws.append(["Rides Completed", kpis['rides_completed']])
+        ws.append(["Rides Canceled", kpis['rides_canceled']])
+        ws.append(["Total Revenue", f"{kpis['total_revenue']} ETB"])
+        ws.append(["Average Fare", f"{kpis['avg_fare']} ETB"])
+        
+        buffer = io.BytesIO()
+        wb.save(buffer)
+        buffer.seek(0)
+        return buffer.read(), 200, {
+            'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition': 'attachment; filename="report.xlsx"'
+        }
+
+    return jsonify({"error": "Invalid format"}), 400
+
 
 @app.route('/api/rides-by-day')
 def get_rides_by_day():
