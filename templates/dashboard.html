@@ -40,16 +40,18 @@
 
     .sidebar {
         background-color: var(--sidebar-bg);
+        transition: width 0.3s ease-in-out;
     }
 
     .main-content {
         background-color: var(--main-bg);
+        transition: margin-left 0.3s ease-in-out;
     }
 
     .card {
         background-color: var(--card-bg);
         border: 1px solid var(--border-color);
-        color: #487098;
+        color: var(--text-primary);
     }
     
     .dark .card {
@@ -122,75 +124,98 @@
     .live-pulse { animation: pulse 1.5s infinite; }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
 
+    /* Sidebar collapsed styles */
+    .sidebar-collapsed .sidebar {
+        width: 5rem; /* w-20 */
+    }
+    .sidebar-collapsed .sidebar-header-text, 
+    .sidebar-collapsed .sidebar-link-text,
+    .sidebar-collapsed .user-info {
+        display: none;
+    }
+    .sidebar-collapsed .sidebar-link {
+        justify-content: center;
+    }
+    .sidebar-collapsed #sidebar-toggle-btn svg {
+        transform: rotate(180deg);
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="flex h-screen bg-gray-100 font-sans">
+<div id="main-wrapper" class="flex h-screen bg-gray-100 font-sans">
     <!-- Sidebar -->
     <aside class="w-64 sidebar text-gray-300 flex flex-col flex-shrink-0">
-        <div class="p-4 text-center border-b border-gray-700">
-            <h1 class="text-2xl font-bold text-white">Ride App</h1>
-            <p class="text-xs text-gray-400">Dispatcher Panel</p>
+        <div class="p-4 flex justify-between items-center border-b border-gray-700">
+            <div class="sidebar-header-text">
+                <h1 class="text-2xl font-bold text-white">Ride App</h1>
+                <p class="text-xs text-gray-400">Dispatcher Panel</p>
+            </div>
+            <button id="sidebar-toggle-btn" class="p-2 rounded-md hover:bg-gray-700">
+                <svg class="h-6 w-6 text-white transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+            </button>
         </div>
         <nav class="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
-            <a href="#" class="sidebar-link flex items-center p-3 rounded-lg active" data-pane="dashboard"><svg
-                    class="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <a href="#" class="sidebar-link flex items-center p-3 rounded-lg active" data-pane="dashboard" title="Dashboard">
+                <svg class="h-5 w-5 mr-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
-                </svg>Dashboard</a>
-            <a href="#" class="sidebar-link flex items-center p-3 rounded-lg" data-pane="analytics"><svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
-              </svg>Analytics</a>
-            <a href="#" class="sidebar-link flex items-center p-3 rounded-lg" data-pane="live-map"><svg
-                    class="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>Live Map</a>
-            <details class="group">
-                <summary class="sidebar-link flex items-center p-3 rounded-lg cursor-pointer"><svg class="h-5 w-5 mr-3"
-                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>Drivers<svg class="h-4 w-4 ml-auto transform group-open:rotate-90" fill="none"
-                        viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                    </svg></summary><a href="#"
-                    class="sidebar-link flex items-center pl-11 pr-3 py-2 rounded-lg text-sm" data-pane="drivers">Driver
-                    List</a>
-            </details>
-            <a href="#" class="sidebar-link flex items-center p-3 rounded-lg" data-pane="active-rides">
-                <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.125-.504 1.125-1.125V14.25m-17.25 4.5v-1.875a3.375 3.375 0 003.375-3.375h1.5a1.125 1.125 0 011.125 1.125v-1.5a3.375 3.375 0 00-3.375-3.375H3.375m15.75 9.375v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 003.375-3.375h1.5c.621 0 1.125.504 1.125 1.125v16.5c0 .621-.504 1.125-1.125 1.125h-9.75" />
-                </svg>Active Rides
+                </svg>
+                <span class="sidebar-link-text">Dashboard</span>
             </a>
-            <a href="#" class="sidebar-link flex items-center p-3 rounded-lg" data-pane="rides"><svg
-                    class="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <a href="#" class="sidebar-link flex items-center p-3 rounded-lg" data-pane="analytics" title="Analytics">
+                <svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+                </svg>
+                <span class="sidebar-link-text">Analytics</span>
+            </a>
+             <a href="#" class="sidebar-link flex items-center p-3 rounded-lg" data-pane="drivers" title="Drivers">
+                <svg class="h-5 w-5 mr-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span class="sidebar-link-text">Drivers</span>
+            </a>
+            <a href="#" class="sidebar-link flex items-center p-3 rounded-lg" data-pane="active-rides" title="Active Rides">
+                <svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.125-.504 1.125-1.125V14.25m-17.25 4.5v-1.875a3.375 3.375 0 003.375-3.375h1.5a1.125 1.125 0 011.125 1.125v-1.5a3.375 3.375 0 00-3.375-3.375H3.375m15.75 9.375v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 003.375-3.375h1.5c.621 0 1.125.504 1.125 1.125v16.5c0 .621-.504 1.125-1.125 1.125h-9.75" />
+                </svg>
+                <span class="sidebar-link-text">Active Rides</span>
+            </a>
+            <a href="#" class="sidebar-link flex items-center p-3 rounded-lg" data-pane="rides" title="Ride History">
+                <svg class="h-5 w-5 mr-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10l2 2h8a1 1 0 001-1zM3 11h10" />
-                </svg>Ride History</a>
-            <a href="#" class="sidebar-link flex items-center p-3 rounded-lg" data-pane="settings"><svg
-                    class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                </svg>
+                <span class="sidebar-link-text">Ride History</span>
+            </a>
+            <a href="#" class="sidebar-link flex items-center p-3 rounded-lg" data-pane="settings" title="Settings">
+                <svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
                     stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924-1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.096 2.572-1.065z" />
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>Settings</a>
+                </svg>
+                <span class="sidebar-link-text">Settings</span>
+            </a>
         </nav>
         <div class="p-4 border-t border-gray-700 mt-auto">
             <div class="flex items-center justify-between">
-                <div class="flex items-center"><img src="/static/img/default_avatar.png"
-                        class="h-10 w-10 rounded-full object-cover" alt="Dispatcher">
-                    <div class="ml-3">
-                        <p class="text-sm font-semibold text-white">Dispatcher</p><a href="#"
-                            class="text-xs text-red-400 hover:underline">Logout</a>
+                <div class="flex items-center">
+                    <img src="/static/img/default_avatar.png" class="h-10 w-10 rounded-full object-cover flex-shrink-0" alt="Dispatcher">
+                    <div class="ml-3 user-info">
+                        <p class="text-sm font-semibold text-white">Dispatcher</p>
+                        <a href="#" class="text-xs text-red-400 hover:underline">Logout</a>
                     </div>
-                </div><label for="dark-mode-toggle" class="cursor-pointer"><input type="checkbox" id="dark-mode-toggle"
-                        class="hidden"><span id="dark-mode-icon">☀️</span></label>
+                </div>
+                <label for="dark-mode-toggle" class="cursor-pointer">
+                    <input type="checkbox" id="dark-mode-toggle" class="hidden">
+                    <span id="dark-mode-icon">☀️</span>
+                </label>
             </div>
         </div>
     </aside>
@@ -521,7 +546,10 @@
         const darkModeIcon = document.getElementById('dark-mode-icon');
         const driversTableBody = document.getElementById('drivers-table-body');
         const activeRidesTableBody = document.getElementById('active-rides-table-body');
+        const mainWrapper = document.getElementById('main-wrapper');
+        const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
         const pendingRidesList = document.getElementById('pending-rides-list');
+
 
         // --- HELPER FUNCTIONS ---
         const fetchData = async (endpoint, params = '') => {
@@ -570,16 +598,27 @@
             }
             if (paneId === 'dashboard' && !dashboardMap) initDashboardMap();
             if (paneId === 'analytics') updateAnalytics();
-            if (dashboardMap) setTimeout(() => dashboardMap.invalidateSize(), 10);
+            if (dashboardMap) setTimeout(() => dashboardMap.invalidateSize(), 310); // Wait for transition
         };
         sidebarLinks.forEach(link => { if (link.dataset.pane) { link.addEventListener('click', e => { e.preventDefault(); showPane(link.dataset.pane); }); } });
+
+        // --- SIDEBAR TOGGLE ---
+        const toggleSidebar = () => {
+            mainWrapper.classList.toggle('sidebar-collapsed');
+            const isCollapsed = mainWrapper.classList.contains('sidebar-collapsed');
+            localStorage.setItem('sidebarCollapsed', isCollapsed);
+            setTimeout(() => { if (dashboardMap) dashboardMap.invalidateSize(); }, 300);
+        };
+        sidebarToggleBtn.addEventListener('click', toggleSidebar);
+        if (localStorage.getItem('sidebarCollapsed') === 'true') {
+            mainWrapper.classList.add('sidebar-collapsed');
+        }
 
         // --- DARK MODE ---
         const setDarkMode = (isDark) => { 
             if (isDark) { document.documentElement.classList.add('dark'); darkModeIcon.textContent = '🌙'; } 
             else { document.documentElement.classList.remove('dark'); darkModeIcon.textContent = '☀️'; } 
             localStorage.setItem('darkMode', isDark); 
-            // Update chart colors on theme change
             if (document.getElementById('analytics-pane').classList.contains('active')) {
                 updateAnalytics();
             }
