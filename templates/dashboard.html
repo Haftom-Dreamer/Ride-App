@@ -49,6 +49,11 @@
     .card {
         background-color: var(--card-bg);
         border: 1px solid var(--border-color);
+        color: #487098;
+    }
+    
+    .dark .card {
+        border-color: var(--border-color);
     }
 
     .sidebar-link {
@@ -75,78 +80,47 @@
         animation: fadeIn 0.3s ease-in-out;
     }
 
-    @keyframes fadeIn {
-        from {
-            opacity: 0.8;
-        }
-
-        to {
-            opacity: 1;
-        }
-    }
-
-    .pane:not(.active) .leaflet-container {
-        display: none !important;
-    }
+    @keyframes fadeIn { from { opacity: 0.8; } to { opacity: 1; } }
 
     .modal {
         background-color: rgba(0, 0, 0, 0.6);
     }
+    
+    .modal-content {
+        background-color: var(--card-bg);
+        color: var(--text-primary);
+    }
 
     .status-badge, .driver-status-select {
-        padding: 4px 10px;
-        border-radius: 6px;
-        font-weight: 600;
-        font-size: 11px;
-        text-transform: uppercase;
-        border: 1px solid transparent;
+        padding: 4px 10px; border-radius: 6px; font-weight: 600;
+        font-size: 11px; text-transform: uppercase; border: 1px solid transparent;
     }
-
-    .status-Available, .status-select-Available {
-        background-color: #dcfce7; color: #166534; border-color: #1665344d;
-    }
-
-    .status-On-Trip, .status-Assigned, .status-select-On-Trip {
-        background-color: #ffedd5; color: #9a3412; border-color: #9a34124d;
-    }
-
-    .status-Offline, .status-select-Offline {
-        background-color: #e5e7eb; color: #4b5563; border-color: #4b55634d;
-    }
-
+    .status-Available, .status-select-Available { background-color: #dcfce7; color: #166534; border-color: #1665344d; }
+    .status-On-Trip, .status-Assigned, .status-select-On-Trip { background-color: #ffedd5; color: #9a3412; border-color: #9a34124d; }
+    .status-Offline, .status-select-Offline { background-color: #e5e7eb; color: #4b5563; border-color: #4b55634d; }
     .status-Requested { background-color: #dbeafe; color: #1e40af; }
     .status-Completed { background-color: #d1fae5; color: #065f46; }
     .status-Canceled { background-color: #fee2e2; color: #991b1b; }
     
-    .action-btn {
-        background: none; border: none; cursor: pointer; padding: 4px;
-        transition: color 0.2s;
-    }
+    .action-btn { background: none; border: none; cursor: pointer; padding: 4px; transition: color 0.2s; }
     .action-btn.view:hover { color: #2563eb; }
     .action-btn.edit:hover { color: var(--chart-orange); }
     .action-btn.delete:hover { color: var(--chart-red); }
     
-    .analytics-filter-btn.active-filter {
-        background-color: #4f46e5;
-        color: white;
-    }
+    .analytics-filter-btn.active-filter { background-color: #4f46e5; color: white; }
 
-    .kpi-card .trend {
-        font-size: 0.8rem;
-        font-weight: 600;
-        padding: 2px 6px;
-        border-radius: 99px;
+    .kpi-card {
+        display: flex; flex-direction: column; justify-content: space-between;
+        min-height: 120px; padding: 1.5rem;
     }
+    .kpi-card .kpi-title { font-size: 0.875rem; color: var(--text-secondary); white-space: nowrap; }
+    .kpi-card .kpi-value { font-size: 2.25rem; font-weight: 700; line-height: 1.1; }
+    .kpi-card .kpi-trend { font-size: 0.8rem; font-weight: 600; padding: 2px 6px; border-radius: 99px; }
     .trend-up { background-color: #dcfce7; color: #166534; }
     .trend-down { background-color: #fee2e2; color: #991b1b; }
     
-    .live-pulse {
-        animation: pulse 1.5s infinite;
-    }
-    @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: .5; }
-    }
+    .live-pulse { animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
 
 </style>
 {% endblock %}
@@ -258,10 +232,7 @@
         <div id="analytics-pane" class="pane">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-3xl font-bold text-primary">Data & Insights</h2>
-                <div class="flex items-center gap-2">
-                    <button id="export-pdf-btn" class="px-4 py-2 text-sm font-semibold rounded-md bg-red-600 text-white">Export PDF</button>
-                    <button id="export-excel-btn" class="px-4 py-2 text-sm font-semibold rounded-md bg-green-600 text-white">Export Excel</button>
-                </div>
+                <button id="export-btn" class="px-4 py-2 text-sm font-semibold rounded-md bg-indigo-600 text-white">Export Report</button>
             </div>
             
             <div class="card p-4 rounded-lg shadow mb-6">
@@ -283,35 +254,30 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-                <div class="kpi-card card p-6 rounded-lg shadow">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <p class="text-sm text-secondary">Rides Completed</p>
-                            <p id="kpi-rides-completed" class="text-3xl font-bold text-[--chart-green]">0</p>
-                        </div>
-                        <div id="kpi-rides-trend" class="trend">--</div>
-                    </div>
+                <div class="kpi-card card rounded-lg shadow">
+                    <p class="kpi-title">Rides Completed</p>
+                    <p id="kpi-rides-completed" class="kpi-value" style="color: var(--chart-green);">0</p>
+                    <div id="kpi-rides-trend" class="kpi-trend">--</div>
                 </div>
-                <div class="kpi-card card p-6 rounded-lg shadow">
-                    <p class="text-sm text-secondary">Active Rides</p>
-                    <p id="kpi-active-rides-now" class="text-3xl font-bold text-[--chart-blue] flex items-center">0 <span class="ml-2 w-3 h-3 bg-[--chart-blue] rounded-full live-pulse"></span></p>
+                <div class="kpi-card card rounded-lg shadow">
+                    <p class="kpi-title">Active Rides</p>
+                    <p id="kpi-active-rides-now" class="kpi-value flex items-center" style="color: var(--chart-blue);">0 <span class="ml-2 w-3 h-3 bg-[--chart-blue] rounded-full live-pulse"></span></p>
+                    <div class="kpi-trend opacity-0">--</div>
                 </div>
-                <div class="kpi-card card p-6 rounded-lg shadow">
-                    <p class="text-sm text-secondary">Rides Canceled</p>
-                    <p id="kpi-rides-canceled" class="text-3xl font-bold text-[--chart-red]">0</p>
+                <div class="kpi-card card rounded-lg shadow">
+                    <p class="kpi-title">Rides Canceled</p>
+                    <p id="kpi-rides-canceled" class="kpi-value" style="color: var(--chart-red);">0</p>
+                    <div class="kpi-trend opacity-0">--</div>
                 </div>
-                 <div class="kpi-card card p-6 rounded-lg shadow">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <p class="text-sm text-secondary">Total Revenue</p>
-                            <p id="kpi-total-revenue" class="text-3xl font-bold text-[--chart-purple]">0 ETB</p>
-                        </div>
-                        <div id="kpi-revenue-trend" class="trend">--</div>
-                    </div>
+                 <div class="kpi-card card rounded-lg shadow">
+                    <p class="kpi-title">Total Revenue</p>
+                    <p id="kpi-total-revenue" class="kpi-value" style="color: var(--chart-purple);">0</p>
+                    <div id="kpi-revenue-trend" class="kpi-trend">--</div>
                 </div>
-                <div class="kpi-card card p-6 rounded-lg shadow">
-                    <p class="text-sm text-secondary">Average Fare</p>
-                    <p id="kpi-avg-fare" class="text-3xl font-bold text-[--chart-orange]">0 ETB</p>
+                <div class="kpi-card card rounded-lg shadow">
+                    <p class="kpi-title">Average Fare</p>
+                    <p id="kpi-avg-fare" class="kpi-value" style="color: var(--chart-orange);">0</p>
+                    <div class="kpi-trend opacity-0">--</div>
                 </div>
             </div>
             
@@ -341,7 +307,6 @@
                 <h3 class="font-semibold text-primary mb-4">Top 5 Drivers This Week</h3>
                 <div id="top-drivers-list" class="space-y-3"></div>
             </div>
-
         </div>
 
         <div id="active-rides-pane" class="pane">
@@ -379,7 +344,7 @@
                             <th>Contact</th>
                             <th>Vehicle</th>
                             <th>Status</th>
-                            <th>Joined</th>
+                            <th>Rating</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -431,22 +396,40 @@
 </div>
 
 <!-- Modals -->
+<div id="export-modal" class="modal fixed inset-0 z-50 items-center justify-center hidden">
+    <div class="absolute inset-0 bg-black opacity-50"></div>
+    <div class="modal-content p-8 rounded-lg shadow-xl z-10 w-full max-w-sm text-center">
+        <h2 class="text-xl font-bold mb-4">Export Analytics Report</h2>
+        <p class="text-secondary mb-6">Choose a format to download your report for the currently selected date range.</p>
+        <div class="flex justify-center space-x-4">
+            <button id="export-pdf-btn" class="flex-1 px-4 py-2 text-sm font-semibold rounded-md bg-red-600 text-white">Download PDF</button>
+            <button id="export-excel-btn" class="flex-1 px-4 py-2 text-sm font-semibold rounded-md bg-green-600 text-white">Download Excel</button>
+        </div>
+        <button type="button" class="cancel-modal-btn mt-6 text-sm text-secondary hover:underline">Cancel</button>
+    </div>
+</div>
+
 <div id="add-driver-modal" class="modal fixed inset-0 z-50 items-center justify-center hidden">
     <div class="absolute inset-0 bg-black opacity-50"></div>
-    <div class="bg-white p-8 rounded-lg shadow-xl z-10 w-full max-w-md">
+    <div class="modal-content p-8 rounded-lg shadow-xl z-10 w-full max-w-md">
         <h2 class="text-2xl font-bold mb-4">Add New Driver</h2>
         <form id="add-driver-form" enctype="multipart/form-data">
             <div class="space-y-4">
-                <div><label class="block text-sm font-medium">Name</label><input type="text" name="name" required
-                        class="mt-1 block w-full p-2 border rounded-md"></div>
-                <div><label class="block text-sm font-medium">Phone</label><input type="text" name="phone_number"
-                        required class="mt-1 block w-full p-2 border rounded-md"></div>
-                <div><label class="block text-sm font-medium">Vehicle</label><input type="text" name="vehicle_details"
-                        required class="mt-1 block w-full p-2 border rounded-md"></div>
+                <div><label class="block text-sm font-medium">Name</label><input type="text" name="name" required class="mt-1 block w-full p-2 border rounded-md"></div>
+                <div><label class="block text-sm font-medium">Phone</label><input type="text" name="phone_number" required class="mt-1 block w-full p-2 border rounded-md"></div>
+                <div>
+                    <label class="block text-sm font-medium">Vehicle Type</label>
+                    <select name="vehicle_type" required class="mt-1 block w-full p-2 border rounded-md">
+                        <option value="Bajaj">Bajaj</option>
+                        <option value="Car">Car</option>
+                        <option value="Minibus">Minibus</option>
+                    </select>
+                </div>
+                <div><label class="block text-sm font-medium">Vehicle Details (e.g., Blue Bajaj)</label><input type="text" name="vehicle_details" required class="mt-1 block w-full p-2 border rounded-md"></div>
+                <div><label class="block text-sm font-medium">Plate Number</label><input type="text" name="vehicle_plate_number" required class="mt-1 block w-full p-2 border rounded-md"></div>
+                <div><label class="block text-sm font-medium">License Info</label><input type="text" name="license_info" required class="mt-1 block w-full p-2 border rounded-md"></div>
                 <div><label class="block text-sm font-medium">Profile Picture (Optional)</label><input type="file" name="profile_picture" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" accept="image/*"></div>
-                <div class="flex justify-end space-x-4"><button type="button"
-                        class="cancel-modal-btn px-4 py-2 bg-gray-200 rounded-lg">Cancel</button><button type="submit"
-                        class="px-4 py-2 bg-indigo-600 text-white rounded-lg">Save</button></div>
+                <div class="flex justify-end space-x-4"><button type="button" class="cancel-modal-btn px-4 py-2 bg-gray-200 rounded-lg">Cancel</button><button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">Save</button></div>
             </div>
         </form>
     </div>
@@ -454,19 +437,26 @@
 
 <div id="edit-driver-modal" class="modal fixed inset-0 z-50 items-center justify-center hidden">
     <div class="absolute inset-0 bg-black opacity-50"></div>
-    <div class="bg-white p-8 rounded-lg shadow-xl z-10 w-full max-w-md">
+    <div class="modal-content p-8 rounded-lg shadow-xl z-10 w-full max-w-md">
         <h2 class="text-2xl font-bold mb-4">Edit Driver</h2>
         <form id="edit-driver-form" enctype="multipart/form-data">
             <input type="hidden" name="id">
             <div class="space-y-4">
                 <div><label class="block text-sm font-medium">Name</label><input type="text" name="name" required class="mt-1 block w-full p-2 border rounded-md"></div>
                 <div><label class="block text-sm font-medium">Phone</label><input type="text" name="phone_number" required class="mt-1 block w-full p-2 border rounded-md"></div>
-                <div><label class="block text-sm font-medium">Vehicle</label><input type="text" name="vehicle_details" required class="mt-1 block w-full p-2 border rounded-md"></div>
-                <div><label class="block text-sm font-medium">New Profile Picture (Optional)</label><input type="file" name="profile_picture" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" accept="image/*"></div>
-                <div class="flex justify-end space-x-4">
-                    <button type="button" class="cancel-modal-btn px-4 py-2 bg-gray-200 rounded-lg">Cancel</button>
-                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">Save Changes</button>
+                <div>
+                    <label class="block text-sm font-medium">Vehicle Type</label>
+                    <select name="vehicle_type" required class="mt-1 block w-full p-2 border rounded-md">
+                        <option value="Bajaj">Bajaj</option>
+                        <option value="Car">Car</option>
+                        <option value="Minibus">Minibus</option>
+                    </select>
                 </div>
+                <div><label class="block text-sm font-medium">Vehicle Details</label><input type="text" name="vehicle_details" required class="mt-1 block w-full p-2 border rounded-md"></div>
+                <div><label class="block text-sm font-medium">Plate Number</label><input type="text" name="vehicle_plate_number" required class="mt-1 block w-full p-2 border rounded-md"></div>
+                <div><label class="block text-sm font-medium">License Info</label><input type="text" name="license_info" required class="mt-1 block w-full p-2 border rounded-md"></div>
+                <div><label class="block text-sm font-medium">New Profile Picture (Optional)</label><input type="file" name="profile_picture" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" accept="image/*"></div>
+                <div class="flex justify-end space-x-4"><button type="button" class="cancel-modal-btn px-4 py-2 bg-gray-200 rounded-lg">Cancel</button><button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">Save Changes</button></div>
             </div>
         </form>
     </div>
@@ -474,9 +464,9 @@
 
 <div id="delete-driver-modal" class="modal fixed inset-0 z-50 items-center justify-center hidden">
     <div class="absolute inset-0 bg-black opacity-50"></div>
-    <div class="bg-white p-8 rounded-lg shadow-xl z-10 w-full max-w-sm text-center">
+    <div class="modal-content p-8 rounded-lg shadow-xl z-10 w-full max-w-sm text-center">
         <h2 class="text-xl font-bold mb-2">Are you sure?</h2>
-        <p class="text-gray-600 mb-6">This will permanently delete the driver. This action cannot be undone.</p>
+        <p class="text-secondary mb-6">This will permanently delete the driver. This action cannot be undone.</p>
         <div class="flex justify-center space-x-4">
             <button type="button" class="cancel-modal-btn px-6 py-2 bg-gray-200 rounded-lg">Cancel</button>
             <button id="confirm-delete-btn" type="button" class="px-6 py-2 bg-red-600 text-white rounded-lg">Delete</button>
@@ -486,11 +476,10 @@
 
 <div id="driver-details-modal" class="modal fixed inset-0 z-50 items-center justify-center hidden">
     <div class="absolute inset-0 bg-black opacity-50"></div>
-    <div class="bg-white p-8 rounded-lg shadow-xl z-10 w-full max-w-2xl">
+    <div class="modal-content p-8 rounded-lg shadow-xl z-10 w-full max-w-2xl">
         <h2 class="text-2xl font-bold mb-4">Driver Details</h2>
         <div id="driver-details-content"></div>
-        <div class="flex justify-end mt-4"><button type="button"
-                class="cancel-modal-btn px-4 py-2 bg-gray-200 rounded-lg">Close</button></div>
+        <div class="flex justify-end mt-4"><button type="button" class="cancel-modal-btn px-4 py-2 bg-gray-200 rounded-lg">Close</button></div>
     </div>
 </div>
 
@@ -502,6 +491,27 @@
         let dashboardMap, revenueChart, vehicleDistChart, paymentDistChart;
         let pendingRideMarkers = {}, routeLayers = {};
         let currentAnalyticsParams = 'period=week'; // Default filter
+        
+        const getCssVar = (varName) => getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+        const chartTextColor = () => getCssVar('--text-primary');
+
+        let highlightedIcon = L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-yellow.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+
+        let defaultIcon = L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
 
         // --- ELEMENT SELECTORS ---
         const panes = document.querySelectorAll('.pane');
@@ -511,6 +521,7 @@
         const darkModeIcon = document.getElementById('dark-mode-icon');
         const driversTableBody = document.getElementById('drivers-table-body');
         const activeRidesTableBody = document.getElementById('active-rides-table-body');
+        const pendingRidesList = document.getElementById('pending-rides-list');
 
         // --- HELPER FUNCTIONS ---
         const fetchData = async (endpoint, params = '') => {
@@ -538,6 +549,12 @@
         const showModal = (id) => { hideModals(); document.getElementById(id).classList.remove('hidden'); document.getElementById(id).classList.add('flex'); }
         const hideModals = () => modals.forEach(m => { m.classList.add('hidden'); m.classList.remove('flex'); });
 
+        const formatLargeNumber = (num) => {
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+            return num;
+        };
+
         // --- UI & NAVIGATION ---
         const showPane = (paneId) => {
             panes.forEach(p => p.classList.remove('active'));
@@ -558,20 +575,29 @@
         sidebarLinks.forEach(link => { if (link.dataset.pane) { link.addEventListener('click', e => { e.preventDefault(); showPane(link.dataset.pane); }); } });
 
         // --- DARK MODE ---
-        const setDarkMode = (isDark) => { if (isDark) { document.documentElement.classList.add('dark'); darkModeIcon.textContent = '🌙'; } else { document.documentElement.classList.remove('dark'); darkModeIcon.textContent = '☀️'; } localStorage.setItem('darkMode', isDark); };
+        const setDarkMode = (isDark) => { 
+            if (isDark) { document.documentElement.classList.add('dark'); darkModeIcon.textContent = '🌙'; } 
+            else { document.documentElement.classList.remove('dark'); darkModeIcon.textContent = '☀️'; } 
+            localStorage.setItem('darkMode', isDark); 
+            // Update chart colors on theme change
+            if (document.getElementById('analytics-pane').classList.contains('active')) {
+                updateAnalytics();
+            }
+        };
         darkModeToggle.addEventListener('change', (e) => setDarkMode(e.target.checked));
         if (localStorage.getItem('darkMode') === 'true') { darkModeToggle.checked = true; setDarkMode(true); }
 
         // --- MODAL LOGIC ---
         document.getElementById('add-driver-btn').addEventListener('click', () => showModal('add-driver-modal'));
+        document.getElementById('export-btn').addEventListener('click', () => showModal('export-modal'));
         modals.forEach(modal => modal.addEventListener('click', e => { if (e.target.classList.contains('modal') || e.target.classList.contains('cancel-modal-btn')) hideModals(); }));
         document.getElementById('add-driver-form').addEventListener('submit', async e => { e.preventDefault(); await postFormData('add-driver', new FormData(e.target)); hideModals(); e.target.reset(); refreshAllData(); });
         document.getElementById('edit-driver-form').addEventListener('submit', async e => { e.preventDefault(); const formData = new FormData(e.target); await postFormData(`update-driver/${formData.get('id')}`, formData); hideModals(); refreshAllData(); });
         document.getElementById('confirm-delete-btn').addEventListener('click', async e => { await postData('delete-driver', { driver_id: e.target.dataset.driverId }); hideModals(); refreshAllData(); });
         
         // --- EXPORT LOGIC ---
-        document.getElementById('export-pdf-btn').addEventListener('click', () => window.location.href = `${API_BASE_URL}/export-report/pdf?${currentAnalyticsParams}`);
-        document.getElementById('export-excel-btn').addEventListener('click', () => window.location.href = `${API_BASE_URL}/export-report/excel?${currentAnalyticsParams}`);
+        document.getElementById('export-pdf-btn').addEventListener('click', () => { window.location.href = `${API_BASE_URL}/export-report?format=pdf&${currentAnalyticsParams}`; hideModals(); });
+        document.getElementById('export-excel-btn').addEventListener('click', () => { window.location.href = `${API_BASE_URL}/export-report?format=excel&${currentAnalyticsParams}`; hideModals(); });
 
         // --- ANALYTICS LOGIC ---
         const setAnalyticsFilter = (params) => { currentAnalyticsParams = params; updateAnalytics(); };
@@ -596,16 +622,16 @@
 
         const updateAnalyticsKPIs = (kpis) => {
             if(!kpis) return;
-            document.getElementById('kpi-rides-completed').textContent = kpis.rides_completed;
+            document.getElementById('kpi-rides-completed').textContent = formatLargeNumber(kpis.rides_completed);
             document.getElementById('kpi-active-rides-now').textContent = kpis.active_rides_now;
             document.getElementById('kpi-rides-canceled').textContent = kpis.rides_canceled;
-            document.getElementById('kpi-total-revenue').textContent = `${kpis.total_revenue} ETB`;
-            document.getElementById('kpi-avg-fare').textContent = `${kpis.avg_fare} ETB`;
+            document.getElementById('kpi-total-revenue').textContent = `${formatLargeNumber(kpis.total_revenue)}`;
+            document.getElementById('kpi-avg-fare').textContent = `${kpis.avg_fare.toFixed(2)}`;
 
             const updateTrend = (elId, trendVal) => {
                 const el = document.getElementById(elId);
                 el.textContent = `${trendVal >= 0 ? '↑' : '↓'} ${Math.abs(trendVal)}%`;
-                el.className = `trend ${trendVal >= 0 ? 'trend-up' : 'trend-down'}`;
+                el.className = `kpi-trend ${trendVal >= 0 ? 'trend-up' : 'trend-down'}`;
             };
             updateTrend('kpi-rides-trend', kpis.trends.rides);
             updateTrend('kpi-revenue-trend', kpis.trends.revenue);
@@ -618,20 +644,25 @@
                 window[chartVar] = new Chart(ctx, { type, data, options });
             };
 
+            const commonOptions = { 
+                responsive: true, maintainAspectRatio: false, 
+                plugins: { legend: { labels: { color: chartTextColor() } } }
+            };
+
             createChart('revenue-over-time-chart', 'revenueChart', 'bar', {
                 labels: charts.revenue_over_time.labels,
-                datasets: [{ label: 'Daily Revenue (ETB)', data: charts.revenue_over_time.data, backgroundColor: 'var(--chart-purple)' }]
-            }, { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } });
+                datasets: [{ label: 'Daily Revenue (ETB)', data: charts.revenue_over_time.data, backgroundColor: getCssVar('--chart-purple') }]
+            }, { ...commonOptions, scales: { y: { beginAtZero: true, ticks: { color: chartTextColor() } }, x: { ticks: { color: chartTextColor() } } } });
             
             createChart('vehicle-dist-chart', 'vehicleDistChart', 'doughnut', {
                 labels: Object.keys(charts.vehicle_distribution),
-                datasets: [{ data: Object.values(charts.vehicle_distribution), backgroundColor: ['var(--chart-orange)', 'var(--chart-blue)'] }]
-            }, { responsive: true, maintainAspectRatio: false });
+                datasets: [{ data: Object.values(charts.vehicle_distribution), backgroundColor: [getCssVar('--chart-orange'), getCssVar('--chart-blue')] }]
+            }, commonOptions);
 
             createChart('payment-dist-chart', 'paymentDistChart', 'doughnut', {
                 labels: Object.keys(charts.payment_method_distribution),
-                datasets: [{ data: Object.values(charts.payment_method_distribution), backgroundColor: ['var(--chart-green)', 'var(--chart-yellow)'] }]
-            }, { responsive: true, maintainAspectRatio: false });
+                datasets: [{ data: Object.values(charts.payment_method_distribution), backgroundColor: [getCssVar('--chart-green'), getCssVar('--chart-yellow')] }]
+            }, commonOptions);
         };
         const updateTopDrivers = (drivers) => {
             const list = document.getElementById('top-drivers-list');
@@ -658,26 +689,45 @@
         };
 
         const updatePendingRides = (rides, drivers) => {
-            const listContainer = document.getElementById('pending-rides-list');
-            listContainer.innerHTML = '';
+            pendingRidesList.innerHTML = '';
             Object.values(pendingRideMarkers).forEach(m => { if (dashboardMap?.hasLayer(m)) dashboardMap.removeLayer(m); });
             Object.values(routeLayers).forEach(l => { if (dashboardMap?.hasLayer(l)) dashboardMap.removeLayer(l); });
             pendingRideMarkers = {}; routeLayers = {};
             
-            if (!rides || rides.length === 0) { listContainer.innerHTML = `<p class="text-gray-500 text-sm p-4">No pending rides.</p>`; return; }
+            if (!rides || rides.length === 0) { pendingRidesList.innerHTML = `<p class="text-gray-500 text-sm p-4">No pending rides.</p>`; return; }
             
             rides.forEach(ride => {
                 if (dashboardMap) {
-                    pendingRideMarkers[ride.id] = L.marker([ride.pickup_lat, ride.pickup_lon]).addTo(dashboardMap).bindPopup(`<b>Request #${ride.id} (Pickup)</b>`);
+                    pendingRideMarkers[ride.id] = L.marker([ride.pickup_lat, ride.pickup_lon], {icon: defaultIcon}).addTo(dashboardMap)
+                        .bindPopup(`<b>Request #${ride.id}</b><br/>From: ${ride.pickup_address || 'N/A'}<br/>To: ${ride.dest_address}`);
+
                     if(ride.dest_lat && ride.dest_lon) {
                         pendingRideMarkers[`dest_${ride.id}`] = L.marker([ride.dest_lat, ride.dest_lon], { icon: L.icon({ iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png', iconSize: [25, 41], iconAnchor: [12, 41] }) }).addTo(dashboardMap).bindPopup("Destination");
                         drawRouteOnMap({lat: ride.pickup_lat, lon: ride.pickup_lon}, {lat: ride.dest_lat, lon: ride.dest_lon}, ride.id);
                     }
                 }
                 const rideEl = document.createElement('div');
-                rideEl.className = 'border-b pb-3 p-2';
-                rideEl.innerHTML = `<p class="font-semibold">${ride.user_name} (${ride.user_phone})</p><p class="text-xs">To: ${ride.dest_address}</p><p class="text-xs text-indigo-600 font-medium">Note: ${ride.note || 'None'}</p><div class="mt-2 flex items-center"><select id="driver-select-${ride.id}" class="p-1 border rounded text-xs w-full">${drivers.map(d => `<option value="${d.id}">${d.name}</option>`).join('')}</select><button class="assign-ride-btn ml-2 px-3 py-1 bg-blue-500 text-white text-xs rounded" data-ride-id="${ride.id}">Assign</button></div>`;
-                listContainer.appendChild(rideEl);
+                rideEl.className = 'border-b border-[--border-color] pb-3 p-3 rounded-md hover:bg-[--main-bg] cursor-pointer transition-colors';
+                rideEl.dataset.rideId = ride.id;
+
+                const filteredDrivers = drivers.filter(d => d.vehicle_type === ride.vehicle_type && d.status === 'Available');
+                const driverOptions = filteredDrivers.length > 0 ? filteredDrivers.map(d => `<option value="${d.id}">${d.name}</option>`).join('') : '<option disabled>No available drivers</option>';
+
+                rideEl.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <p class="font-bold text-sm">${ride.user_name} <span class="font-normal text-xs text-secondary">(${ride.user_phone})</span></p>
+                        <span class="font-bold text-sm text-[--chart-purple]">${ride.vehicle_type}</span>
+                    </div>
+                    <div class="mt-2 text-xs space-y-1 text-secondary">
+                        <p><span class="font-semibold text-[--text-primary]">From:</span> ${ride.pickup_address || 'N/A'}</p>
+                        <p><span class="font-semibold text-[--text-primary]">To:</span> ${ride.dest_address}</p>
+                        <p class="text-xs text-indigo-600 font-medium">Note: ${ride.note || 'None'}</p>
+                    </div>
+                    <div class="mt-2 flex items-center">
+                        <select id="driver-select-${ride.id}" class="p-1 border rounded text-xs w-full">${driverOptions}</select>
+                        <button class="assign-ride-btn ml-2 px-3 py-1 bg-blue-500 text-white text-xs rounded" data-ride-id="${ride.id}" ${filteredDrivers.length === 0 ? 'disabled' : ''}>Assign</button>
+                    </div>`;
+                pendingRidesList.appendChild(rideEl);
             });
         };
         const updateDriversTable = (drivers) => {
@@ -686,12 +736,13 @@
             drivers.forEach(driver => {
                 const statusOptions = ['Available', 'On Trip', 'Offline'].map(s => `<option value="${s}" ${driver.status === s ? 'selected' : ''}>${s}</option>`).join('');
                 const row = driversTableBody.insertRow();
+                const avgRating = driver.avg_rating ? `${driver.avg_rating.toFixed(1)} ★` : 'N/A';
                 row.innerHTML = `
                     <td class="p-2 flex items-center"><img src="/${driver.profile_picture}" class="h-8 w-8 rounded-full mr-3 object-cover" alt="Driver" onerror="this.src='/static/img/default_avatar.png'">${driver.name}</td>
                     <td>${driver.phone_number}</td>
-                    <td>${driver.vehicle_details}</td>
+                    <td>${driver.vehicle_type}</td>
                     <td><select class="driver-status-select" data-driver-id="${driver.id}">${statusOptions}</select></td>
-                    <td>${driver.join_date}</td>
+                    <td>${avgRating}</td>
                     <td class="text-lg space-x-2">
                         <button class="action-btn view" data-driver-id="${driver.id}" title="View Details">👁️</button>
                         <button class="action-btn edit" data-driver-id="${driver.id}" title="Edit Driver">✏️</button>
@@ -715,7 +766,7 @@
                     <td><span class="status-badge status-${ride.status.replace(' ', '-')}">${ride.status}</span></td>
                     <td class="space-x-2">
                         <button class="px-3 py-1 bg-green-500 text-white text-xs rounded complete-ride-btn" data-ride-id="${ride.id}">Complete</button>
-                        <button class="px-3 py-1 bg-red-500 text-white text-xs rounded cancel-ride-btn" data-ride-id="${ride.id}">Cancel</button>
+                        <button class="px-3 py-1 bg-yellow-500 text-white text-xs rounded reassign-ride-btn" data-ride-id="${ride.id}">Re-assign</button>
                     </td>`;
             });
         };
@@ -730,26 +781,109 @@
         };
 
         // --- EVENT LISTENERS ---
-        document.getElementById('pending-rides-list').addEventListener('click', async (e) => { if (e.target.classList.contains('assign-ride-btn')) { const rideId = e.target.dataset.rideId; const driverId = document.getElementById(`driver-select-${rideId}`).value; if (driverId) await postData('assign-ride', { ride_id: rideId, driver_id: driverId }); else alert('Please select a driver.'); refreshAllData(); } });
+        pendingRidesList.addEventListener('click', async (e) => { 
+            if (e.target.classList.contains('assign-ride-btn')) { 
+                const rideId = e.target.dataset.rideId; 
+                const driverId = document.getElementById(`driver-select-${rideId}`).value; 
+                if (driverId) await postData('assign-ride', { ride_id: rideId, driver_id: driverId }); 
+                else alert('Please select a driver.'); 
+                refreshAllData(); 
+            }
+        });
+        pendingRidesList.addEventListener('mouseover', e => {
+            const rideItem = e.target.closest('[data-ride-id]');
+            if (rideItem) {
+                const rideId = rideItem.dataset.rideId;
+                const marker = pendingRideMarkers[rideId];
+                if (marker) {
+                    marker.setIcon(highlightedIcon);
+                    marker.setZIndexOffset(1000);
+                }
+            }
+        });
+        pendingRidesList.addEventListener('mouseout', e => {
+            const rideItem = e.target.closest('[data-ride-id]');
+            if (rideItem) {
+                const rideId = rideItem.dataset.rideId;
+                const marker = pendingRideMarkers[rideId];
+                if (marker) {
+                    marker.setIcon(defaultIcon);
+                    marker.setZIndexOffset(0);
+                }
+            }
+        });
         driversTableBody.addEventListener('change', async (e) => { if (e.target.classList.contains('driver-status-select')) { await postData('update-driver-status', { driver_id: e.target.dataset.driverId, status: e.target.value }); refreshAllData(); } });
         driversTableBody.addEventListener('click', async (e) => {
             const button = e.target.closest('.action-btn');
             if (!button) return;
             const driverId = button.dataset.driverId;
-            if (button.classList.contains('view')) { const data = await fetchData(`driver-details/${driverId}`); if (data) showDriverDetails(data); } 
-            else if (button.classList.contains('edit')) { const driver = await fetchData(`driver/${driverId}`); if (driver) { const form = document.getElementById('edit-driver-form'); form.reset(); Object.keys(driver).forEach(key => { if (form.elements[key]) form.elements[key].value = driver[key]; }); showModal('edit-driver-modal'); } } 
-            else if (button.classList.contains('delete')) { document.getElementById('confirm-delete-btn').dataset.driverId = driverId; showModal('delete-driver-modal'); }
+            if (button.classList.contains('view')) { 
+                const data = await fetchData(`driver-details/${driverId}`); 
+                if (data) showDriverDetails(data); 
+            } else if (button.classList.contains('edit')) { 
+                const driver = await fetchData(`driver/${driverId}`); 
+                if (driver) { 
+                    const form = document.getElementById('edit-driver-form');
+                    form.reset();
+                    form.elements.id.value = driver.id;
+                    form.elements.name.value = driver.name;
+                    form.elements.phone_number.value = driver.phone_number;
+                    form.elements.vehicle_type.value = driver.vehicle_type;
+                    form.elements.vehicle_details.value = driver.vehicle_details;
+                    form.elements.vehicle_plate_number.value = driver.vehicle_plate_number;
+                    form.elements.license_info.value = driver.license_info;
+                    showModal('edit-driver-modal');
+                }
+            } else if (button.classList.contains('delete')) { 
+                document.getElementById('confirm-delete-btn').dataset.driverId = driverId; 
+                showModal('delete-driver-modal'); 
+            }
         });
-        activeRidesTableBody.addEventListener('click', async (e) => { const rideId = e.target.dataset.rideId; if (!rideId) return; if (e.target.classList.contains('complete-ride-btn')) await postData('complete-ride', { ride_id: rideId }); else if (e.target.classList.contains('cancel-ride-btn')) await postData('cancel-ride', { ride_id: rideId }); refreshAllData(); });
+        activeRidesTableBody.addEventListener('click', async (e) => { 
+            const rideId = e.target.dataset.rideId; 
+            if (!rideId) return; 
+            if (e.target.classList.contains('complete-ride-btn')) await postData('complete-ride', { ride_id: rideId }); 
+            else if (e.target.classList.contains('reassign-ride-btn')) await postData('cancel-ride', { ride_id: rideId }); 
+            refreshAllData(); 
+        });
         document.getElementById('settings-form').addEventListener('submit', async (e) => { e.preventDefault(); await postData('settings', Object.fromEntries(new FormData(e.target).entries())); alert('Settings Saved!'); });
 
         // --- DRIVER DETAILS LOGIC ---
         const showDriverDetails = (data) => {
             const content = document.getElementById('driver-details-content');
             const avatarSrc = `/${data.profile.avatar}`;
-            content.innerHTML = `<div class="grid grid-cols-3 gap-6"><div class="col-span-1"><img src="${avatarSrc}" class="rounded-lg w-full object-cover" onerror="this.src='/static/img/default_avatar.png'"><h3 class="text-xl font-bold mt-4">${data.profile.name}</h3><p>${data.profile.status}</p></div><div class="col-span-2"><h4 class="font-bold">Performance</h4><p>Completed Rides: ${data.stats.completed_rides}</p><p>Total Earnings: ${data.stats.total_earnings} ETB</p><p>Avg. Rating: ${data.stats.avg_rating} ★</p><h4 class="font-bold mt-4">Recent Rides</h4><ul>${data.history.map(r => `<li>#${r.id} - ${r.status} - ${r.fare} ETB</li>`).join('')}</ul></div></div>`;
+            content.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="md:col-span-1 text-center">
+                        <img src="${avatarSrc}" class="rounded-full w-32 h-32 mx-auto object-cover border-4 border-gray-200" onerror="this.src='/static/img/default_avatar.png'">
+                        <h3 class="text-xl font-bold mt-4">${data.profile.name}</h3>
+                        <p class="text-sm text-secondary">${data.profile.phone_number}</p>
+                        <span class="status-badge status-${data.profile.status.replace(' ', '-')} mt-2 inline-block">${data.profile.status}</span>
+                    </div>
+                    <div class="md:col-span-2 space-y-4">
+                        <div>
+                            <h4 class="font-bold text-lg">Vehicle Information</h4>
+                            <div class="text-sm space-y-1 mt-2 text-secondary">
+                                <p><strong>Type:</strong> ${data.profile.vehicle_type}</p>
+                                <p><strong>Details:</strong> ${data.profile.vehicle_details}</p>
+                                <p><strong>Plate #:</strong> ${data.profile.plate_number}</p>
+                                <p><strong>License:</strong> ${data.profile.license}</p>
+                            </div>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-lg">Performance Metrics</h4>
+                            <div class="grid grid-cols-2 gap-4 mt-2 text-sm">
+                                <div class="card p-3 rounded-md"><p class="font-semibold text-secondary">Completed Rides</p><p class="text-2xl font-bold">${data.stats.completed_rides}</p></div>
+                                <div class="card p-3 rounded-md"><p class="font-semibold text-secondary">Avg. Rating</p><p class="text-2xl font-bold">${data.stats.avg_rating} ★</p></div>
+                                <div class="card p-3 rounded-md"><p class="font-semibold text-secondary">Weekly Earnings</p><p class="text-2xl font-bold">${data.stats.total_earnings} ETB</p></div>
+                                <div class="card p-3 rounded-md"><p class="font-semibold text-secondary">Avg. Response Time</p><p class="text-2xl font-bold">${data.stats.avg_assignment_time}</p></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
             showModal('driver-details-modal');
         };
+
         async function drawRouteOnMap(pickup, destination, rideId) {
             const url = `https://router.project-osrm.org/route/v1/driving/${pickup.lon},${pickup.lat};${destination.lon},${destination.lat}?overview=full&geometries=geojson`;
             try {
@@ -757,7 +891,7 @@
                 const data = await response.json();
                 if (data.routes && data.routes.length > 0) {
                     const routeCoords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
-                    routeLayers[rideId] = L.polyline(routeCoords, { color: 'var(--chart-purple)', weight: 5 }).addTo(dashboardMap);
+                    routeLayers[rideId] = L.polyline(routeCoords, { color: getCssVar('--chart-purple'), weight: 5 }).addTo(dashboardMap);
                 }
             } catch (error) { console.error('Error fetching route:', error); }
         }
@@ -773,17 +907,21 @@
 
         const refreshDashboardData = async () => {
              const [stats, pendingRides, availableDrivers, activeRides] = await Promise.all([
-                fetchData('dashboard-stats'), fetchData('pending-rides'), 
-                fetchData('available-drivers'), fetchData('active-rides')
+                fetchData('dashboard-stats'), 
+                fetchData('pending-rides'), 
+                fetchData('available-drivers'), 
+                fetchData('active-rides')
             ]);
             updateDashboardStats(stats || {});
             updatePendingRides(pendingRides || [], availableDrivers || []);
             updateActiveRidesTable(activeRides || []);
         };
 
-        const refreshFullData = async () => {
+        const refreshAllData = async () => {
             const [drivers, ridesHistory, settings] = await Promise.all([
-                fetchData('drivers'), fetchData('all-rides-data'), fetchData('settings')
+                fetchData('drivers'), 
+                fetchData('all-rides-data'), 
+                fetchData('settings')
             ]);
              updateDriversTable(drivers || []);
              updateRideHistoryTable(ridesHistory || []);
@@ -793,6 +931,7 @@
                 form.per_km_bajaj.value = settings.per_km_bajaj || 8;
                 form.per_km_car.value = settings.per_km_car || 12;
             }
+            refreshDashboardData();
         };
 
         // --- INITIALIZATION ---
@@ -801,8 +940,7 @@
         document.querySelector('.analytics-filter-btn[data-period="week"]').classList.add('active-filter');
 
         showPane('dashboard');
-        refreshDashboardData();
-        refreshFullData(); // Load less frequently updated data
+        refreshAllData();
         setInterval(refreshDashboardData, 10000);
     });
 </script>

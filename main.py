@@ -6,13 +6,14 @@ import requests
 from sqlalchemy import func, case
 from datetime import datetime, timedelta
 from werkzeug.utils import secure_filename
-from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
+from reportlab.lib.pagesizes import letter, landscape
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib import colors
 import io
 import openpyxl
-from openpyxl.styles import Font, Alignment
+from openpyxl.styles import Font, Alignment, PatternFill
+from openpyxl.utils import get_column_letter
 
 # --- App and Database Setup ---
 base_dir = os.path.abspath(os.path.dirname(__file__))
@@ -36,7 +37,10 @@ class Driver(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     phone_number = db.Column(db.String(20), nullable=False)
+    vehicle_type = db.Column(db.String(50), nullable=False, default='Bajaj')
     vehicle_details = db.Column(db.String(150), nullable=False)
+    vehicle_plate_number = db.Column(db.String(50), nullable=True)
+    license_info = db.Column(db.String(100), nullable=True)
     status = db.Column(db.String(20), default='Offline', nullable=False)
     profile_picture = db.Column(db.String(255), nullable=True, default='static/img/default_avatar.png')
     join_date = db.Column(db.DateTime, server_default=db.func.now())
@@ -48,6 +52,7 @@ class Ride(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     driver_id = db.Column(db.Integer, db.ForeignKey('driver.id'), nullable=True)
+    pickup_address = db.Column(db.String(255), nullable=True)
     pickup_lat = db.Column(db.Float, nullable=False)
     pickup_lon = db.Column(db.Float, nullable=False)
     dest_address = db.Column(db.String(255), nullable=False)
@@ -58,6 +63,7 @@ class Ride(db.Model):
     vehicle_type = db.Column(db.String(50), nullable=False, default='Bajaj')
     status = db.Column(db.String(20), default='Requested', nullable=False)
     request_time = db.Column(db.DateTime, server_default=db.func.now())
+    assigned_time = db.Column(db.DateTime, nullable=True)
     note = db.Column(db.String(255), nullable=True)
     rating = db.Column(db.Integer, nullable=True)
     comment = db.Column(db.String(500), nullable=True)
@@ -106,6 +112,7 @@ def request_ride():
 
     new_ride = Ride(
         user_id=user.id,
+        pickup_address=data.get('pickup_address'),
         pickup_lat=data.get('pickup_lat'),
         pickup_lon=data.get('pickup_lon'),
         dest_address=data.get('dest_address'),
@@ -133,6 +140,7 @@ def assign_ride():
 
     ride.driver_id = driver.id
     ride.status = 'Assigned'
+    ride.assigned_time = datetime.utcnow()
     driver.status = 'On Trip'
     driver.current_lat = ride.pickup_lat + 0.01
     driver.current_lon = ride.pickup_lon + 0.01
@@ -157,20 +165,33 @@ def cancel_ride():
     ride = Ride.query.get(request.json.get('ride_id'))
     if not ride:
         return jsonify({'error': 'Ride not found'}), 404
-    if ride.status not in ['Requested', 'Assigned', 'On Trip']:
-        return jsonify({'error': 'This ride cannot be canceled'}), 400
+    
+    is_reassign = ride.status in ['Assigned', 'On Trip']
+
     if ride.driver:
         ride.driver.status = 'Available'
-    ride.status = 'Canceled'
+
+    if is_reassign:
+        ride.status = 'Requested'
+        ride.driver_id = None
+        ride.assigned_time = None
+        message = "Ride has been reassigned to the pending queue."
+    else:
+        ride.status = 'Canceled'
+        message = 'Ride canceled successfully'
+
     db.session.commit()
-    return jsonify({'message': 'Ride canceled successfully'})
+    return jsonify({'message': message})
 
 
 @app.route('/api/add-driver', methods=['POST'])
 def add_driver():
     name = request.form.get('name')
     phone_number = request.form.get('phone_number')
+    vehicle_type = request.form.get('vehicle_type')
     vehicle_details = request.form.get('vehicle_details')
+    vehicle_plate_number = request.form.get('vehicle_plate_number')
+    license_info = request.form.get('license_info')
     
     profile_picture_path = 'static/img/default_avatar.png'
     if 'profile_picture' in request.files:
@@ -184,7 +205,10 @@ def add_driver():
     new_driver = Driver(
         name=name,
         phone_number=phone_number,
+        vehicle_type=vehicle_type,
         vehicle_details=vehicle_details,
+        vehicle_plate_number=vehicle_plate_number,
+        license_info=license_info,
         profile_picture=profile_picture_path,
         status='Offline'
     )
@@ -197,7 +221,10 @@ def update_driver(driver_id):
     driver = Driver.query.get_or_404(driver_id)
     driver.name = request.form.get('name', driver.name)
     driver.phone_number = request.form.get('phone_number', driver.phone_number)
+    driver.vehicle_type = request.form.get('vehicle_type', driver.vehicle_type)
     driver.vehicle_details = request.form.get('vehicle_details', driver.vehicle_details)
+    driver.vehicle_plate_number = request.form.get('vehicle_plate_number', driver.vehicle_plate_number)
+    driver.license_info = request.form.get('license_info', driver.license_info)
     
     if 'profile_picture' in request.files:
         file = request.files['profile_picture']
@@ -256,6 +283,7 @@ def get_pending_rides():
             'id': r.id,
             'user_name': r.user.name,
             'user_phone': r.user.phone_number,
+            'pickup_address': r.pickup_address,
             'pickup_lat': r.pickup_lat,
             'pickup_lon': r.pickup_lon,
             'dest_address': r.dest_address,
@@ -289,20 +317,23 @@ def get_active_rides():
 @app.route('/api/drivers')
 def get_all_drivers():
     drivers = Driver.query.all()
-    return jsonify([
-        {
+    drivers_data = []
+    for d in drivers:
+        avg_rating = db.session.query(func.avg(Ride.rating)).filter(Ride.driver_id == d.id, Ride.rating.isnot(None)).scalar() or 0
+        drivers_data.append({
             "id": d.id,
             "name": d.name,
             "phone_number": d.phone_number,
+            "vehicle_type": d.vehicle_type,
             "vehicle_details": d.vehicle_details,
             "status": d.status,
             "join_date": d.join_date.strftime('%Y-%m-%d'),
             "profile_picture": d.profile_picture,
             "lat": d.current_lat,
-            "lon": d.current_lon
-        }
-        for d in drivers
-    ])
+            "lon": d.current_lon,
+            "avg_rating": avg_rating
+        })
+    return jsonify(drivers_data)
 
 
 @app.route('/api/driver/<int:driver_id>')
@@ -312,15 +343,23 @@ def get_driver(driver_id):
         "id": driver.id,
         "name": driver.name,
         "phone_number": driver.phone_number,
+        "vehicle_type": driver.vehicle_type,
         "vehicle_details": driver.vehicle_details,
+        "vehicle_plate_number": driver.vehicle_plate_number,
+        "license_info": driver.license_info,
         "profile_picture": driver.profile_picture
     })
 
 
 @app.route('/api/available-drivers')
 def get_available_drivers():
-    drivers = Driver.query.filter_by(status='Available').all()
-    return jsonify([{'id': d.id, 'name': d.name, 'phone_number': d.phone_number} for d in drivers])
+    vehicle_type = request.args.get('vehicle_type')
+    query = Driver.query.filter_by(status='Available')
+    if vehicle_type:
+        query = query.filter_by(vehicle_type=vehicle_type)
+    
+    drivers = query.all()
+    return jsonify([{'id': d.id, 'name': d.name, 'vehicle_type': d.vehicle_type, 'status': d.status} for d in drivers])
 
 
 @app.route('/api/all-rides-data')
@@ -359,14 +398,31 @@ def get_ride_status(ride_id):
 @app.route('/api/driver-details/<int:driver_id>')
 def get_driver_details(driver_id):
     driver = Driver.query.get_or_404(driver_id)
+    
+    now = datetime.utcnow()
+    week_start = now - timedelta(days=now.weekday())
+
+    avg_assignment_time_seconds = db.session.query(
+        func.avg(func.julianday(Ride.assigned_time) - func.julianday(Ride.request_time)) * 86400.0
+    ).filter(Ride.driver_id == driver_id, Ride.assigned_time.isnot(None)).scalar() or 0
+
     stats = {
         'completed_rides': Ride.query.filter_by(driver_id=driver_id, status='Completed').count(),
-        'total_earnings': db.session.query(func.sum(Ride.fare)).filter_by(driver_id=driver_id, status='Completed').scalar() or 0,
-        'avg_rating': db.session.query(func.avg(Ride.rating)).filter(Ride.driver_id == driver_id, Ride.rating != None).scalar() or 0
+        'total_earnings': db.session.query(func.sum(Ride.fare)).filter(
+            Ride.driver_id == driver_id, 
+            Ride.status == 'Completed',
+            Ride.request_time >= week_start
+        ).scalar() or 0,
+        'avg_rating': db.session.query(func.avg(Ride.rating)).filter(Ride.driver_id == driver_id, Ride.rating.isnot(None)).scalar() or 0,
+        'avg_assignment_time': f"{avg_assignment_time_seconds:.2f}s"
     }
     history = Ride.query.filter_by(driver_id=driver_id).order_by(Ride.request_time.desc()).limit(10).all()
     return jsonify({
-        'profile': {'name': driver.name, 'status': driver.status, 'avatar': driver.profile_picture},
+        'profile': {
+            'name': driver.name, 'status': driver.status, 'avatar': driver.profile_picture, 'phone_number': driver.phone_number,
+            'vehicle_type': driver.vehicle_type, 'vehicle_details': driver.vehicle_details,
+            'plate_number': driver.vehicle_plate_number, 'license': driver.license_info
+        },
         'stats': {k: round(v, 2) if isinstance(v, float) else v for k, v in stats.items()},
         'history': [{'id': r.id, 'status': r.status, 'fare': r.fare, 'date': r.request_time.strftime('%Y-%m-%d')} for r in history]
     })
@@ -463,6 +519,7 @@ def _get_date_range_from_request():
 @app.route('/api/analytics-data')
 def get_analytics_data():
     start_date, end_date = _get_date_range_from_request()
+    now = datetime.utcnow()
             
     base_query = Ride.query
     if start_date:
@@ -492,8 +549,6 @@ def get_analytics_data():
 
     vehicle_dist = dict(base_query.with_entities(Ride.vehicle_type, func.count(Ride.id)).group_by(Ride.vehicle_type).all())
     payment_dist = dict(base_query.with_entities(Ride.payment_method, func.count(Ride.id)).group_by(Ride.payment_method).all())
-
-    now = datetime.utcnow()
     
     now_week_start = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
     top_drivers_query = db.session.query(
@@ -541,70 +596,136 @@ def get_analytics_data():
         }
     })
 
-@app.route('/api/export-report/<file_format>')
-def export_report(file_format):
+@app.route('/api/export-report')
+def export_report():
+    file_format = request.args.get('format', 'pdf')
     start_date, end_date = _get_date_range_from_request()
     
-    analytics_data = get_analytics_data().get_json()
+    base_query = Ride.query.options(db.joinedload(Ride.user), db.joinedload(Ride.driver)).order_by(Ride.request_time.desc())
+    if start_date:
+        base_query = base_query.filter(Ride.request_time.between(start_date, end_date))
+
+    all_rides_in_period = base_query.all()
     
+    analytics_data = get_analytics_data().get_json()
+    kpis = analytics_data['kpis']
+
+    report_title = f"Analytics Report ({start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')})" if start_date else "Analytics Report (All Time)"
+
     if file_format == 'pdf':
         buffer = io.BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=letter)
-        elements = []
+        doc = SimpleDocTemplate(buffer, pagesize=landscape(letter))
         styles = getSampleStyleSheet()
+        elements = [
+            Paragraph("Ride App - Dispatcher Analytics", styles['h1']),
+            Paragraph(report_title, styles['h2']),
+            Spacer(1, 24)
+        ]
 
-        elements.append(Paragraph("Analytics Report", styles['h1']))
-        
-        kpis = analytics_data['kpis']
         kpi_data = [
-            ["Metric", "Value"],
-            ["Rides Completed", kpis['rides_completed']],
-            ["Rides Canceled", kpis['rides_canceled']],
-            ["Total Revenue", f"{kpis['total_revenue']} ETB"],
-            ["Average Fare", f"{kpis['avg_fare']} ETB"],
+            ["Metric", "Value", "Trend"],
+            ["Rides Completed", f"{kpis['rides_completed']}", f"{kpis['trends']['rides']}%"],
+            ["Total Revenue", f"{kpis['total_revenue']} ETB", f"{kpis['trends']['revenue']}%"],
+            ["Rides Canceled", kpis['rides_canceled'], ""],
+            ["Average Fare", f"{kpis['avg_fare']} ETB", ""],
         ]
         
-        table = Table(kpi_data)
-        table.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,0), colors.grey),
+        kpi_table = Table(kpi_data, colWidths=[200, 150, 100])
+        kpi_table.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#4A5568')),
             ('TEXTCOLOR',(0,0),(-1,0),colors.whitesmoke),
             ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
             ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-            ('BOTTOMPADDING', (0,0), (-1,0), 12),
-            ('BACKGROUND', (0,1), (-1,-1), colors.beige),
             ('GRID', (0,0), (-1,-1), 1, colors.black)
         ]))
-        elements.append(table)
+        elements.append(Paragraph("Key Metrics Summary", styles['h3']))
+        elements.append(kpi_table)
+        elements.append(Spacer(1, 24))
+
+        elements.append(Paragraph("All Rides in Period", styles['h3']))
+        ride_data_for_table = [["ID", "Date", "Passenger", "Driver", "Fare", "Status"]]
+        for ride in all_rides_in_period:
+            ride_data_for_table.append([
+                ride.id,
+                ride.request_time.strftime('%Y-%m-%d %H:%M'),
+                ride.user.name,
+                ride.driver.name if ride.driver else 'N/A',
+                f"{ride.fare} ETB",
+                ride.status
+            ])
+        
+        ride_table = Table(ride_data_for_table, colWidths=[40, 120, 120, 120, 80, 80])
+        ride_table.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#2D3748')),
+            ('TEXTCOLOR',(0,0),(-1,0),colors.whitesmoke),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('GRID', (0,0), (-1,-1), 1, colors.black),
+            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ]))
+        elements.append(ride_table)
         
         doc.build(elements)
         buffer.seek(0)
-        return buffer.read(), 200, {
+        return buffer.getvalue(), 200, {
             'Content-Type': 'application/pdf',
-            'Content-Disposition': 'attachment; filename="report.pdf"'
+            'Content-Disposition': 'attachment; filename="analytics_report.pdf"'
         }
 
     elif file_format == 'excel':
         wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = "Analytics Report"
         
-        kpis = analytics_data['kpis']
-        ws.append(["Metric", "Value"])
-        ws.append(["Rides Completed", kpis['rides_completed']])
-        ws.append(["Rides Canceled", kpis['rides_canceled']])
-        ws.append(["Total Revenue", f"{kpis['total_revenue']} ETB"])
-        ws.append(["Average Fare", f"{kpis['avg_fare']} ETB"])
-        
+        # Summary Sheet
+        ws_summary = wb.active
+        ws_summary.title = "Summary Report"
+        ws_summary.append([report_title])
+        ws_summary['A1'].font = Font(bold=True, size=16)
+        ws_summary.append([]) # Spacer
+        ws_summary.append(["Key Metrics"])
+        ws_summary['A3'].font = Font(bold=True, size=14)
+
+        ws_summary.append(["Metric", "Value"])
+        ws_summary.append(["Rides Completed", kpis['rides_completed']])
+        ws_summary.append(["Rides Canceled", kpis['rides_canceled']])
+        ws_summary.append(["Total Revenue", kpis['total_revenue']])
+        ws_summary.append(["Average Fare", kpis['avg_fare']])
+        ws_summary['D3'] = "Rides Completed Trend"
+        ws_summary['E3'] = f"{kpis['trends']['rides']}%"
+        ws_summary['D4'] = "Revenue Trend"
+        ws_summary['E4'] = f"{kpis['trends']['revenue']}%"
+
+        # Raw Data Sheet
+        ws_raw = wb.create_sheet("Raw Data")
+        headers = ["Ride ID", "Request Time", "Status", "Passenger Name", "Passenger Phone", "Driver Name", "Fare", "Vehicle", "Payment", "Rating"]
+        ws_raw.append(headers)
+        for ride in all_rides_in_period:
+            ws_raw.append([
+                ride.id, ride.request_time, ride.status, ride.user.name, ride.user.phone_number,
+                ride.driver.name if ride.driver else 'N/A', ride.fare, ride.vehicle_type, ride.payment_method, ride.rating
+            ])
+
+        for ws in [ws_summary, ws_raw]:
+            for col in ws.columns:
+                max_length = 0
+                column = col[0].column_letter
+                for cell in col:
+                    try:
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                    except:
+                        pass
+                adjusted_width = (max_length + 2)
+                ws.column_dimensions[column].width = adjusted_width
+
         buffer = io.BytesIO()
         wb.save(buffer)
         buffer.seek(0)
-        return buffer.read(), 200, {
+        return buffer.getvalue(), 200, {
             'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'Content-Disposition': 'attachment; filename="report.xlsx"'
+            'Content-Disposition': 'attachment; filename="analytics_report.xlsx"'
         }
 
     return jsonify({"error": "Invalid format"}), 400
-
 
 @app.route('/api/rides-by-day')
 def get_rides_by_day():
@@ -648,4 +769,3 @@ if __name__ == '__main__':
             db.session.add(Setting(key='per_km_car', value='12'))
             db.session.commit()
     app.run(debug=True)
-

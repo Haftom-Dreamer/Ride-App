@@ -438,7 +438,8 @@
             const phone = phoneInput.value.trim();
             if (!phone || phone.length < 9) return alert('Please enter a valid phone number.');
             const rideData = { 
-                phone_number: `+251${phone}`, 
+                phone_number: `+251${phone}`,
+                pickup_address: userPickup.address,
                 pickup_lat: userPickup.lat, 
                 pickup_lon: userPickup.lon, 
                 dest_address: userDestination.address, 
