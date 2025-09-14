@@ -356,30 +356,49 @@
             <h2 class="text-3xl font-bold text-primary mb-6">Driver Management</h2>
             <div class="card p-6 rounded-lg shadow">
                 <div class="flex justify-between items-center mb-4">
-                    <input type="text" id="driver-search" placeholder="Search drivers..."
-                        class="border p-2 rounded w-1/3">
+                    <div class="flex items-center gap-4">
+                        <input type="text" id="driver-search-input" placeholder="Search by name or phone..."
+                            class="border p-2 rounded-md w-64">
+                        <select id="driver-status-filter" class="border p-2 rounded-md">
+                            <option value="All">All Statuses</option>
+                            <option value="Available">Available</option>
+                            <option value="On Trip">On Trip</option>
+                            <option value="Offline">Offline</option>
+                        </select>
+                    </div>
                     <button id="add-driver-btn"
                         class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold">Add New
                         Driver</button>
                 </div>
-                <table class="w-full text-left">
-                    <thead>
-                        <tr class="border-b border-border">
-                            <th class="p-2">Name</th>
-                            <th>Contact</th>
-                            <th>Vehicle</th>
-                            <th>Status</th>
-                            <th>Rating</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="drivers-table-body"></tbody>
-                </table>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="border-b border-border">
+                                <th class="p-2">Name</th>
+                                <th>Contact</th>
+                                <th>Vehicle</th>
+                                <th>Status</th>
+                                <th>Rating</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="drivers-table-body"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
         <div id="rides-pane" class="pane">
             <h2 class="text-3xl font-bold text-primary mb-6">Ride History</h2>
             <div class="card p-6 rounded-lg shadow">
+                 <div class="flex justify-between items-center mb-4">
+                    <input type="text" id="ride-history-search" placeholder="Search by passenger or driver..."
+                        class="border p-2 rounded w-1/3">
+                    <div>
+                        <button id="ride-history-prev" class="px-3 py-1 bg-gray-200 rounded-md">&lt; Prev</button>
+                        <span id="ride-history-page-info" class="mx-2">Page 1</span>
+                        <button id="ride-history-next" class="px-3 py-1 bg-gray-200 rounded-md">Next &gt;</button>
+                    </div>
+                </div>
                 <table class="w-full text-left">
                     <thead>
                         <tr class="border-b border-border">
@@ -499,12 +518,14 @@
     </div>
 </div>
 
-<div id="driver-details-modal" class="modal fixed inset-0 z-50 items-center justify-center hidden">
+<div id="driver-details-modal" class="modal fixed inset-0 z-50 items-center justify-center hidden overflow-y-auto">
     <div class="absolute inset-0 bg-black opacity-50"></div>
-    <div class="modal-content p-8 rounded-lg shadow-xl z-10 w-full max-w-2xl">
-        <h2 class="text-2xl font-bold mb-4">Driver Details</h2>
-        <div id="driver-details-content"></div>
-        <div class="flex justify-end mt-4"><button type="button" class="cancel-modal-btn px-4 py-2 bg-gray-200 rounded-lg">Close</button></div>
+    <div class="modal-content p-8 rounded-lg shadow-xl z-10 w-full max-w-3xl my-8">
+        <div class="flex justify-between items-start">
+            <h2 class="text-2xl font-bold mb-4">Driver Details</h2>
+            <button type="button" class="cancel-modal-btn -mt-2 -mr-2 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">&times;</button>
+        </div>
+        <div id="driver-details-content" class="max-h-[75vh] overflow-y-auto pr-4"></div>
     </div>
 </div>
 
@@ -516,6 +537,10 @@
         let dashboardMap, revenueChart, vehicleDistChart, paymentDistChart;
         let pendingRideMarkers = {}, routeLayers = {};
         let currentAnalyticsParams = 'period=week'; // Default filter
+        let allDrivers = [];
+        let allRidesHistory = [];
+        let rideHistoryPage = 1;
+        const RIDES_PER_PAGE = 10;
         
         const getCssVar = (varName) => getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
         const chartTextColor = () => getCssVar('--text-primary');
@@ -549,6 +574,8 @@
         const mainWrapper = document.getElementById('main-wrapper');
         const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
         const pendingRidesList = document.getElementById('pending-rides-list');
+        const driverSearchInput = document.getElementById('driver-search-input');
+        const driverStatusFilter = document.getElementById('driver-status-filter');
 
 
         // --- HELPER FUNCTIONS ---
@@ -733,7 +760,7 @@
             Object.values(routeLayers).forEach(l => { if (dashboardMap?.hasLayer(l)) dashboardMap.removeLayer(l); });
             pendingRideMarkers = {}; routeLayers = {};
             
-            if (!rides || rides.length === 0) { pendingRidesList.innerHTML = `<p class="text-gray-500 text-sm p-4">No pending rides.</p>`; return; }
+            if (!rides || rides.length === 0) { pendingRidesList.innerHTML = `<p class="text-gray-500 text-sm p-4 text-center">No pending rides at the moment.</p>`; return; }
             
             rides.forEach(ride => {
                 if (dashboardMap) {
@@ -769,16 +796,29 @@
                 pendingRidesList.appendChild(rideEl);
             });
         };
-        const updateDriversTable = (drivers) => {
+        const updateDriversTable = () => {
+            const searchTerm = driverSearchInput.value.toLowerCase();
+            const statusFilter = driverStatusFilter.value;
+            
+            const filteredDrivers = allDrivers.filter(driver => {
+                const matchesSearch = driver.name.toLowerCase().includes(searchTerm) || driver.phone_number.includes(searchTerm);
+                const matchesStatus = statusFilter === 'All' || driver.status === statusFilter;
+                return matchesSearch && matchesStatus;
+            });
+
             driversTableBody.innerHTML = '';
-            if (!drivers || drivers.length === 0) return;
-            drivers.forEach(driver => {
+            if (filteredDrivers.length === 0) {
+                driversTableBody.innerHTML = '<tr><td colspan="6" class="text-center p-4 text-gray-500">No drivers found matching criteria.</td></tr>';
+                return;
+            }
+
+            filteredDrivers.forEach(driver => {
                 const statusOptions = ['Available', 'On Trip', 'Offline'].map(s => `<option value="${s}" ${driver.status === s ? 'selected' : ''}>${s}</option>`).join('');
                 const row = driversTableBody.insertRow();
                 const avgRating = driver.avg_rating ? `${driver.avg_rating.toFixed(1)} ★` : 'N/A';
                 row.innerHTML = `
                     <td class="p-2 flex items-center"><img src="/${driver.profile_picture}" class="h-8 w-8 rounded-full mr-3 object-cover" alt="Driver" onerror="this.src='/static/img/default_avatar.png'">${driver.name}</td>
-                    <td>${driver.phone_number}</td>
+                    <td><a href="tel:${driver.phone_number}" class="text-blue-500 hover:underline">${driver.phone_number}</a></td>
                     <td>${driver.vehicle_type}</td>
                     <td><select class="driver-status-select" data-driver-id="${driver.id}">${statusOptions}</select></td>
                     <td>${avgRating}</td>
@@ -793,6 +833,7 @@
                 updateColor();
             });
         };
+
         const updateActiveRidesTable = (rides) => {
             activeRidesTableBody.innerHTML = '';
             if (!rides || rides.length === 0) { activeRidesTableBody.innerHTML = '<tr><td colspan="5" class="text-center p-4 text-gray-500">No active rides</td></tr>'; return; }
@@ -809,11 +850,31 @@
                     </td>`;
             });
         };
-        const updateRideHistoryTable = (rides) => {
+        const updateRideHistoryTable = () => {
             const tableBody = document.getElementById('rides-history-table-body');
             tableBody.innerHTML = '';
-            if (!rides || rides.length === 0) return;
-            rides.forEach(ride => {
+            if (!allRidesHistory || allRidesHistory.length === 0) {
+                 tableBody.innerHTML = '<tr><td colspan="7" class="text-center p-4 text-gray-500">No ride history found.</td></tr>';
+                return;
+            }
+
+            const searchTerm = document.getElementById('ride-history-search').value.toLowerCase();
+            const filteredRides = allRidesHistory.filter(r => 
+                r.user_name.toLowerCase().includes(searchTerm) || 
+                (r.driver_name && r.driver_name.toLowerCase().includes(searchTerm))
+            );
+
+            const pageInfo = document.getElementById('ride-history-page-info');
+            const totalPages = Math.ceil(filteredRides.length / RIDES_PER_PAGE);
+            rideHistoryPage = Math.min(rideHistoryPage, totalPages) || 1;
+            pageInfo.textContent = `Page ${rideHistoryPage} of ${totalPages}`;
+
+            const start = (rideHistoryPage - 1) * RIDES_PER_PAGE;
+            const end = start + RIDES_PER_PAGE;
+            const paginatedRides = filteredRides.slice(start, end);
+
+
+            paginatedRides.forEach(ride => {
                 const row = tableBody.insertRow();
                 row.innerHTML = `<td class="p-2">${ride.id}</td><td>${ride.user_name}</td><td>${ride.driver_name}</td><td>${ride.fare} ETB</td><td><span class="status-badge status-${ride.status}">${ride.status}</span></td><td>${ride.rating ? '★'.repeat(ride.rating) : 'N/A'}</td><td>${ride.request_time}</td>`;
             });
@@ -886,11 +947,26 @@
             refreshAllData(); 
         });
         document.getElementById('settings-form').addEventListener('submit', async (e) => { e.preventDefault(); await postData('settings', Object.fromEntries(new FormData(e.target).entries())); alert('Settings Saved!'); });
+        driverSearchInput.addEventListener('input', updateDriversTable);
+        driverStatusFilter.addEventListener('change', updateDriversTable);
+        document.getElementById('ride-history-search').addEventListener('input', () => { rideHistoryPage = 1; updateRideHistoryTable(); });
+        document.getElementById('ride-history-prev').addEventListener('click', () => { if (rideHistoryPage > 1) { rideHistoryPage--; updateRideHistoryTable(); } });
+        document.getElementById('ride-history-next').addEventListener('click', () => { rideHistoryPage++; updateRideHistoryTable(); });
 
         // --- DRIVER DETAILS LOGIC ---
         const showDriverDetails = (data) => {
             const content = document.getElementById('driver-details-content');
             const avatarSrc = `/${data.profile.avatar}`;
+
+            const historyHtml = data.history.length > 0 ? data.history.map(r => `
+                <div class="grid grid-cols-4 text-sm p-2 border-b">
+                    <span>#${r.id}</span>
+                    <span>${r.date}</span>
+                    <span>${r.fare} ETB</span>
+                    <span class="status-badge status-${r.status}">${r.status}</span>
+                </div>
+            `).join('') : '<p class="text-sm text-secondary text-center p-4">No recent ride history.</p>';
+
             content.innerHTML = `
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div class="md:col-span-1 text-center">
@@ -901,8 +977,8 @@
                     </div>
                     <div class="md:col-span-2 space-y-4">
                         <div>
-                            <h4 class="font-bold text-lg">Vehicle Information</h4>
-                            <div class="text-sm space-y-1 mt-2 text-secondary">
+                            <h4 class="font-bold text-lg border-b pb-1 mb-2">Vehicle Information</h4>
+                            <div class="text-sm space-y-1 text-secondary">
                                 <p><strong>Type:</strong> ${data.profile.vehicle_type}</p>
                                 <p><strong>Details:</strong> ${data.profile.vehicle_details}</p>
                                 <p><strong>Plate #:</strong> ${data.profile.plate_number}</p>
@@ -910,7 +986,7 @@
                             </div>
                         </div>
                         <div>
-                            <h4 class="font-bold text-lg">Performance Metrics</h4>
+                            <h4 class="font-bold text-lg border-b pb-1 mb-2">Performance Metrics</h4>
                             <div class="grid grid-cols-2 gap-4 mt-2 text-sm">
                                 <div class="card p-3 rounded-md"><p class="font-semibold text-secondary">Completed Rides</p><p class="text-2xl font-bold">${data.stats.completed_rides}</p></div>
                                 <div class="card p-3 rounded-md"><p class="font-semibold text-secondary">Avg. Rating</p><p class="text-2xl font-bold">${data.stats.avg_rating} ★</p></div>
@@ -919,6 +995,16 @@
                             </div>
                         </div>
                     </div>
+                </div>
+                <div class="mt-6">
+                    <h4 class="font-bold text-lg border-b pb-1 mb-2">Recent Ride History (Last 10)</h4>
+                    <div class="grid grid-cols-4 font-semibold text-xs text-secondary p-2 bg-gray-50 dark:bg-gray-800">
+                        <span>ID</span>
+                        <span>Date</span>
+                        <span>Fare</span>
+                        <span>Status</span>
+                    </div>
+                    ${historyHtml}
                 </div>`;
             showModal('driver-details-modal');
         };
@@ -962,8 +1048,11 @@
                 fetchData('all-rides-data'), 
                 fetchData('settings')
             ]);
-             updateDriversTable(drivers || []);
-             updateRideHistoryTable(ridesHistory || []);
+             allDrivers = drivers || [];
+             allRidesHistory = ridesHistory || [];
+             updateDriversTable();
+             updateRideHistoryTable();
+
              if (settings) {
                 const form = document.getElementById('settings-form');
                 form.base_fare.value = settings.base_fare || 25;
@@ -984,4 +1073,3 @@
     });
 </script>
 {% endblock %}
-
