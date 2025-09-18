@@ -53,12 +53,12 @@
         border: 1px solid var(--border-color);
         color: var(--text-primary);
     }
-
+    
     .dark .card {
         border-color: var(--border-color);
     }
 
-    .sidebar-link {
+    .sidebar-link, .sidebar-summary summary {
         transition: all 0.2s ease-in-out;
     }
 
@@ -68,220 +68,72 @@
         color: white;
         font-weight: 600;
     }
+    
+    .sidebar-link.active .icon-solid {
+        display: inline-block;
+        transform: scale(1.1);
+    }
+    .sidebar-link.active .icon-outline {
+        display: none;
+    }
+    .icon-solid { display: none; }
 
-    .sidebar-link:not(.active):hover {
+
+    .sidebar-link:not(.active):hover, .sidebar-summary summary:hover {
         background-color: #374151;
     }
 
-    .pane {
-        display: none;
-    }
+    .pane { display: none; }
+    .pane.active { display: block; animation: fadeIn 0.3s ease-in-out; }
+    @keyframes fadeIn { from { opacity: 0.8; } to { opacity: 1; } }
 
-    .pane.active {
-        display: block;
-        animation: fadeIn 0.3s ease-in-out;
-    }
+    .modal { background-color: rgba(0, 0, 0, 0.6); }
+    .modal-content { background-color: var(--card-bg); color: var(--text-primary); }
 
-    @keyframes fadeIn {
-        from {
-            opacity: 0.8;
-        }
+    .status-badge, .driver-status-select { padding: 4px 10px; border-radius: 6px; font-weight: 600; font-size: 11px; text-transform: uppercase; border: 1px solid transparent; }
+    .status-Available, .status-select-Available { background-color: #dcfce7; color: #166534; border-color: #1665344d; }
+    .status-On-Trip, .status-Assigned, .status-select-On-Trip { background-color: #ffedd5; color: #9a3412; border-color: #9a34124d; }
+    .status-Offline, .status-select-Offline { background-color: #e5e7eb; color: #4b5563; border-color: #4b55634d; }
+    .status-Requested { background-color: #dbeafe; color: #1e40af; }
+    .status-Completed { background-color: #d1fae5; color: #065f46; }
+    .status-Canceled { background-color: #fee2e2; color: #991b1b; }
+    
+    .action-btn { background: none; border: none; cursor: pointer; padding: 4px; transition: color 0.2s; }
+    .action-btn.view:hover { color: #2563eb; }
+    .action-btn.edit:hover { color: var(--chart-orange); }
+    .action-btn.delete:hover { color: var(--chart-red); }
+    
+    .analytics-filter-btn.active-filter { background-color: #4f46e5; color: white; }
 
-        to {
-            opacity: 1;
-        }
-    }
+    .kpi-card { display: flex; flex-direction: column; justify-content: space-between; min-height: 120px; padding: 1.5rem; }
+    .kpi-card .kpi-title { font-size: 0.875rem; color: var(--text-secondary); white-space: nowrap; }
+    .kpi-card .kpi-value { font-size: 2.25rem; font-weight: 700; line-height: 1.1; }
+    .kpi-card .kpi-trend { font-size: 0.8rem; font-weight: 600; padding: 2px 6px; border-radius: 99px; }
+    .trend-up { background-color: #dcfce7; color: #166534; }
+    .trend-down { background-color: #fee2e2; color: #991b1b; }
+    
+    .live-pulse { animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
 
-    .modal {
-        background-color: rgba(0, 0, 0, 0.6);
-    }
+    .notification-badge { position: absolute; top: -5px; right: -8px; height: 20px; width: 20px; background-color: var(--chart-red); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; border: 2px solid var(--sidebar-bg); }
+    #notification-dropdown { position: absolute; bottom: 100%; right: 0; background-color: var(--card-bg); border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); width: 280px; max-height: 300px; overflow-y: auto; z-index: 50; margin-bottom: 0.5rem; }
 
-    .modal-content {
-        background-color: var(--card-bg);
-        color: var(--text-primary);
-    }
+    .sidebar-badge { background-color: var(--chart-blue); color: white; font-size: 10px; font-weight: bold; padding: 1px 6px; border-radius: 10px; margin-left: auto; }
+    .sidebar-collapsed .sidebar-badge { display: none; }
 
-    .status-badge,
-    .driver-status-select {
-        padding: 4px 10px;
-        border-radius: 6px;
-        font-weight: 600;
-        font-size: 11px;
-        text-transform: uppercase;
-        border: 1px solid transparent;
-    }
-
-    .status-Available,
-    .status-select-Available {
-        background-color: #dcfce7;
-        color: #166534;
-        border-color: #1665344d;
-    }
-
-    .status-On-Trip,
-    .status-Assigned,
-    .status-select-On-Trip {
-        background-color: #ffedd5;
-        color: #9a3412;
-        border-color: #9a34124d;
-    }
-
-    .status-Offline,
-    .status-select-Offline {
-        background-color: #e5e7eb;
-        color: #4b5563;
-        border-color: #4b55634d;
-    }
-
-    .status-Requested {
-        background-color: #dbeafe;
-        color: #1e40af;
-    }
-
-    .status-Completed {
-        background-color: #d1fae5;
-        color: #065f46;
-    }
-
-    .status-Canceled {
-        background-color: #fee2e2;
-        color: #991b1b;
-    }
-
-    .action-btn {
-        background: none;
-        border: none;
-        cursor: pointer;
-        padding: 4px;
-        transition: color 0.2s;
-    }
-
-    .action-btn.view:hover {
-        color: #2563eb;
-    }
-
-    .action-btn.edit:hover {
-        color: var(--chart-orange);
-    }
-
-    .action-btn.delete:hover {
-        color: var(--chart-red);
-    }
-
-    .analytics-filter-btn.active-filter {
-        background-color: #4f46e5;
-        color: white;
-    }
-
-    .kpi-card {
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        min-height: 120px;
-        padding: 1.5rem;
-    }
-
-    .kpi-card .kpi-title {
-        font-size: 0.875rem;
-        color: var(--text-secondary);
-        white-space: nowrap;
-    }
-
-    .kpi-card .kpi-value {
-        font-size: 2.25rem;
-        font-weight: 700;
-        line-height: 1.1;
-    }
-
-    .kpi-card .kpi-trend {
-        font-size: 0.8rem;
-        font-weight: 600;
-        padding: 2px 6px;
-        border-radius: 99px;
-    }
-
-    .trend-up {
-        background-color: #dcfce7;
-        color: #166534;
-    }
-
-    .trend-down {
-        background-color: #fee2e2;
-        color: #991b1b;
-    }
-
-    .live-pulse {
-        animation: pulse 1.5s infinite;
-    }
-
-    @keyframes pulse {
-
-        0%,
-        100% {
-            opacity: 1;
-        }
-
-        50% {
-            opacity: .5;
-        }
-    }
-
-    .notification-badge {
-        position: absolute;
-        top: -5px;
-        right: -8px;
-        height: 20px;
-        width: 20px;
-        background-color: var(--chart-red);
-        color: white;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 10px;
-        font-weight: bold;
-        border: 2px solid var(--sidebar-bg);
-    }
-
-    .sidebar-collapsed .sidebar {
-        width: 5rem;
-    }
-
-    .sidebar-collapsed .sidebar-header-text,
-    .sidebar-collapsed .sidebar-link-text,
-    .sidebar-collapsed .user-info {
-        display: none;
-    }
-
-    .sidebar-collapsed .sidebar-link {
-        justify-content: center;
-    }
-
-    .sidebar-collapsed #sidebar-toggle-btn svg {
-        transform: rotate(180deg);
-    }
-
-    .file-input-label {
-        font-size: 0.875rem;
-        color: var(--text-secondary);
-        background-color: var(--main-bg);
-        padding: 0.5rem 1rem;
-        border-radius: 0.375rem;
-        border: 1px solid var(--border-color);
-        cursor: pointer;
-        transition: background-color 0.2s;
-    }
-
-    .file-input-label:hover {
-        background-color: var(--border-color);
-    }
-
-    .file-input-filename {
-        margin-left: 0.75rem;
-        font-style: italic;
-        font-size: 0.875rem;
-        color: var(--text-secondary);
-    }
+    .sidebar-collapsed .sidebar { width: 5rem; }
+    .sidebar-collapsed .sidebar-header-text, .sidebar-collapsed .sidebar-link-text, .sidebar-collapsed .user-info, .sidebar-collapsed .group-title, .sidebar-collapsed .group-arrow { display: none; }
+    .sidebar-collapsed .sidebar-link, .sidebar-collapsed .sidebar-summary summary { justify-content: center; }
+    .sidebar-collapsed #sidebar-toggle-btn svg { transform: rotate(180deg); }
+    
+    .file-input-label { font-size: 0.875rem; color: var(--text-secondary); background-color: var(--main-bg); padding: 0.5rem 1rem; border-radius: 0.375rem; border: 1px solid var(--border-color); cursor: pointer; transition: background-color 0.2s; }
+    .file-input-label:hover { background-color: var(--border-color); }
+    .file-input-filename { margin-left: 0.75rem; font-style: italic; font-size: 0.875rem; color: var(--text-secondary); }
+    
+    .sidebar-summary summary { list-style: none; } /* Hide default marker */
+    .sidebar-summary summary::-webkit-details-marker { display: none; } /* For Chrome/Safari */
+    .sidebar-summary .group-arrow { transition: transform 0.2s; }
+    .sidebar-summary[open] > summary .group-arrow { transform: rotate(90deg); }
 </style>
 {% endblock %}
 
@@ -290,107 +142,99 @@
     <!-- Sidebar -->
     <aside class="w-64 sidebar text-gray-300 flex flex-col flex-shrink-0">
         <div class="p-4 flex justify-between items-center border-b border-gray-700">
-            <div class="sidebar-header-text">
-                <h1 class="text-2xl font-bold text-white">Ride App</h1>
-                <p class="text-xs text-gray-400">Dispatcher Panel</p>
-            </div>
-            <button id="sidebar-toggle-btn" class="p-2 rounded-md hover:bg-gray-700">
-                <svg class="h-6 w-6 text-white transition-transform" fill="none" viewBox="0 0 24 24"
-                    stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                </svg>
-            </button>
+            <div class="sidebar-header-text"><h1 class="text-2xl font-bold text-white">Ride App</h1><p class="text-xs text-gray-400">Dispatcher Panel</p></div>
+            <button id="sidebar-toggle-btn" class="p-2 rounded-md hover:bg-gray-700"><svg class="h-6 w-6 text-white transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
         </div>
-        <nav class="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
-            <a href="#" class="sidebar-link flex items-center p-3 rounded-lg active" data-pane="dashboard"
-                title="Dashboard">
-                <svg class="h-5 w-5 mr-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
-                </svg>
+        <nav class="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
+            <!-- Dashboard -->
+            <a href="#" class="sidebar-link flex items-center p-3 rounded-lg active" data-pane="dashboard" title="Dashboard">
+                <span class="icon-outline"><svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg></span>
+                <span class="icon-solid"><svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M2 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H3a1 1 0 01-1-1V5zm0 6a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H3a1 1 0 01-1-1v-2zM3 15a1 1 0 00-1 1v2a1 1 0 001 1h14a1 1 0 001-1v-2a1 1 0 00-1-1H3z" clip-rule="evenodd" /></svg></span>
                 <span class="sidebar-link-text">Dashboard</span>
             </a>
-            <a href="#" class="sidebar-link flex items-center p-3 rounded-lg" data-pane="analytics" title="Analytics">
-                <svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none"
-                    viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round"
-                        d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
-                </svg>
-                <span class="sidebar-link-text">Analytics</span>
-            </a>
-            <a href="#" class="sidebar-link flex items-center p-3 rounded-lg" data-pane="inbox" title="Inbox">
-                <svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none"
-                    viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round"
-                        d="M2.25 13.5h3.86a2.25 2.25 0 012.012 1.244l.256.512a2.25 2.25 0 002.013 1.244h3.218a2.25 2.25 0 002.013-1.244l.256-.512a2.25 2.25 0 012.013-1.244h3.859m-19.5.338V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18v-4.162c0-.224-.034-.447-.1-.661L19.24 5.338a2.25 2.25 0 00-2.12-1.588H6.88a2.25 2.25 0 00-2.12 1.588L2.35 13.177a2.25 2.25 0 00-.1.661z" />
-                </svg>
-                <span class="sidebar-link-text">Inbox</span>
-            </a>
-            <a href="#" class="sidebar-link flex items-center p-3 rounded-lg" data-pane="drivers" title="Drivers">
-                <svg class="h-5 w-5 mr-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                <span class="sidebar-link-text">Drivers</span>
-            </a>
-            <a href="#" class="sidebar-link flex items-center p-3 rounded-lg" data-pane="active-rides"
-                title="Active Rides">
-                <svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none"
-                    viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round"
-                        d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.125-.504 1.125-1.125V14.25m-17.25 4.5v-1.875a3.375 3.375 0 003.375-3.375h1.5a1.125 1.125 0 011.125 1.125v-1.5a3.375 3.375 0 00-3.375-3.375H3.375m15.75 9.375v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 003.375-3.375h1.5c.621 0 1.125.504 1.125 1.125v16.5c0 .621-.504 1.125-1.125 1.125h-9.75" />
-                </svg>
-                <span class="sidebar-link-text">Active Rides</span>
-            </a>
-            <a href="#" class="sidebar-link flex items-center p-3 rounded-lg" data-pane="rides" title="Ride History">
-                <svg class="h-5 w-5 mr-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10l2 2h8a1 1 0 001-1zM3 11h10" />
-                </svg>
-                <span class="sidebar-link-text">Ride History</span>
-            </a>
-            <a href="#" class="sidebar-link flex items-center p-3 rounded-lg" data-pane="reports" title="Reports">
-                <svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none"
-                    viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round"
-                        d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                </svg>
-                <span class="sidebar-link-text">Reports</span>
-            </a>
-            <a href="#" class="sidebar-link flex items-center p-3 rounded-lg" data-pane="settings" title="Settings">
-                <svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none"
-                    viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924-1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066 2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.096 2.572-1.065z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
+
+            <!-- Operations Group -->
+            <details class="sidebar-summary group" open>
+                <summary class="flex items-center p-3 rounded-lg cursor-pointer">
+                    <span class="sidebar-link-text group-title font-semibold text-xs uppercase tracking-wider text-gray-400">Operations</span>
+                    <span class="group-arrow ml-auto sidebar-link-text text-gray-400">&#9660;</span>
+                </summary>
+                <div class="pl-2 space-y-1">
+                    <a href="#" class="sidebar-link flex items-center p-3 rounded-lg" data-pane="active-rides" title="Active Rides">
+                        <span class="icon-outline"><svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.125-.504 1.125-1.125V14.25m-17.25 4.5v-1.875a3.375 3.375 0 003.375-3.375h1.5a1.125 1.125 0 011.125 1.125v-1.5a3.375 3.375 0 00-3.375-3.375H3.375m15.75 9.375v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 003.375-3.375h1.5c.621 0 1.125.504 1.125 1.125v16.5c0 .621-.504 1.125-1.125 1.125h-9.75" /></svg></span>
+                        <span class="icon-solid"><svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M10.75 2.75a.75.75 0 00-1.5 0V4h-3a.75.75 0 000 1.5h3v2.5a.75.75 0 001.5 0v-2.5h3a.75.75 0 000-1.5h-3V2.75z" /><path fill-rule="evenodd" d="M2 10a8 8 0 1116 0 8 8 0 01-16 0zm1.5 0a6.5 6.5 0 1113 0 6.5 6.5 0 01-13 0z" clip-rule="evenodd" /></svg></span>
+                        <span class="sidebar-link-text">Active Rides</span>
+                    </a>
+                    <a href="#" class="sidebar-link flex items-center p-3 rounded-lg" data-pane="pending-requests" title="Pending Requests">
+                        <span class="icon-outline"><svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></span>
+                        <span class="icon-solid"><svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clip-rule="evenodd" /></svg></span>
+                        <span class="sidebar-link-text">Pending Requests</span>
+                        <span class="sidebar-badge" id="pending-requests-badge">0</span>
+                    </a>
+                </div>
+            </details>
+
+             <!-- Management Group -->
+            <details class="sidebar-summary group" open>
+                <summary class="flex items-center p-3 rounded-lg cursor-pointer">
+                    <span class="sidebar-link-text group-title font-semibold text-xs uppercase tracking-wider text-gray-400">Management</span>
+                    <span class="group-arrow ml-auto sidebar-link-text text-gray-400">&#9660;</span>
+                </summary>
+                 <div class="pl-2 space-y-1">
+                    <a href="#" class="sidebar-link flex items-center p-3 rounded-lg" data-pane="drivers" title="Drivers">
+                        <span class="icon-outline"><svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.071M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-4.663M15 19.128a2.625 2.625 0 00-5.25 0v.003" /></svg></span>
+                        <span class="icon-solid"><svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M10 8a3 3 0 100-6 3 3 0 000 6zM3.465 14.493a1.23 1.23 0 00.41 1.412A9.957 9.957 0 0010 18c2.31 0 4.438-.784 6.131-2.095a1.23 1.23 0 00.41-1.412A9.995 9.995 0 0010 12c-2.31 0-4.438.784-6.131 2.095z" /></svg></span>
+                        <span class="sidebar-link-text">Drivers</span>
+                        <span class="sidebar-badge" id="drivers-badge">0</span>
+                    </a>
+                     <a href="#" class="sidebar-link flex items-center p-3 rounded-lg" data-pane="inbox" title="Inbox">
+                        <span class="icon-outline"><svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg></span>
+                        <span class="icon-solid"><svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" /><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" /></svg></span>
+                        <span class="sidebar-link-text">Inbox</span>
+                        <span class="sidebar-badge" id="inbox-badge">0</span>
+                    </a>
+                </div>
+            </details>
+
+            <!-- Data Group -->
+            <details class="sidebar-summary group">
+                <summary class="flex items-center p-3 rounded-lg cursor-pointer">
+                    <span class="sidebar-link-text group-title font-semibold text-xs uppercase tracking-wider text-gray-400">Data</span>
+                    <span class="group-arrow ml-auto sidebar-link-text text-gray-400">&#9660;</span>
+                </summary>
+                 <div class="pl-2 space-y-1">
+                    <a href="#" class="sidebar-link flex items-center p-3 rounded-lg" data-pane="analytics" title="Analytics">
+                        <span class="icon-outline"><svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg></span>
+                        <span class="icon-solid"><svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M2 10a8 8 0 1116 0 8 8 0 01-16 0zm10 2a2 2 0 100-4 2 2 0 000 4z" /><path fill-rule="evenodd" d="M12 2.25a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 0112 2.25zM5.25 12a.75.75 0 01.75-.75h1.5a.75.75 0 010 1.5h-1.5a.75.75 0 01-.75-.75zM12 15.75a.75.75 0 01-.75.75v1.5a.75.75 0 011.5 0v-1.5a.75.75 0 01-.75-.75zM15.75 12a.75.75 0 01.75-.75h1.5a.75.75 0 010 1.5h-1.5a.75.75 0 01-.75-.75z" clip-rule="evenodd" /></svg></span>
+                        <span class="sidebar-link-text">Analytics</span>
+                    </a>
+                    <a href="#" class="sidebar-link flex items-center p-3 rounded-lg" data-pane="reports" title="Reports">
+                        <span class="icon-outline"><svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg></span>
+                        <span class="icon-solid"><svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd" /></svg></span>
+                        <span class="sidebar-link-text">Reports</span>
+                    </a>
+                    <a href="#" class="sidebar-link flex items-center p-3 rounded-lg" data-pane="rides" title="Ride History">
+                        <span class="icon-outline"><svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" /></svg></span>
+                        <span class="icon-solid"><svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.555 3.333a2.5 2.5 0 012.222-1.111c1.246 0 2.384.693 2.889 1.75 1.003 2.103 2.222 3.333 2.222 3.333V1.667a.833.833 0 111.667 0v11.666a.833.833 0 11-1.667 0v-1.25a3.333 3.333 0 00-3.333-3.333h-1.667a.833.833 0 010-1.667h1.667a1.667 1.667 0 011.667 1.667v1.25a.833.833 0 11-1.667 0V9.167a1.667 1.667 0 01-1.15-.693.834.834 0 01-.22-.644c0-.333.17-.633.427-.811A13.333 13.333 0 018.333 5a3.333 3.333 0 00-2.778-1.667z" clip-rule="evenodd" /></svg></span>
+                        <span class="sidebar-link-text">Ride History</span>
+                    </a>
+                </div>
+            </details>
+
+            <!-- Settings -->
+            <a href="#" class="sidebar-link flex items-center p-3 rounded-lg mt-4" data-pane="settings" title="Settings">
+                <span class="icon-outline"><svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924-1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.096 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg></span>
+                <span class="icon-solid"><svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.49 3.17a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 11.414V16a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-4.586l.293.293a1 1 0 001.414-1.414l-7-7z" clip-rule="evenodd" /></svg></span>
                 <span class="sidebar-link-text">Settings</span>
             </a>
         </nav>
         <div class="p-4 border-t border-gray-700 mt-auto">
             <div class="flex items-center justify-between">
-                <div class="flex items-center">
-                    <img src="/static/img/default_avatar.png" class="h-10 w-10 rounded-full object-cover flex-shrink-0"
-                        alt="Dispatcher">
-                    <div class="ml-3 user-info">
-                        <p class="text-sm font-semibold text-white">Dispatcher</p>
-                        <a href="#" class="text-xs text-red-400 hover:underline">Logout</a>
-                    </div>
-                </div>
-                <div class="flex items-center gap-4">
-                    <div id="notification-bell" class="relative cursor-pointer">
-                        <svg class="h-6 w-6 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                        </svg>
-                        <div id="notification-badge" class="notification-badge hidden">0</div>
-                    </div>
-                    <label for="dark-mode-toggle" class="cursor-pointer">
-                        <input type="checkbox" id="dark-mode-toggle" class="hidden">
-                        <span id="dark-mode-icon">☀️</span>
-                    </label>
+                <div class="flex items-center"><img src="/static/img/default_avatar.png" class="h-10 w-10 rounded-full object-cover flex-shrink-0" alt="Dispatcher"><div class="ml-3 user-info"><p class="text-sm font-semibold text-white">Dispatcher</p><a href="#" class="text-xs text-red-400 hover:underline">Logout</a></div></div>
+                <div class="flex items-center gap-4 relative">
+                    <div id="notification-bell" class="relative cursor-pointer"><svg class="h-6 w-6 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg><div id="notification-badge" class="notification-badge hidden">0</div></div>
+                    <div id="notification-dropdown" class="hidden"></div>
+                    <label for="dark-mode-toggle" class="cursor-pointer"><input type="checkbox" id="dark-mode-toggle" class="hidden"><span id="dark-mode-icon">☀️</span></label>
                 </div>
             </div>
         </div>
@@ -401,170 +245,89 @@
         <div id="dashboard-pane" class="pane active">
             <h2 class="text-3xl font-bold text-primary mb-6">Dashboard</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <div class="card p-6 rounded-lg shadow">
-                    <p class="text-sm text-secondary">Total Revenue</p>
-                    <p id="stat-revenue" class="text-3xl font-bold text-green-500">0 ETB</p>
-                </div>
-                <div class="card p-6 rounded-lg shadow">
-                    <p class="text-sm text-secondary">Total Rides</p>
-                    <p id="stat-rides" class="text-3xl font-bold text-blue-500">0</p>
-                </div>
-                <div class="card p-6 rounded-lg shadow">
-                    <p class="text-sm text-secondary">Drivers Online</p>
-                    <p id="stat-drivers" class="text-3xl font-bold text-yellow-500">0</p>
-                </div>
-                <div class="card p-6 rounded-lg shadow">
-                    <p class="text-sm text-secondary">Pending Requests</p>
-                    <p id="stat-pending" class="text-3xl font-bold text-red-500">0</p>
-                </div>
+                <div class="card p-6 rounded-lg shadow"><p class="text-sm text-secondary">Total Revenue</p><p id="stat-revenue" class="text-3xl font-bold text-green-500">0 ETB</p></div>
+                <div class="card p-6 rounded-lg shadow"><p class="text-sm text-secondary">Total Rides</p><p id="stat-rides" class="text-3xl font-bold text-blue-500">0</p></div>
+                <div class="card p-6 rounded-lg shadow"><p class="text-sm text-secondary">Drivers Online</p><p id="stat-drivers" class="text-3xl font-bold text-yellow-500">0</p></div>
+                <div class="card p-6 rounded-lg shadow"><p class="text-sm text-secondary">Pending Requests</p><p id="stat-pending" class="text-3xl font-bold text-red-500">0</p></div>
             </div>
             <div class="grid grid-cols-1 lg:grid-cols-5 gap-8 mb-8">
-                <div class="lg:col-span-3 card p-6 rounded-lg shadow">
-                    <h3 class="font-semibold mb-4 text-primary">Live Ride Requests</h3>
-                    <div id="dashboard-map" class="h-96 w-full rounded"></div>
-                </div>
+                <div class="lg:col-span-3 card p-6 rounded-lg shadow"><h3 class="font-semibold mb-4 text-primary">Live Ride Requests Map</h3><div id="dashboard-map" class="h-96 w-full rounded"></div></div>
                 <div class="lg:col-span-2 card p-6 rounded-lg shadow">
-                    <h3 class="font-semibold mb-4 text-primary">Pending Rides</h3>
-                    <div id="pending-rides-list" class="space-y-3 overflow-y-auto h-96"></div>
+                     <div class="flex justify-between items-center mb-4">
+                         <h3 class="font-semibold text-primary">Pending Rides</h3>
+                         <a href="#" class="text-sm text-indigo-600 font-semibold hover:underline" onclick="showPane('pending-requests'); return false;">View All</a>
+                    </div>
+                    <div id="pending-rides-summary-list" class="space-y-3 overflow-y-auto h-96"></div>
                 </div>
             </div>
         </div>
 
-        <div id="analytics-pane" class="pane">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-3xl font-bold text-primary">Data & Insights</h2><button id="go-to-reports-btn"
-                    class="px-4 py-2 text-sm font-semibold rounded-md bg-indigo-600 text-white">Go to Reports</button>
+        <div id="pending-requests-pane" class="pane">
+            <h2 class="text-3xl font-bold text-primary mb-6">Pending Requests</h2>
+            <div class="card p-6 rounded-lg shadow">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-semibold text-primary">All Pending Ride Requests</h3>
+                </div>
+               <div id="pending-rides-container" class="space-y-3 overflow-y-auto"></div>
             </div>
+        </div>
+        
+        <div id="analytics-pane" class="pane">
+            <div class="flex justify-between items-center mb-6"><h2 class="text-3xl font-bold text-primary">Data & Insights</h2><button id="go-to-reports-btn" class="px-4 py-2 text-sm font-semibold rounded-md bg-indigo-600 text-white">Go to Reports</button></div>
             <div class="card p-4 rounded-lg shadow mb-6">
                 <div id="analytics-filters" class="flex flex-wrap items-center gap-x-6 gap-y-2">
                     <h3 class="text-lg font-semibold text-primary">Filter by Date</h3>
                     <div class="flex items-center gap-2" id="analytics-period-btns">
-                        <button data-period="today"
-                            class="analytics-filter-btn px-3 py-1.5 text-sm font-semibold rounded-md bg-gray-200">Today</button>
-                        <button data-period="week"
-                            class="analytics-filter-btn px-3 py-1.5 text-sm font-semibold rounded-md bg-gray-200">This
-                            Week</button>
-                        <button data-period="month"
-                            class="analytics-filter-btn px-3 py-1.5 text-sm font-semibold rounded-md bg-gray-200">This
-                            Month</button>
-                        <button data-period="all"
-                            class="analytics-filter-btn px-3 py-1.5 text-sm font-semibold rounded-md bg-gray-200">All
-                            Time</button>
+                        <button data-period="today" class="analytics-filter-btn px-3 py-1.5 text-sm font-semibold rounded-md bg-gray-200">Today</button>
+                        <button data-period="week" class="analytics-filter-btn px-3 py-1.5 text-sm font-semibold rounded-md bg-gray-200">This Week</button>
+                        <button data-period="month" class="analytics-filter-btn px-3 py-1.5 text-sm font-semibold rounded-md bg-gray-200">This Month</button>
+                        <button data-period="all" class="analytics-filter-btn px-3 py-1.5 text-sm font-semibold rounded-md bg-gray-200">All Time</button>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <input type="date" id="start-date-input" class="border p-1.5 rounded-md text-sm"><span
-                            class="text-gray-500">to</span><input type="date" id="end-date-input"
-                            class="border p-1.5 rounded-md text-sm">
-                        <button id="custom-range-btn"
-                            class="px-3 py-1.5 text-sm font-semibold rounded-md bg-indigo-600 text-white">Apply</button>
-                    </div>
+                    <div class="flex items-center gap-2"><input type="date" id="start-date-input" class="border p-1.5 rounded-md text-sm"><span class="text-gray-500">to</span><input type="date" id="end-date-input" class="border p-1.5 rounded-md text-sm"><button id="custom-range-btn" class="px-3 py-1.5 text-sm font-semibold rounded-md bg-indigo-600 text-white">Apply</button></div>
                 </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-                <div class="kpi-card card rounded-lg shadow">
-                    <p class="kpi-title">Rides Completed</p>
-                    <p id="kpi-rides-completed" class="kpi-value" style="color: var(--chart-green);">0</p>
-                    <div id="kpi-rides-trend" class="kpi-trend">--</div>
-                </div>
-                <div class="kpi-card card rounded-lg shadow">
-                    <p class="kpi-title">Active Rides</p>
-                    <p id="kpi-active-rides-now" class="kpi-value flex items-center" style="color: var(--chart-blue);">0
-                        <span class="ml-2 w-3 h-3 bg-[--chart-blue] rounded-full live-pulse"></span></p>
-                    <div class="kpi-trend opacity-0">--</div>
-                </div>
-                <div class="kpi-card card rounded-lg shadow">
-                    <p class="kpi-title">Rides Canceled</p>
-                    <p id="kpi-rides-canceled" class="kpi-value" style="color: var(--chart-red);">0</p>
-                    <div class="kpi-trend opacity-0">--</div>
-                </div>
-                <div class="kpi-card card rounded-lg shadow">
-                    <p class="kpi-title">Total Revenue</p>
-                    <p id="kpi-total-revenue" class="kpi-value" style="color: var(--chart-purple);">0</p>
-                    <div id="kpi-revenue-trend" class="kpi-trend">--</div>
-                </div>
-                <div class="kpi-card card rounded-lg shadow">
-                    <p class="kpi-title">Average Fare</p>
-                    <p id="kpi-avg-fare" class="kpi-value" style="color: var(--chart-orange);">0</p>
-                    <div class="kpi-trend opacity-0">--</div>
-                </div>
+                <div class="kpi-card card rounded-lg shadow"><p class="kpi-title">Rides Completed</p><p id="kpi-rides-completed" class="kpi-value" style="color: var(--chart-green);">0</p><div id="kpi-rides-trend" class="kpi-trend">--</div></div>
+                <div class="kpi-card card rounded-lg shadow"><p class="kpi-title">Active Rides</p><p id="kpi-active-rides-now" class="kpi-value flex items-center" style="color: var(--chart-blue);">0 <span class="ml-2 w-3 h-3 bg-[--chart-blue] rounded-full live-pulse"></span></p><div class="kpi-trend opacity-0">--</div></div>
+                <div class="kpi-card card rounded-lg shadow"><p class="kpi-title">Rides Canceled</p><p id="kpi-rides-canceled" class="kpi-value" style="color: var(--chart-red);">0</p><div class="kpi-trend opacity-0">--</div></div>
+                <div class="kpi-card card rounded-lg shadow"><p class="kpi-title">Total Revenue</p><p id="kpi-total-revenue" class="kpi-value" style="color: var(--chart-purple);">0</p><div id="kpi-revenue-trend" class="kpi-trend">--</div></div>
+                <div class="kpi-card card rounded-lg shadow"><p class="kpi-title">Average Fare</p><p id="kpi-avg-fare" class="kpi-value" style="color: var(--chart-orange);">0</p><div class="kpi-trend opacity-0">--</div></div>
             </div>
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div class="lg:col-span-2 card p-6 rounded-lg shadow">
-                    <h3 class="font-semibold mb-4 text-primary">Revenue Over Time</h3>
-                    <div class="relative h-96"><canvas id="revenue-over-time-chart"></canvas></div>
-                </div>
+                <div class="lg:col-span-2 card p-6 rounded-lg shadow"><h3 class="font-semibold mb-4 text-primary">Revenue Over Time</h3><div class="relative h-96"><canvas id="revenue-over-time-chart"></canvas></div></div>
                 <div class="space-y-8">
-                    <div class="card p-6 rounded-lg shadow">
-                        <h3 class="font-semibold mb-4 text-primary">Vehicle Distribution</h3>
-                        <div class="relative h-40"><canvas id="vehicle-dist-chart"></canvas></div>
-                    </div>
-                    <div class="card p-6 rounded-lg shadow">
-                        <h3 class="font-semibold mb-4 text-primary">Payment Methods</h3>
-                        <div class="relative h-40"><canvas id="payment-dist-chart"></canvas></div>
-                    </div>
+                    <div class="card p-6 rounded-lg shadow"><h3 class="font-semibold mb-4 text-primary">Vehicle Distribution</h3><div class="relative h-40"><canvas id="vehicle-dist-chart"></canvas></div></div>
+                    <div class="card p-6 rounded-lg shadow"><h3 class="font-semibold mb-4 text-primary">Payment Methods</h3><div class="relative h-40"><canvas id="payment-dist-chart"></canvas></div></div>
                 </div>
             </div>
-            <div class="card p-6 rounded-lg shadow mt-8">
-                <h3 class="font-semibold text-primary mb-4">Top 5 Drivers This Week</h3>
-                <div id="top-drivers-list" class="space-y-3"></div>
-            </div>
+            <div class="card p-6 rounded-lg shadow mt-8"><h3 class="font-semibold text-primary mb-4">Top 5 Drivers This Week</h3><div id="top-drivers-list" class="space-y-3"></div></div>
         </div>
 
         <div id="inbox-pane" class="pane">
             <h2 class="text-3xl font-bold text-primary mb-6">Passenger Feedback Inbox</h2>
-            <div class="card p-6 rounded-lg shadow">
-                <p class="text-sm text-secondary mb-4">View all ratings, comments, and reports from passengers here.</p>
-                <div id="feedback-list" class="space-y-4"></div>
-            </div>
+            <div class="card p-6 rounded-lg shadow"><p class="text-sm text-secondary mb-4">View all ratings, comments, and reports from passengers here.</p><div id="feedback-list" class="space-y-4"></div></div>
         </div>
 
         <div id="reports-pane" class="pane">
             <h2 class="text-3xl font-bold text-primary mb-6">Export Reports</h2>
             <div class="card p-6 rounded-lg shadow max-w-2xl mx-auto">
-                <h3 class="text-xl font-semibold mb-2 text-primary">Generate Analytics Report</h3>
-                <p class="text-secondary mb-4">Export a detailed report of rides, revenue, and performance metrics for a
-                    specific date range.</p>
+                <h3 class="text-xl font-semibold mb-2 text-primary">Generate Analytics Report</h3><p class="text-secondary mb-4">Export a detailed report of rides, revenue, and performance metrics for a specific date range.</p>
                 <div class="p-4 rounded-lg bg-[--main-bg] border border-[--border-color]">
-                    <div class="flex flex-wrap items-center gap-x-6 gap-y-2">
+                     <div class="flex flex-wrap items-center gap-x-6 gap-y-2">
                         <h3 class="text-md font-semibold text-primary">1. Select Date Range</h3>
                         <div class="flex items-center gap-2" id="report-period-btns">
-                            <button data-period="today"
-                                class="analytics-filter-btn px-3 py-1.5 text-sm font-semibold rounded-md bg-gray-200">Today</button>
-                            <button data-period="week"
-                                class="analytics-filter-btn px-3 py-1.5 text-sm font-semibold rounded-md bg-gray-200">This
-                                Week</button>
-                            <button data-period="month"
-                                class="analytics-filter-btn px-3 py-1.5 text-sm font-semibold rounded-md bg-gray-200">This
-                                Month</button>
-                            <button data-period="all"
-                                class="analytics-filter-btn px-3 py-1.5 text-sm font-semibold rounded-md bg-gray-200 active-filter">All
-                                Time</button>
+                            <button data-period="today" class="analytics-filter-btn px-3 py-1.5 text-sm font-semibold rounded-md bg-gray-200">Today</button>
+                            <button data-period="week" class="analytics-filter-btn px-3 py-1.5 text-sm font-semibold rounded-md bg-gray-200">This Week</button>
+                            <button data-period="month" class="analytics-filter-btn px-3 py-1.5 text-sm font-semibold rounded-md bg-gray-200">This Month</button>
+                            <button data-period="all" class="analytics-filter-btn px-3 py-1.5 text-sm font-semibold rounded-md bg-gray-200 active-filter">All Time</button>
                         </div>
-                        <div class="flex items-center gap-2"><input type="date" id="report-start-date"
-                                class="border p-1.5 rounded-md text-sm"><span class="text-gray-500">to</span><input
-                                type="date" id="report-end-date" class="border p-1.5 rounded-md text-sm"><button
-                                id="report-custom-range-btn"
-                                class="px-3 py-1.5 text-sm font-semibold rounded-md bg-indigo-600 text-white">Apply</button>
-                        </div>
+                        <div class="flex items-center gap-2"><input type="date" id="report-start-date" class="border p-1.5 rounded-md text-sm"><span class="text-gray-500">to</span><input type="date" id="report-end-date" class="border p-1.5 rounded-md text-sm"><button id="report-custom-range-btn" class="px-3 py-1.5 text-sm font-semibold rounded-md bg-indigo-600 text-white">Apply</button></div>
                     </div>
                     <div class="mt-6">
-                        <h3 class="text-md font-semibold text-primary mb-2">2. Choose Format & Download</h3>
-                        <div class="flex justify-start space-x-4">
-                            <button id="export-pdf-btn"
-                                class="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-md bg-red-600 text-white"><svg
-                                    xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20"
-                                    fill="currentColor">
-                                    <path fill-rule="evenodd"
-                                        d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm.5 8.106a.5.5 0 01.5-.5h2a.5.5 0 01.5.5v3.563a.5.5 0 01-.5.5h-2a.5.5 0 01-.5-.5V12.106zM7 7.5a.5.5 0 00-.5.5v2.063a.5.5 0 101 0V8a.5.5 0 00-.5-.5H7zm4 0a.5.5 0 00-.5.5v6.063a.5.5 0 101 0V8a.5.5 0 00-.5-.5h-1zm-1.5.5a.5.5 0 01.5-.5h2a.5.5 0 01.5.5v2.063a.5.5 0 11-1 0V8.53a.5.5 0 010-.03V8a.5.5 0 01.5-.5z"
-                                        clip-rule="evenodd" />
-                                </svg>Download PDF</button>
-                            <button id="export-excel-btn"
-                                class="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-md bg-green-600 text-white"><svg
-                                    xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20"
-                                    fill="currentColor">
-                                    <path
-                                        d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm3.5 1a.5.5 0 00-.5.5v1.293l3.5 3.5 3.5-3.5V6.5a.5.5 0 00-1 0v.293L10 9.293 6.5 5.793V6.5a.5.5 0 00-.5-.5h-1z" />
-                                </svg>Download Excel</button>
+                         <h3 class="text-md font-semibold text-primary mb-2">2. Choose Format & Download</h3>
+                         <div class="flex justify-start space-x-4">
+                            <button id="export-pdf-btn" class="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-md bg-red-600 text-white"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm.5 8.106a.5.5 0 01.5-.5h2a.5.5 0 01.5.5v3.563a.5.5 0 01-.5.5h-2a.5.5 0 01-.5-.5V12.106zM7 7.5a.5.5 0 00-.5.5v2.063a.5.5 0 101 0V8a.5.5 0 00-.5-.5H7zm4 0a.5.5 0 00-.5.5v6.063a.5.5 0 101 0V8a.5.5 0 00-.5-.5h-1zm-1.5.5a.5.5 0 01.5-.5h2a.5.5 0 01.5.5v2.063a.5.5 0 11-1 0V8.53a.5.5 0 010-.03V8a.5.5 0 01.5-.5z" clip-rule="evenodd" /></svg>Download PDF</button>
+                            <button id="export-excel-btn" class="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-md bg-green-600 text-white"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm3.5 1a.5.5 0 00-.5.5v1.293l3.5 3.5 3.5-3.5V6.5a.5.5 0 00-1 0v.293L10 9.293 6.5 5.793V6.5a.5.5 0 00-.5-.5h-1z" /></svg>Download Excel</button>
                         </div>
                     </div>
                 </div>
@@ -573,79 +336,24 @@
 
         <div id="active-rides-pane" class="pane">
             <h2 class="text-3xl font-bold text-primary mb-6">Active Rides Management</h2>
-            <div class="card p-6 rounded-lg shadow">
-                <table class="w-full text-left">
-                    <thead>
-                        <tr class="border-b border-border">
-                            <th class="p-2">Passenger</th>
-                            <th>Driver</th>
-                            <th>Destination</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="active-rides-table-body"></tbody>
-                </table>
-            </div>
+            <div class="card p-6 rounded-lg shadow"><table class="w-full text-left"><thead><tr class="border-b border-border"><th class="p-2">Passenger</th><th>Driver</th><th>Destination</th><th>Status</th><th>Actions</th></tr></thead><tbody id="active-rides-table-body"></tbody></table></div>
         </div>
 
         <div id="drivers-pane" class="pane">
             <h2 class="text-3xl font-bold text-primary mb-6">Driver Management</h2>
             <div class="card p-6 rounded-lg shadow">
                 <div class="flex justify-between items-center mb-4">
-                    <div class="flex items-center gap-4"><input type="text" id="driver-search-input"
-                            placeholder="Search by name, phone, or ID..." class="border p-2 rounded-md w-64"><select
-                            id="driver-status-filter" class="border p-2 rounded-md">
-                            <option value="All">All Statuses</option>
-                            <option value="Available">Available</option>
-                            <option value="On Trip">On Trip</option>
-                            <option value="Offline">Offline</option>
-                        </select></div>
-                    <button id="add-driver-btn"
-                        class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold">Add New
-                        Driver</button>
+                    <div class="flex items-center gap-4"><input type="text" id="driver-search-input" placeholder="Search by name, phone, or ID..." class="border p-2 rounded-md w-64"><select id="driver-status-filter" class="border p-2 rounded-md"><option value="All">All Statuses</option><option value="Available">Available</option><option value="On Trip">On Trip</option><option value="Offline">Offline</option></select></div>
+                    <button id="add-driver-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold">Add New Driver</button>
                 </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left">
-                        <thead>
-                            <tr class="border-b border-border">
-                                <th class="p-2">ID</th>
-                                <th>Name</th>
-                                <th>Contact</th>
-                                <th>Vehicle</th>
-                                <th>Status</th>
-                                <th>Rating</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="drivers-table-body"></tbody>
-                    </table>
-                </div>
+                <div class="overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b border-border"><th class="p-2">ID</th><th>Name</th><th>Contact</th><th>Vehicle</th><th>Status</th><th>Rating</th><th>Actions</th></tr></thead><tbody id="drivers-table-body"></tbody></table></div>
             </div>
         </div>
         <div id="rides-pane" class="pane">
             <h2 class="text-3xl font-bold text-primary mb-6">Ride History</h2>
             <div class="card p-6 rounded-lg shadow">
-                <div class="flex justify-between items-center mb-4"><input type="text" id="ride-history-search"
-                        placeholder="Search by passenger or driver..." class="border p-2 rounded w-1/3">
-                    <div><button id="ride-history-prev" class="px-3 py-1 bg-gray-200 rounded-md">&lt; Prev</button><span
-                            id="ride-history-page-info" class="mx-2">Page 1</span><button id="ride-history-next"
-                            class="px-3 py-1 bg-gray-200 rounded-md">Next &gt;</button></div>
-                </div>
-                <table class="w-full text-left">
-                    <thead>
-                        <tr class="border-b border-border">
-                            <th class="p-2">ID</th>
-                            <th>Passenger</th>
-                            <th>Driver</th>
-                            <th>Fare</th>
-                            <th>Status</th>
-                            <th>Rating</th>
-                            <th>Date</th>
-                        </tr>
-                    </thead>
-                    <tbody id="rides-history-table-body"></tbody>
-                </table>
+                 <div class="flex justify-between items-center mb-4"><input type="text" id="ride-history-search" placeholder="Search by passenger or driver..." class="border p-2 rounded w-1/3"><div><button id="ride-history-prev" class="px-3 py-1 bg-gray-200 rounded-md">&lt; Prev</button><span id="ride-history-page-info" class="mx-2">Page 1</span><button id="ride-history-next" class="px-3 py-1 bg-gray-200 rounded-md">Next &gt;</button></div></div>
+                <table class="w-full text-left"><thead><tr class="border-b border-border"><th class="p-2">ID</th><th>Passenger</th><th>Driver</th><th>Fare</th><th>Status</th><th>Rating</th><th>Date</th></tr></thead><tbody id="rides-history-table-body"></tbody></table>
             </div>
         </div>
         <div id="settings-pane" class="pane">
@@ -653,12 +361,9 @@
             <div class="card p-6 rounded-lg shadow max-w-lg">
                 <h3 class="text-xl font-semibold mb-4 text-primary">Fare Configuration</h3>
                 <form id="settings-form" class="space-y-4">
-                    <div><label for="base-fare" class="block">Base Fare (ETB)</label><input type="number" step="any"
-                            name="base_fare" class="border p-2 rounded-md w-full"></div>
-                    <div><label for="per-km-bajaj" class="block">Per/KM Rate - Bajaj (ETB)</label><input type="number"
-                            step="any" name="per_km_bajaj" class="border p-2 rounded-md w-full"></div>
-                    <div><label for="per-km-car" class="block">Per/KM Rate - Car (ETB)</label><input type="number"
-                            step="any" name="per_km_car" class="border p-2 rounded-md w-full"></div>
+                    <div><label for="base-fare" class="block">Base Fare (ETB)</label><input type="number" step="any" name="base_fare" class="border p-2 rounded-md w-full"></div>
+                    <div><label for="per-km-bajaj" class="block">Per/KM Rate - Bajaj (ETB)</label><input type="number" step="any" name="per_km_bajaj" class="border p-2 rounded-md w-full"></div>
+                    <div><label for="per-km-car" class="block">Per/KM Rate - Car (ETB)</label><input type="number" step="any" name="per_km_car" class="border p-2 rounded-md w-full"></div>
                     <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">Save Settings</button>
                 </form>
             </div>
@@ -672,40 +377,16 @@
     <div class="modal-content p-8 rounded-lg shadow-xl z-10 w-full max-w-md">
         <h2 class="text-2xl font-bold mb-6">Add New Driver</h2>
         <form id="add-driver-form" enctype="multipart/form-data" class="max-h-[75vh] overflow-y-auto pr-4 space-y-4">
-            <div><label class="block text-sm font-medium">Name</label><input type="text" name="name" required
-                    class="mt-1 block w-full p-2 border rounded-md"></div>
-            <div><label class="block text-sm font-medium">Phone</label><input type="text" name="phone_number" required
-                    class="mt-1 block w-full p-2 border rounded-md"></div>
-            <div><label class="block text-sm font-medium">Vehicle Type</label><select name="vehicle_type" required
-                    class="mt-1 block w-full p-2 border rounded-md">
-                    <option value="Bajaj">Bajaj</option>
-                    <option value="Car">Car</option>
-                    <option value="Minibus">Minibus</option>
-                </select></div>
-            <div><label class="block text-sm font-medium">Vehicle Details (e.g., Blue Bajaj)</label><input type="text"
-                    name="vehicle_details" required class="mt-1 block w-full p-2 border rounded-md"></div>
-            <div><label class="block text-sm font-medium">Plate Number</label><input type="text"
-                    name="vehicle_plate_number" required class="mt-1 block w-full p-2 border rounded-md"></div>
-            <div><label class="block text-sm font-medium">License Info</label><input type="text" name="license_info"
-                    required class="mt-1 block w-full p-2 border rounded-md"></div>
-            <div><label class="block text-sm font-medium mb-1">Profile Picture (Optional)</label><input type="file"
-                    name="profile_picture" id="add-profile-picture" class="hidden" accept="image/*"
-                    onchange="updateFilenameLabel(this.id, 'add-profile-filename')"><label for="add-profile-picture"
-                    class="file-input-label">Choose File</label><span id="add-profile-filename"
-                    class="file-input-filename">No file chosen</span></div>
-            <div><label class="block text-sm font-medium mb-1">License Document (Optional)</label><input type="file"
-                    name="license_document" id="add-license-document" class="hidden" accept=".pdf,.jpg,.jpeg,.png"
-                    onchange="updateFilenameLabel(this.id, 'add-license-filename')"><label for="add-license-document"
-                    class="file-input-label">Choose File</label><span id="add-license-filename"
-                    class="file-input-filename">No file chosen</span></div>
-            <div><label class="block text-sm font-medium mb-1">Vehicle Document (Optional)</label><input type="file"
-                    name="vehicle_document" id="add-vehicle-document" class="hidden" accept=".pdf,.jpg,.jpeg,.png"
-                    onchange="updateFilenameLabel(this.id, 'add-vehicle-filename')"><label for="add-vehicle-document"
-                    class="file-input-label">Choose File</label><span id="add-vehicle-filename"
-                    class="file-input-filename">No file chosen</span></div>
-            <div class="flex justify-end space-x-4 pt-4"><button type="button"
-                    class="cancel-modal-btn px-4 py-2 bg-gray-200 rounded-lg">Cancel</button><button type="submit"
-                    class="px-4 py-2 bg-indigo-600 text-white rounded-lg">Save</button></div>
+            <div><label class="block text-sm font-medium">Name</label><input type="text" name="name" required class="mt-1 block w-full p-2 border rounded-md"></div>
+            <div><label class="block text-sm font-medium">Phone</label><input type="text" name="phone_number" required class="mt-1 block w-full p-2 border rounded-md"></div>
+            <div><label class="block text-sm font-medium">Vehicle Type</label><select name="vehicle_type" required class="mt-1 block w-full p-2 border rounded-md"><option value="Bajaj">Bajaj</option><option value="Car">Car</option><option value="Minibus">Minibus</option></select></div>
+            <div><label class="block text-sm font-medium">Vehicle Details (e.g., Blue Bajaj)</label><input type="text" name="vehicle_details" required class="mt-1 block w-full p-2 border rounded-md"></div>
+            <div><label class="block text-sm font-medium">Plate Number</label><input type="text" name="vehicle_plate_number" required class="mt-1 block w-full p-2 border rounded-md"></div>
+            <div><label class="block text-sm font-medium">License Info</label><input type="text" name="license_info" required class="mt-1 block w-full p-2 border rounded-md"></div>
+            <div><label class="block text-sm font-medium mb-1">Profile Picture (Optional)</label><input type="file" name="profile_picture" id="add-profile-picture" class="hidden" accept="image/*" onchange="updateFilenameLabel(this.id, 'add-profile-filename')"><label for="add-profile-picture" class="file-input-label">Choose File</label><span id="add-profile-filename" class="file-input-filename">No file chosen</span></div>
+            <div><label class="block text-sm font-medium mb-1">License Document (Optional)</label><input type="file" name="license_document" id="add-license-document" class="hidden" accept=".pdf,.jpg,.jpeg,.png" onchange="updateFilenameLabel(this.id, 'add-license-filename')"><label for="add-license-document" class="file-input-label">Choose File</label><span id="add-license-filename" class="file-input-filename">No file chosen</span></div>
+            <div><label class="block text-sm font-medium mb-1">Vehicle Document (Optional)</label><input type="file" name="vehicle_document" id="add-vehicle-document" class="hidden" accept=".pdf,.jpg,.jpeg,.png" onchange="updateFilenameLabel(this.id, 'add-vehicle-filename')"><label for="add-vehicle-document" class="file-input-label">Choose File</label><span id="add-vehicle-filename" class="file-input-filename">No file chosen</span></div>
+            <div class="flex justify-end space-x-4 pt-4"><button type="button" class="cancel-modal-btn px-4 py-2 bg-gray-200 rounded-lg">Cancel</button><button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">Save</button></div>
         </form>
     </div>
 </div>
@@ -716,40 +397,16 @@
         <h2 class="text-2xl font-bold mb-6">Edit Driver</h2>
         <form id="edit-driver-form" enctype="multipart/form-data" class="max-h-[75vh] overflow-y-auto pr-4 space-y-4">
             <input type="hidden" name="id">
-            <div><label class="block text-sm font-medium">Name</label><input type="text" name="name" required
-                    class="mt-1 block w-full p-2 border rounded-md"></div>
-            <div><label class="block text-sm font-medium">Phone</label><input type="text" name="phone_number" required
-                    class="mt-1 block w-full p-2 border rounded-md"></div>
-            <div><label class="block text-sm font-medium">Vehicle Type</label><select name="vehicle_type" required
-                    class="mt-1 block w-full p-2 border rounded-md">
-                    <option value="Bajaj">Bajaj</option>
-                    <option value="Car">Car</option>
-                    <option value="Minibus">Minibus</option>
-                </select></div>
-            <div><label class="block text-sm font-medium">Vehicle Details</label><input type="text"
-                    name="vehicle_details" required class="mt-1 block w-full p-2 border rounded-md"></div>
-            <div><label class="block text-sm font-medium">Plate Number</label><input type="text"
-                    name="vehicle_plate_number" required class="mt-1 block w-full p-2 border rounded-md"></div>
-            <div><label class="block text-sm font-medium">License Info</label><input type="text" name="license_info"
-                    required class="mt-1 block w-full p-2 border rounded-md"></div>
-            <div><label class="block text-sm font-medium mb-1">New Profile Picture (Optional)</label><input type="file"
-                    name="profile_picture" id="edit-profile-picture" class="hidden" accept="image/*"
-                    onchange="updateFilenameLabel(this.id, 'edit-profile-filename')"><label for="edit-profile-picture"
-                    class="file-input-label">Choose File</label><span id="edit-profile-filename"
-                    class="file-input-filename">No file chosen</span></div>
-            <div><label class="block text-sm font-medium mb-1">New License Document (Optional)</label><input type="file"
-                    name="license_document" id="edit-license-document" class="hidden" accept=".pdf,.jpg,.jpeg,.png"
-                    onchange="updateFilenameLabel(this.id, 'edit-license-filename')"><label for="edit-license-document"
-                    class="file-input-label">Choose File</label><span id="edit-license-filename"
-                    class="file-input-filename">No file chosen</span></div>
-            <div><label class="block text-sm font-medium mb-1">New Vehicle Document (Optional)</label><input type="file"
-                    name="vehicle_document" id="edit-vehicle-document" class="hidden" accept=".pdf,.jpg,.jpeg,.png"
-                    onchange="updateFilenameLabel(this.id, 'edit-vehicle-filename')"><label for="edit-vehicle-document"
-                    class="file-input-label">Choose File</label><span id="edit-vehicle-filename"
-                    class="file-input-filename">No file chosen</span></div>
-            <div class="flex justify-end space-x-4 pt-4"><button type="button"
-                    class="cancel-modal-btn px-4 py-2 bg-gray-200 rounded-lg">Cancel</button><button type="submit"
-                    class="px-4 py-2 bg-indigo-600 text-white rounded-lg">Save Changes</button></div>
+            <div><label class="block text-sm font-medium">Name</label><input type="text" name="name" required class="mt-1 block w-full p-2 border rounded-md"></div>
+            <div><label class="block text-sm font-medium">Phone</label><input type="text" name="phone_number" required class="mt-1 block w-full p-2 border rounded-md"></div>
+            <div><label class="block text-sm font-medium">Vehicle Type</label><select name="vehicle_type" required class="mt-1 block w-full p-2 border rounded-md"><option value="Bajaj">Bajaj</option><option value="Car">Car</option><option value="Minibus">Minibus</option></select></div>
+            <div><label class="block text-sm font-medium">Vehicle Details</label><input type="text" name="vehicle_details" required class="mt-1 block w-full p-2 border rounded-md"></div>
+            <div><label class="block text-sm font-medium">Plate Number</label><input type="text" name="vehicle_plate_number" required class="mt-1 block w-full p-2 border rounded-md"></div>
+            <div><label class="block text-sm font-medium">License Info</label><input type="text" name="license_info" required class="mt-1 block w-full p-2 border rounded-md"></div>
+            <div><label class="block text-sm font-medium mb-1">New Profile Picture (Optional)</label><input type="file" name="profile_picture" id="edit-profile-picture" class="hidden" accept="image/*" onchange="updateFilenameLabel(this.id, 'edit-profile-filename')"><label for="edit-profile-picture" class="file-input-label">Choose File</label><span id="edit-profile-filename" class="file-input-filename">No file chosen</span></div>
+            <div><label class="block text-sm font-medium mb-1">New License Document (Optional)</label><input type="file" name="license_document" id="edit-license-document" class="hidden" accept=".pdf,.jpg,.jpeg,.png" onchange="updateFilenameLabel(this.id, 'edit-license-filename')"><label for="edit-license-document" class="file-input-label">Choose File</label><span id="edit-license-filename" class="file-input-filename">No file chosen</span></div>
+            <div><label class="block text-sm font-medium mb-1">New Vehicle Document (Optional)</label><input type="file" name="vehicle_document" id="edit-vehicle-document" class="hidden" accept=".pdf,.jpg,.jpeg,.png" onchange="updateFilenameLabel(this.id, 'edit-vehicle-filename')"><label for="edit-vehicle-document" class="file-input-label">Choose File</label><span id="edit-vehicle-filename" class="file-input-filename">No file chosen</span></div>
+            <div class="flex justify-end space-x-4 pt-4"><button type="button" class="cancel-modal-btn px-4 py-2 bg-gray-200 rounded-lg">Cancel</button><button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">Save Changes</button></div>
         </form>
     </div>
 </div>
@@ -757,21 +414,15 @@
 <div id="delete-driver-modal" class="modal fixed inset-0 z-50 items-center justify-center hidden">
     <div class="absolute inset-0 bg-black opacity-50"></div>
     <div class="modal-content p-8 rounded-lg shadow-xl z-10 w-full max-w-sm text-center">
-        <h2 class="text-xl font-bold mb-2">Are you sure?</h2>
-        <p class="text-secondary mb-6">This will permanently delete the driver. This action cannot be undone.</p>
-        <div class="flex justify-center space-x-4"><button type="button"
-                class="cancel-modal-btn px-6 py-2 bg-gray-200 rounded-lg">Cancel</button><button id="confirm-delete-btn"
-                type="button" class="px-6 py-2 bg-red-600 text-white rounded-lg">Delete</button></div>
+        <h2 class="text-xl font-bold mb-2">Are you sure?</h2><p class="text-secondary mb-6">This will permanently delete the driver. This action cannot be undone.</p>
+        <div class="flex justify-center space-x-4"><button type="button" class="cancel-modal-btn px-6 py-2 bg-gray-200 rounded-lg">Cancel</button><button id="confirm-delete-btn" type="button" class="px-6 py-2 bg-red-600 text-white rounded-lg">Delete</button></div>
     </div>
 </div>
 
 <div id="driver-details-modal" class="modal fixed inset-0 z-50 items-center justify-center hidden overflow-y-auto">
     <div class="absolute inset-0 bg-black opacity-50"></div>
     <div class="modal-content p-8 rounded-lg shadow-xl z-10 w-full max-w-3xl my-8">
-        <div class="flex justify-between items-start">
-            <h2 class="text-2xl font-bold mb-4">Driver Details</h2><button type="button"
-                class="cancel-modal-btn -mt-2 -mr-2 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">&times;</button>
-        </div>
+        <div class="flex justify-between items-start"><h2 class="text-2xl font-bold mb-4">Driver Details</h2><button type="button" class="cancel-modal-btn -mt-2 -mr-2 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">&times;</button></div>
         <div id="driver-details-content" class="max-h-[75vh] overflow-y-auto pr-4"></div>
     </div>
 </div>
@@ -787,9 +438,9 @@
         let pendingRideMarkers = {}, routeLayers = {};
         let currentAnalyticsParams = 'period=week';
         let currentReportParams = 'period=all';
-        let allDrivers = [], allRidesHistory = [], allFeedback = [];
+        let allDrivers = [], allRidesHistory = [], allFeedback = [], allPendingRides = [], recentNotifications = [];
         let rideHistoryPage = 1, RIDES_PER_PAGE = 10, lastPendingCount = 0;
-        const notificationSound = new Audio("data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU" + Array(500).join("12345678"));
+        const notificationSound = new Audio("data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU"+Array(500).join("12345678"));
         const getCssVar = (varName) => getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
         const chartTextColor = () => getCssVar('--text-primary');
         let highlightedIcon = L.icon({ iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-yellow.png', shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png', iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41] });
@@ -797,13 +448,14 @@
 
         // --- HELPER FUNCTIONS ---
         const fetchData = async (endpoint, params = '') => { try { const r = await fetch(`${API_BASE_URL}/${endpoint}?${params}`, { cache: "no-store" }); if (!r.ok) throw new Error(`HTTP error ${r.status}`); return await r.json(); } catch (e) { console.error(`Fetch error for ${endpoint}:`, e); return null; } };
-        const postData = async (endpoint, data) => { try { const r = await fetch(`${API_BASE_URL}/${endpoint}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); if (!r.ok) throw new Error(`HTTP error ${r.status}`); return await r.json(); } catch (e) { console.error(`Post error for ${endpoint}:`, e); return null; } };
+        const postData = async (endpoint, data, method = 'POST') => { try { const r = await fetch(`${API_BASE_URL}/${endpoint}`, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); if (!r.ok) throw new Error(`HTTP error ${r.status}`); return await r.json(); } catch (e) { console.error(`Post error for ${endpoint}:`, e); return null; } };
         const postFormData = async (endpoint, formData) => { try { const r = await fetch(`${API_BASE_URL}/${endpoint}`, { method: 'POST', body: formData }); if (!r.ok) throw new Error(`HTTP error ${r.status}`); return await r.json(); } catch (e) { console.error(`Post Form error for ${endpoint}:`, e); return null; } };
         const showModal = (id) => { hideModals(); document.getElementById(id).classList.remove('hidden'); document.getElementById(id).classList.add('flex'); };
         const hideModals = () => document.querySelectorAll('.modal').forEach(m => { m.classList.add('hidden'); m.classList.remove('flex'); });
+        const getInitials = (name) => { const parts = name.split(' '); let initials = parts[0].charAt(0); if (parts.length > 1) { initials += parts[parts.length - 1].charAt(0); } return initials.toUpperCase(); };
 
         // --- UI & NAVIGATION ---
-        const showPane = (paneId) => { document.querySelectorAll('.pane').forEach(p => p.classList.remove('active')); document.getElementById(`${paneId}-pane`).classList.add('active'); document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active')); document.querySelector(`.sidebar-link[data-pane="${paneId}"]`).classList.add('active'); if (paneId === 'dashboard' && !dashboardMap) initDashboardMap(); if (paneId === 'analytics') updateAnalytics(); if (paneId === 'inbox') refreshFeedback(); if (dashboardMap) setTimeout(() => dashboardMap.invalidateSize(), 310); };
+        const showPane = (paneId) => { document.querySelectorAll('.pane').forEach(p => p.classList.remove('active')); document.getElementById(`${paneId}-pane`).classList.add('active'); document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active')); const activeLink = document.querySelector(`.sidebar-link[data-pane="${paneId}"]`); if(activeLink) { activeLink.classList.add('active'); } if (paneId === 'dashboard' && !dashboardMap) initDashboardMap(); if (paneId === 'analytics') updateAnalytics(); if (paneId === 'inbox') refreshFeedback(); if (dashboardMap) setTimeout(() => dashboardMap.invalidateSize(), 310); };
         document.querySelectorAll('.sidebar-link').forEach(link => { if (link.dataset.pane) { link.addEventListener('click', e => { e.preventDefault(); showPane(link.dataset.pane); }); } });
 
         // --- DARK MODE & SIDEBAR ---
@@ -819,7 +471,7 @@
         document.getElementById('add-driver-form').addEventListener('submit', async e => { e.preventDefault(); await postFormData('add-driver', new FormData(e.target)); hideModals(); e.target.reset(); refreshAllData(); });
         document.getElementById('edit-driver-form').addEventListener('submit', async e => { e.preventDefault(); const formData = new FormData(e.target); await postFormData(`update-driver/${formData.get('id')}`, formData); hideModals(); refreshAllData(); });
         document.getElementById('confirm-delete-btn').addEventListener('click', async e => { await postData('delete-driver', { driver_id: e.target.dataset.driverId }); hideModals(); refreshAllData(); });
-
+        
         // --- REPORTING & ANALYTICS FILTERS ---
         const setupFilterButtons = (containerId, callback) => { document.getElementById(containerId).addEventListener('click', e => { if (e.target.matches('.analytics-filter-btn')) { document.querySelectorAll(`#${containerId} .analytics-filter-btn`).forEach(btn => btn.classList.remove('active-filter')); e.target.classList.add('active-filter'); const period = `period=${e.target.dataset.period}`; callback(period); } }); };
         setupFilterButtons('analytics-period-btns', params => { currentAnalyticsParams = params; updateAnalytics(); });
@@ -831,19 +483,121 @@
         document.getElementById('go-to-reports-btn').addEventListener('click', () => showPane('reports'));
 
         // --- DATA RENDERING FUNCTIONS ---
-        const updateDashboardStats = stats => { if (stats) { ['total_revenue', 'total_rides', 'drivers_online', 'pending_requests'].forEach(key => { const el = document.getElementById(`stat-${key.split('_')[0]}`); if (el) el.textContent = `${stats[key]}` + (key === 'total_revenue' ? ' ETB' : ''); }); if (stats.pending_requests > lastPendingCount) { notificationSound.play(); } lastPendingCount = stats.pending_requests; document.getElementById('notification-badge').textContent = lastPendingCount; document.getElementById('notification-badge').classList.toggle('hidden', lastPendingCount === 0); } };
-        const updateAnalytics = async () => { const data = await fetchData('analytics-data', currentAnalyticsParams); if (data) { const { kpis, charts, performance } = data; document.getElementById('kpi-rides-completed').textContent = kpis.rides_completed; document.getElementById('kpi-active-rides-now').textContent = kpis.active_rides_now; document.getElementById('kpi-rides-canceled').textContent = kpis.rides_canceled; document.getElementById('kpi-total-revenue').textContent = kpis.total_revenue; document.getElementById('kpi-avg-fare').textContent = kpis.avg_fare.toFixed(2); const updateTrend = (elId, val) => { const el = document.getElementById(elId); el.textContent = `${val >= 0 ? '↑' : '↓'} ${Math.abs(val)}%`; el.className = `kpi-trend ${val >= 0 ? 'trend-up' : 'trend-down'}`; }; updateTrend('kpi-rides-trend', kpis.trends.rides); updateTrend('kpi-revenue-trend', kpis.trends.revenue); const createChart = (ctxId, chartVar, type, data, options) => { const ctx = document.getElementById(ctxId).getContext('2d'); if (window[chartVar]) window[chartVar].destroy(); window[chartVar] = new Chart(ctx, { type, data, options }); }; const commonOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: chartTextColor() } } } }; createChart('revenue-over-time-chart', 'revenueChart', 'bar', { labels: charts.revenue_over_time.labels, datasets: [{ label: 'Daily Revenue (ETB)', data: charts.revenue_over_time.data, backgroundColor: getCssVar('--chart-purple') }] }, { ...commonOptions, scales: { y: { beginAtZero: true, ticks: { color: chartTextColor() } }, x: { ticks: { color: chartTextColor() } } } }); createChart('vehicle-dist-chart', 'vehicleDistChart', 'doughnut', { labels: Object.keys(charts.vehicle_distribution), datasets: [{ data: Object.values(charts.vehicle_distribution), backgroundColor: [getCssVar('--chart-orange'), getCssVar('--chart-blue')] }] }, commonOptions); createChart('payment-dist-chart', 'paymentDistChart', 'doughnut', { labels: Object.keys(charts.payment_method_distribution), datasets: [{ data: Object.values(charts.payment_method_distribution), backgroundColor: [getCssVar('--chart-green'), getCssVar('--chart-yellow')] }] }, commonOptions); const topDriversList = document.getElementById('top-drivers-list'); topDriversList.innerHTML = ''; performance.top_drivers.forEach(d => { const div = document.createElement('div'); div.className = 'flex items-center justify-between p-2'; div.innerHTML = `<div class="flex items-center"><img src="/${d.avatar}" class="h-10 w-10 rounded-full mr-4"><div><p class="font-semibold">${d.name}</p><p class="text-xs text-secondary">${d.avg_rating} ★</p></div></div><p class="font-bold text-lg">${d.completed_rides} rides</p>`; topDriversList.appendChild(div); }); } };
-        const updatePendingRides = (rides, drivers) => { const list = document.getElementById('pending-rides-list'); list.innerHTML = ''; Object.values(pendingRideMarkers).forEach(m => dashboardMap?.removeLayer(m)); Object.values(routeLayers).forEach(l => dashboardMap?.removeLayer(l)); pendingRideMarkers = {}; routeLayers = {}; if (!rides?.length) { list.innerHTML = `<p class="text-gray-500 text-center p-4">No pending rides.</p>`; return; } rides.forEach(ride => { if (dashboardMap) { pendingRideMarkers[ride.id] = L.marker([ride.pickup_lat, ride.pickup_lon], { icon: defaultIcon }).addTo(dashboardMap).bindPopup(`Request #${ride.id}`); if (ride.dest_lat && ride.dest_lon) { pendingRideMarkers[`dest_${ride.id}`] = L.marker([ride.dest_lat, ride.dest_lon], { icon: L.icon({ iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png', iconSize: [25, 41], iconAnchor: [12, 41] }) }).addTo(dashboardMap).bindPopup("Destination"); drawRouteOnMap({ lat: ride.pickup_lat, lon: ride.pickup_lon }, { lat: ride.dest_lat, lon: ride.dest_lon }, ride.id); } } const rideEl = document.createElement('div'); rideEl.className = 'border-b pb-3 p-3 cursor-pointer'; rideEl.dataset.rideId = ride.id; const availableDrivers = drivers.filter(d => d.vehicle_type === ride.vehicle_type && d.status === 'Available'); const driverOptions = availableDrivers.length ? availableDrivers.map(d => `<option value="${d.id}">${d.name}</option>`).join('') : '<option disabled>No available drivers</option>'; rideEl.innerHTML = `<div class="flex justify-between"><p class="font-bold">${ride.user_name} (${ride.user_phone})</p><span class="font-bold">${ride.vehicle_type}</span></div><div class="text-xs space-y-1 mt-2"><p><strong>From:</strong> ${ride.pickup_address}</p><p><strong>To:</strong> ${ride.dest_address}</p><p><strong>Note:</strong> ${ride.note || 'None'}</p></div><div class="mt-2 flex"><select id="driver-select-${ride.id}" class="p-1 border rounded text-xs w-full">${driverOptions}</select><button class="assign-ride-btn ml-2 px-3 py-1 bg-blue-500 text-white text-xs rounded" data-ride-id="${ride.id}" ${!availableDrivers.length ? 'disabled' : ''}>Assign</button></div>`; list.appendChild(rideEl); }); };
-        const updateDriversTable = () => { const searchTerm = document.getElementById('driver-search-input').value.toLowerCase(); const statusFilter = document.getElementById('driver-status-filter').value; const filtered = allDrivers.filter(d => (d.name.toLowerCase().includes(searchTerm) || d.phone_number.includes(searchTerm) || (d.driver_uid && d.driver_uid.toLowerCase().includes(searchTerm))) && (statusFilter === 'All' || d.status === statusFilter)); const tbody = document.getElementById('drivers-table-body'); tbody.innerHTML = ''; if (!filtered.length) { tbody.innerHTML = '<tr><td colspan="7" class="text-center p-4">No drivers found.</td></tr>'; return; } filtered.forEach(d => { const row = tbody.insertRow(); row.innerHTML = `<td class="p-2 font-mono text-xs">${d.driver_uid || 'N/A'}</td><td class="flex items-center"><img src="/${d.profile_picture}" class="h-8 w-8 rounded-full mr-3" onerror="this.src='/static/img/default_avatar.png'">${d.name}</td><td><a href="tel:${d.phone_number}" class="text-blue-500">${d.phone_number}</a></td><td>${d.vehicle_type}</td><td><select class="driver-status-select status-select-${d.status.replace(' ', '-')}" data-driver-id="${d.id}">${['Available', 'On Trip', 'Offline'].map(s => `<option value="${s}" ${d.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select></td><td>${d.avg_rating.toFixed(1)} ★</td><td class="space-x-2"><button class="action-btn view" data-driver-id="${d.id}">👁️</button><button class="action-btn edit" data-driver-id="${d.id}">✏️</button><button class="action-btn delete" data-driver-id="${d.id}">🗑️</button></td>`; }); };
-        const updateActiveRidesTable = (rides) => { const tbody = document.getElementById('active-rides-table-body'); tbody.innerHTML = ''; if (!rides?.length) { tbody.innerHTML = '<tr><td colspan="5" class="text-center p-4">No active rides</td></tr>'; return; } rides.forEach(r => { const row = tbody.insertRow(); row.innerHTML = `<td class="p-2">${r.user_name}</td><td>${r.driver_name}</td><td class="text-xs max-w-xs truncate">${r.dest_address}</td><td><span class="status-badge status-${r.status.replace(' ', '-')}">${r.status}</span></td><td class="space-x-2"><button class="px-3 py-1 bg-green-500 text-white text-xs rounded complete-ride-btn" data-ride-id="${r.id}">Complete</button><button class="px-3 py-1 bg-yellow-500 text-white text-xs rounded reassign-ride-btn" data-ride-id="${r.id}">Re-assign</button></td>`; }); };
+        const updateBadges = (stats, unreadCount) => {
+            if (stats) {
+                const driversBadge = document.getElementById('drivers-badge');
+                driversBadge.textContent = stats.drivers_online;
+                driversBadge.classList.toggle('hidden', stats.drivers_online === 0);
+
+                const pendingBadge = document.getElementById('pending-requests-badge');
+                pendingBadge.textContent = stats.pending_requests;
+                pendingBadge.classList.toggle('hidden', stats.pending_requests === 0);
+            }
+            if (unreadCount !== undefined) {
+                const inboxBadge = document.getElementById('inbox-badge');
+                inboxBadge.textContent = unreadCount;
+                inboxBadge.classList.toggle('hidden', unreadCount === 0);
+            }
+        };
+        const updateDashboardStats = stats => { if (stats) { ['total_revenue', 'total_rides', 'drivers_online', 'pending_requests'].forEach(key => { const el = document.getElementById(`stat-${key.split('_')[0]}`); if(el) el.textContent = `${stats[key]}` + (key === 'total_revenue' ? ' ETB' : ''); }); if(stats.pending_requests > lastPendingCount) { notificationSound.play(); } lastPendingCount = stats.pending_requests; document.getElementById('notification-badge').textContent = lastPendingCount; document.getElementById('notification-badge').classList.toggle('hidden', lastPendingCount === 0); } };
+        const updateAnalytics = async () => { const data = await fetchData('analytics-data', currentAnalyticsParams); if(data) { const {kpis, charts, performance} = data; document.getElementById('kpi-rides-completed').textContent = kpis.rides_completed; document.getElementById('kpi-active-rides-now').textContent = kpis.active_rides_now; document.getElementById('kpi-rides-canceled').textContent = kpis.rides_canceled; document.getElementById('kpi-total-revenue').textContent = kpis.total_revenue; document.getElementById('kpi-avg-fare').textContent = kpis.avg_fare.toFixed(2); const updateTrend = (elId, val) => { const el = document.getElementById(elId); el.textContent = `${val >= 0 ? '↑' : '↓'} ${Math.abs(val)}%`; el.className = `kpi-trend ${val >= 0 ? 'trend-up' : 'trend-down'}`; }; updateTrend('kpi-rides-trend', kpis.trends.rides); updateTrend('kpi-revenue-trend', kpis.trends.revenue); const createChart = (ctxId, chartVar, type, data, options) => { const ctx = document.getElementById(ctxId).getContext('2d'); if(window[chartVar]) window[chartVar].destroy(); window[chartVar] = new Chart(ctx, { type, data, options }); }; const commonOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: chartTextColor() } } } }; createChart('revenue-over-time-chart', 'revenueChart', 'bar', { labels: charts.revenue_over_time.labels, datasets: [{ label: 'Daily Revenue (ETB)', data: charts.revenue_over_time.data, backgroundColor: getCssVar('--chart-purple') }] }, { ...commonOptions, scales: { y: { beginAtZero: true, ticks: { color: chartTextColor() } }, x: { ticks: { color: chartTextColor() } } } }); createChart('vehicle-dist-chart', 'vehicleDistChart', 'doughnut', { labels: Object.keys(charts.vehicle_distribution), datasets: [{ data: Object.values(charts.vehicle_distribution), backgroundColor: [getCssVar('--chart-orange'), getCssVar('--chart-blue')] }] }, commonOptions); createChart('payment-dist-chart', 'paymentDistChart', 'doughnut', { labels: Object.keys(charts.payment_method_distribution), datasets: [{ data: Object.values(charts.payment_method_distribution), backgroundColor: [getCssVar('--chart-green'), getCssVar('--chart-yellow')] }] }, commonOptions); const topDriversList = document.getElementById('top-drivers-list'); topDriversList.innerHTML = ''; performance.top_drivers.forEach(d => { const div = document.createElement('div'); div.className = 'flex items-center justify-between p-2'; div.innerHTML = `<div class="flex items-center"><img src="/${d.avatar}" class="h-10 w-10 rounded-full mr-4 object-cover"><div><p class="font-semibold">${d.name}</p><p class="text-xs text-secondary">${d.avg_rating} ★</p></div></div><p class="font-bold text-lg">${d.completed_rides} rides</p>`; topDriversList.appendChild(div); }); }};
+        
+        const renderPendingRides = (rides, availableDrivers, containerId) => {
+            const list = document.getElementById(containerId);
+            list.innerHTML = '';
+             if (!rides || rides.length === 0) {
+                list.innerHTML = `<p class="text-gray-500 text-sm p-4 text-center">No pending rides at the moment.</p>`;
+                return;
+            }
+
+            rides.forEach(ride => {
+                const rideEl = document.createElement('div');
+                rideEl.className = 'border-b border-[--border-color] pb-3 p-3';
+                rideEl.dataset.rideId = ride.id;
+
+                const filteredDrivers = availableDrivers.filter(d => d.vehicle_type === ride.vehicle_type && d.status === 'Available');
+                const driverOptions = filteredDrivers.length > 0
+                    ? filteredDrivers.map(d => `<option value="${d.id}">${d.name}</option>`).join('')
+                    : '<option disabled>No available drivers</option>';
+
+                rideEl.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <p class="font-bold text-sm">${ride.user_name} <span class="font-normal text-xs text-secondary">(${ride.user_phone})</span></p>
+                        <span class="font-bold text-sm text-[--chart-purple]">${ride.vehicle_type}</span>
+                    </div>
+                    <div class="mt-2 text-xs space-y-1 text-secondary">
+                        <p><span class="font-semibold text-[--text-primary]">From:</span> ${ride.pickup_address || 'N/A'}</p>
+                        <p><span class="font-semibold text-[--text-primary]">To:</span> ${ride.dest_address}</p>
+                        <p class="text-xs text-indigo-600 font-medium">Note: ${ride.note || 'None'}</p>
+                        <p class="text-xs font-semibold">Time: ${ride.request_time}</p>
+                    </div>
+                    <div class="mt-2 flex items-center">
+                        <select id="driver-select-${ride.id}" class="p-1 border rounded text-xs w-full">${driverOptions}</select>
+                        <button class="assign-ride-btn ml-2 px-3 py-1 bg-blue-500 text-white text-xs rounded" data-ride-id="${ride.id}" ${filteredDrivers.length === 0 ? 'disabled' : ''}>Assign</button>
+                    </div>`;
+                list.appendChild(rideEl);
+            });
+        };
+
+        const updateDriversTable = () => { const searchTerm = document.getElementById('driver-search-input').value.toLowerCase(); const statusFilter = document.getElementById('driver-status-filter').value; const filtered = allDrivers.filter(d => (d.name.toLowerCase().includes(searchTerm) || d.phone_number.includes(searchTerm) || (d.driver_uid && d.driver_uid.toLowerCase().includes(searchTerm))) && (statusFilter === 'All' || d.status === statusFilter)); const tbody = document.getElementById('drivers-table-body'); tbody.innerHTML = ''; if (!filtered.length) { tbody.innerHTML = '<tr><td colspan="7" class="text-center p-4">No drivers found.</td></tr>'; return; } filtered.forEach(d => { const row = tbody.insertRow(); row.innerHTML = `<td class="p-2 font-mono text-xs">${d.driver_uid||'N/A'}</td><td class="flex items-center"><img src="/${d.profile_picture}" class="h-8 w-8 rounded-full mr-3 object-cover" onerror="this.src='/static/img/default_avatar.png'">${d.name}</td><td><a href="tel:${d.phone_number}" class="text-blue-500">${d.phone_number}</a></td><td>${d.vehicle_type}</td><td><select class="driver-status-select status-select-${d.status.replace(' ','-')}" data-driver-id="${d.id}">${['Available','On Trip','Offline'].map(s => `<option value="${s}" ${d.status===s?'selected':''}>${s}</option>`).join('')}</select></td><td>${d.avg_rating.toFixed(1)} ★</td><td class="space-x-2"><button class="action-btn view" data-driver-id="${d.id}">👁️</button><button class="action-btn edit" data-driver-id="${d.id}">✏️</button><button class="action-btn delete" data-driver-id="${d.id}">🗑️</button></td>`; }); };
+        const updateActiveRidesTable = (rides) => { const tbody = document.getElementById('active-rides-table-body'); tbody.innerHTML = ''; if (!rides?.length) { tbody.innerHTML = '<tr><td colspan="5" class="text-center p-4">No active rides</td></tr>'; return; } rides.forEach(r => { const row = tbody.insertRow(); row.innerHTML = `<td class="p-2">${r.user_name}</td><td>${r.driver_name}</td><td class="text-xs max-w-xs truncate">${r.dest_address}</td><td><span class="status-badge status-${r.status.replace(' ','-')}">${r.status}</span></td><td class="space-x-2"><button class="px-3 py-1 bg-green-500 text-white text-xs rounded complete-ride-btn" data-ride-id="${r.id}">Complete</button><button class="px-3 py-1 bg-yellow-500 text-white text-xs rounded reassign-ride-btn" data-ride-id="${r.id}">Re-assign</button></td>`; }); };
         const updateRideHistoryTable = () => { const tbody = document.getElementById('rides-history-table-body'); tbody.innerHTML = ''; if (!allRidesHistory?.length) { tbody.innerHTML = '<tr><td colspan="7" class="text-center p-4">No ride history.</td></tr>'; return; } const search = document.getElementById('ride-history-search').value.toLowerCase(); const filtered = allRidesHistory.filter(r => r.user_name.toLowerCase().includes(search) || r.driver_name?.toLowerCase().includes(search)); const pageInfo = document.getElementById('ride-history-page-info'); const totalPages = Math.ceil(filtered.length / RIDES_PER_PAGE); rideHistoryPage = Math.min(rideHistoryPage, totalPages) || 1; pageInfo.textContent = `Page ${rideHistoryPage} of ${totalPages}`; const paginated = filtered.slice((rideHistoryPage - 1) * RIDES_PER_PAGE, rideHistoryPage * RIDES_PER_PAGE); paginated.forEach(r => { const row = tbody.insertRow(); row.innerHTML = `<td class="p-2">${r.id}</td><td>${r.user_name}</td><td>${r.driver_name}</td><td>${r.fare} ETB</td><td><span class="status-badge status-${r.status}">${r.status}</span></td><td>${r.rating ? '★'.repeat(r.rating) : 'N/A'}</td><td>${r.request_time}</td>`; }); };
-        const refreshFeedback = async () => { allFeedback = await fetchData('all-feedback') || []; const list = document.getElementById('feedback-list'); list.innerHTML = ''; if (!allFeedback.length) { list.innerHTML = '<p class="text-secondary text-center">No feedback yet.</p>'; return; } allFeedback.forEach(f => { const item = document.createElement('div'); item.className = 'border-b pb-3'; item.innerHTML = `<div class="flex justify-between items-center"><p class="font-semibold">Ride #${f.ride_id} - ${f.passenger_name}</p><span class="text-xs text-secondary">${f.date}</span></div><div class="flex items-center mt-1"><span class="text-yellow-500">${f.rating ? '★'.repeat(f.rating) : ''}</span><p class="ml-2 text-sm italic">"${f.comment || 'No comment'}"</p></div><p class="text-xs text-secondary mt-1">Driver: ${f.driver_name}</p>`; list.appendChild(item); }); };
+        const refreshFeedback = async () => { allFeedback = await fetchData('all-feedback') || []; const list = document.getElementById('feedback-list'); list.innerHTML = ''; if(!allFeedback.length) { list.innerHTML = '<p class="text-secondary text-center">No feedback yet.</p>'; return; } allFeedback.forEach(f => { const item = document.createElement('div'); item.className = `border-b pb-3 ${f.is_resolved ? 'opacity-50' : ''}`; item.innerHTML = `<div class="flex justify-between items-center"><p class="font-semibold">Ride #${f.ride_id} - ${f.passenger_name}</p><span class="text-xs text-secondary">${f.date}</span></div><div class="flex items-center mt-1"><span class="text-yellow-500">${f.rating ? '★'.repeat(f.rating) : ''}</span><p class="ml-2 text-sm italic">"${f.comment || 'No comment'}"</p></div><div class="flex justify-between items-center mt-1"><p class="text-xs text-secondary">Driver: ${f.driver_name}</p>${!f.is_resolved ? `<button data-id="${f.id}" class="resolve-feedback-btn px-2 py-1 text-xs bg-green-500 text-white rounded">Mark as Resolved</button>`: '<span class="text-xs text-green-600 font-semibold">Resolved</span>'}</div>`; list.appendChild(item); }); };
+        
+        const renderNotifications = () => {
+            const dropdown = document.getElementById('notification-dropdown');
+            dropdown.innerHTML = '';
+            if (recentNotifications.length === 0) {
+                dropdown.innerHTML = '<p class="p-4 text-sm text-center text-secondary">No new notifications</p>';
+                return;
+            }
+            recentNotifications.forEach(notif => {
+                const item = document.createElement('div');
+                item.className = 'p-3 border-b dark:border-gray-700 text-sm';
+                item.textContent = notif;
+                dropdown.appendChild(item);
+            });
+        };
 
         // --- EVENT LISTENERS ---
-        document.getElementById('pending-rides-list').addEventListener('click', async e => { if (e.target.classList.contains('assign-ride-btn')) { const rideId = e.target.dataset.rideId; const driverId = document.getElementById(`driver-select-${rideId}`).value; if (driverId) await postData('assign-ride', { ride_id: rideId, driver_id: driverId }); refreshAllData(); } });
+        document.getElementById('notification-bell').addEventListener('click', (e) => {
+            e.stopPropagation();
+            const dropdown = document.getElementById('notification-dropdown');
+            dropdown.classList.toggle('hidden');
+            if(!dropdown.classList.contains('hidden')) {
+                renderNotifications();
+                document.getElementById('notification-badge').classList.add('hidden');
+            }
+        });
+        document.addEventListener('click', (e) => {
+            const dropdown = document.getElementById('notification-dropdown');
+            const bell = document.getElementById('notification-bell');
+            if (!dropdown.classList.contains('hidden') && !bell.contains(e.target)) {
+                dropdown.classList.add('hidden');
+            }
+        });
+
+        const setupAssignmentListeners = (containerId) => {
+            document.getElementById(containerId).addEventListener('click', async (e) => { 
+                if (e.target.classList.contains('assign-ride-btn')) { 
+                    const rideId = e.target.dataset.rideId; 
+                    const driverId = document.getElementById(`driver-select-${rideId}`).value; 
+                    if (driverId) {
+                         await postData('assign-ride', { ride_id: rideId, driver_id: driverId }); 
+                         refreshAllData(); 
+                    } else { 
+                        alert('Please select a driver.'); 
+                    }
+                }
+            });
+        };
+        setupAssignmentListeners('pending-rides-summary-list');
+        setupAssignmentListeners('pending-rides-container');
+
         document.getElementById('drivers-table-body').addEventListener('change', async e => { if (e.target.classList.contains('driver-status-select')) { await postData('update-driver-status', { driver_id: e.target.dataset.driverId, status: e.target.value }); refreshAllData(); } });
-        document.getElementById('drivers-table-body').addEventListener('click', async e => { const btn = e.target.closest('.action-btn'); if (!btn) return; const id = btn.dataset.driverId; if (btn.classList.contains('view')) { const data = await fetchData(`driver-details/${id}`); if (data) showDriverDetails(data); } else if (btn.classList.contains('edit')) { const driver = await fetchData(`driver/${id}`); if (driver) { const form = document.getElementById('edit-driver-form'); form.reset(); for (const key in driver) { if (form.elements[key]) form.elements[key].value = driver[key]; } showModal('edit-driver-modal'); } } else if (btn.classList.contains('delete')) { document.getElementById('confirm-delete-btn').dataset.driverId = id; showModal('delete-driver-modal'); } });
+        document.getElementById('drivers-table-body').addEventListener('click', async e => { const btn = e.target.closest('.action-btn'); if (!btn) return; const id = btn.dataset.driverId; if (btn.classList.contains('view')) { const data = await fetchData(`driver-details/${id}`); if(data) showDriverDetails(data); } else if (btn.classList.contains('edit')) { const driver = await fetchData(`driver/${id}`); if (driver) { const form = document.getElementById('edit-driver-form'); form.reset(); form.elements.id.value = driver.id; form.elements.name.value = driver.name; form.elements.phone_number.value = driver.phone_number; form.elements.vehicle_type.value = driver.vehicle_type; form.elements.vehicle_details.value = driver.vehicle_details; form.elements.vehicle_plate_number.value = driver.vehicle_plate_number; form.elements.license_info.value = driver.license_info; showModal('edit-driver-modal'); } } else if (btn.classList.contains('delete')) { document.getElementById('confirm-delete-btn').dataset.driverId = id; showModal('delete-driver-modal'); } });
         document.getElementById('active-rides-table-body').addEventListener('click', async e => { const id = e.target.dataset.rideId; if (!id) return; if (e.target.classList.contains('complete-ride-btn')) await postData('complete-ride', { ride_id: id }); else if (e.target.classList.contains('reassign-ride-btn')) await postData('cancel-ride', { ride_id: id }); refreshAllData(); });
+        document.getElementById('feedback-list').addEventListener('click', async e => { if (e.target.classList.contains('resolve-feedback-btn')) { await postData(`feedback/resolve/${e.target.dataset.id}`, {}); refreshFeedback(); refreshUnreadCount(); } });
         document.getElementById('settings-form').addEventListener('submit', async e => { e.preventDefault(); await postData('settings', Object.fromEntries(new FormData(e.target))); alert('Settings Saved!'); });
         document.getElementById('driver-search-input').addEventListener('input', updateDriversTable);
         document.getElementById('driver-status-filter').addEventListener('change', updateDriversTable);
@@ -852,18 +606,46 @@
         document.getElementById('ride-history-next').addEventListener('click', () => { rideHistoryPage++; updateRideHistoryTable(); });
 
         // --- DRIVER DETAILS & MAP ---
-        const showDriverDetails = (data) => { const content = document.getElementById('driver-details-content'); const p = data.profile; const docLink = (path, name) => path ? `<a href="/${path}" target="_blank" class="text-blue-500 hover:underline">${name}</a>` : 'Not Uploaded'; content.innerHTML = `<div class="grid md:grid-cols-3 gap-6"><div class="text-center"><img src="/${p.avatar}" class="rounded-full w-32 h-32 mx-auto border-4" onerror="this.src='/static/img/default_avatar.png'"><h3 class="text-xl font-bold mt-4">${p.name}</h3><p class="text-sm font-mono">${p.driver_uid}</p><p class="text-sm">${p.phone_number}</p><span class="status-badge status-${p.status.replace(' ', '-')} mt-2 inline-block">${p.status}</span></div><div class="md:col-span-2 space-y-4"><div><h4 class="font-bold border-b pb-1 mb-2">Vehicle & Docs</h4><div class="text-sm space-y-1"><p><strong>Type:</strong> ${p.vehicle_type}</p><p><strong>Details:</strong> ${p.vehicle_details}</p><p><strong>Plate:</strong> ${p.plate_number}</p><p><strong>License:</strong> ${p.license}</p><p><strong>License Doc:</strong> ${docLink(p.license_document, 'View')}</p><p><strong>Vehicle Doc:</strong> ${docLink(p.vehicle_document, 'View')}</p></div></div><div><h4 class="font-bold border-b pb-1 mb-2">Performance</h4><div class="grid grid-cols-2 gap-4 mt-2 text-sm"><div class="card p-3"><p class="font-semibold">Completed Rides</p><p class="text-2xl font-bold">${data.stats.completed_rides}</p></div><div class="card p-3"><p class="font-semibold">Avg. Rating</p><p class="text-2xl font-bold">${data.stats.avg_rating.toFixed(2)} ★</p></div><div class="card p-3"><p class="font-semibold">Weekly Earnings</p><p class="text-2xl font-bold">${data.stats.total_earnings_weekly} ETB</p></div><div class="card p-3"><p class="font-semibold">Total Earnings</p><p class="text-2xl font-bold">${data.stats.total_earnings_all_time} ETB</p></div></div></div></div></div><div class="mt-6"><h4 class="font-bold border-b pb-1 mb-2">Recent History</h4>${data.history.length ? data.history.map(r => `<div class="grid grid-cols-4 text-sm p-2 border-b"><span>#${r.id}</span><span>${r.date}</span><span>${r.fare} ETB</span><span class="status-badge status-${r.status}">${r.status}</span></div>`).join('') : '<p class="text-center p-4">No recent history.</p>'}</div>`; showModal('driver-details-modal'); };
+        const showDriverDetails = (data) => { const content = document.getElementById('driver-details-content'); const p = data.profile; const docLink = (path, name) => path ? `<a href="/${path}" target="_blank" class="text-blue-500 hover:underline">${name}</a>` : 'Not Uploaded'; content.innerHTML = `<div class="grid md:grid-cols-3 gap-6"><div class="text-center"><img src="/${p.avatar}" class="rounded-full w-32 h-32 mx-auto border-4 object-cover" onerror="this.src='/static/img/default_avatar.png'"><h3 class="text-xl font-bold mt-4">${p.name}</h3><p class="text-sm font-mono">${p.driver_uid}</p><p class="text-sm">${p.phone_number}</p><span class="status-badge status-${p.status.replace(' ','-')} mt-2 inline-block">${p.status}</span></div><div class="md:col-span-2 space-y-4"><div><h4 class="font-bold border-b pb-1 mb-2">Vehicle & Docs</h4><div class="text-sm space-y-1"><p><strong>Type:</strong> ${p.vehicle_type}</p><p><strong>Details:</strong> ${p.vehicle_details}</p><p><strong>Plate:</strong> ${p.plate_number}</p><p><strong>License:</strong> ${p.license}</p><p><strong>License Doc:</strong> ${docLink(p.license_document, 'View')}</p><p><strong>Vehicle Doc:</strong> ${docLink(p.vehicle_document, 'View')}</p></div></div><div><h4 class="font-bold border-b pb-1 mb-2">Performance</h4><div class="grid grid-cols-2 gap-4 mt-2 text-sm"><div class="card p-3"><p class="font-semibold">Completed Rides</p><p class="text-2xl font-bold">${data.stats.completed_rides}</p></div><div class="card p-3"><p class="font-semibold">Avg. Rating</p><p class="text-2xl font-bold">${data.stats.avg_rating.toFixed(2)} ★</p></div><div class="card p-3"><p class="font-semibold">Weekly Earnings</p><p class="text-2xl font-bold">${data.stats.total_earnings_weekly} ETB</p></div><div class="card p-3"><p class="font-semibold">Total Earnings</p><p class="text-2xl font-bold">${data.stats.total_earnings_all_time} ETB</p></div></div></div></div></div><div class="mt-6"><h4 class="font-bold border-b pb-1 mb-2">Recent History</h4>${data.history.length ? data.history.map(r => `<div class="grid grid-cols-4 text-sm p-2 border-b"><span>#${r.id}</span><span>${r.date}</span><span>${r.fare} ETB</span><span class="status-badge status-${r.status}">${r.status}</span></div>`).join('') : '<p class="text-center p-4">No recent history.</p>'}</div>`; showModal('driver-details-modal'); };
         async function drawRouteOnMap(pickup, destination, rideId) { const url = `https://router.project-osrm.org/route/v1/driving/${pickup.lon},${pickup.lat};${destination.lon},${destination.lat}?overview=full&geometries=geojson`; try { const response = await fetch(url); const data = await response.json(); if (data.routes?.length) { routeLayers[rideId] = L.polyline(data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]), { color: getCssVar('--chart-purple'), weight: 5 }).addTo(dashboardMap); } } catch (error) { console.error('Error fetching route:', error); } }
-
+        
         // --- DATA REFRESH & INITIALIZATION ---
-        const refreshDashboardData = async () => { const [stats, pending, available, active] = await Promise.all([fetchData('dashboard-stats'), fetchData('pending-rides'), fetchData('available-drivers'), fetchData('active-rides')]); updateDashboardStats(stats); updatePendingRides(pending, available); updateActiveRidesTable(active); };
-        const refreshAllData = async () => { const [drivers, rides] = await Promise.all([fetchData('drivers'), fetchData('all-rides-data')]); allDrivers = drivers || []; allRidesHistory = rides || []; updateDriversTable(); updateRideHistoryTable(); refreshDashboardData(); };
-        const initDashboardMap = () => { if (!dashboardMap) { dashboardMap = L.map('dashboard-map').setView([14.275, 39.46], 13); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(dashboardMap); } }
+        const refreshUnreadCount = async () => { const data = await fetchData('unread-feedback-count'); updateBadges(null, data?.count); };
+        const refreshDashboardData = async () => {
+             const [stats, pending, active, availableDrivers] = await Promise.all([
+                fetchData('dashboard-stats'),
+                fetchData('pending-rides'),
+                fetchData('active-rides'),
+                fetchData('available-drivers')
+            ]);
+            updateDashboardStats(stats);
 
+            const oldPendingIds = new Set(allPendingRides.map(r => r.id));
+            const newPendingRides = pending || [];
+            newPendingRides.forEach(ride => {
+                if (!oldPendingIds.has(ride.id)) {
+                    recentNotifications.unshift(`New ride from ${ride.user_name} at ${ride.request_time}`);
+                }
+            });
+            if (recentNotifications.length > 10) recentNotifications.length = 10;
+            
+            allPendingRides = newPendingRides;
+            
+            renderPendingRides(allPendingRides, availableDrivers || [], 'pending-rides-summary-list');
+            renderPendingRides(allPendingRides, availableDrivers || [], 'pending-rides-container');
+
+            updateActiveRidesTable(active);
+            updateBadges(stats);
+        };
+        const refreshAllData = async () => { const [drivers, rides] = await Promise.all([ fetchData('drivers'), fetchData('all-rides-data') ]); allDrivers = drivers || []; allRidesHistory = rides || []; updateDriversTable(); updateRideHistoryTable(); refreshDashboardData(); refreshUnreadCount(); };
+        const initDashboardMap = () => { if (!dashboardMap) { dashboardMap = L.map('dashboard-map').setView([14.275, 39.46], 13); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(dashboardMap); } }
+        
         document.querySelector('.analytics-filter-btn[data-period="week"]').classList.add('active-filter');
         showPane('dashboard');
         refreshAllData();
         setInterval(refreshDashboardData, 10000);
+        setInterval(refreshUnreadCount, 30000);
     });
 </script>
 {% endblock %}
+

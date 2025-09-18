@@ -65,7 +65,7 @@ class Ride(db.Model):
     fare = db.Column(db.Float, nullable=False)
     vehicle_type = db.Column(db.String(50), nullable=False, default='Bajaj')
     status = db.Column(db.String(20), default='Requested', nullable=False)
-    request_time = db.Column(db.DateTime, server_default=db.func.now())
+    request_time = db.Column(db.DateTime, server_default=db.func.now(timezone.utc))
     assigned_time = db.Column(db.DateTime, nullable=True)
     note = db.Column(db.String(255), nullable=True)
     payment_method = db.Column(db.String(20), nullable=False, default='Cash')
@@ -84,7 +84,7 @@ class Feedback(db.Model):
     feedback_type = db.Column(db.String(50), nullable=False, default='Rating') # e.g., 'Rating', 'Complaint', 'Lost Item'
     details = db.Column(db.Text, nullable=True) # For complaint/lost item details
     is_resolved = db.Column(db.Boolean, default=False)
-    submitted_at = db.Column(db.DateTime, server_default=db.func.now())
+    submitted_at = db.Column(db.DateTime, server_default=db.func.now(timezone.utc))
 
 
 class Setting(db.Model):
@@ -149,7 +149,8 @@ def request_ride():
         fare=data.get('fare'),
         vehicle_type=data.get('vehicle_type', 'Bajaj'),
         note=data.get('note'),
-        payment_method=data.get('payment_method', 'Cash')
+        payment_method=data.get('payment_method', 'Cash'),
+        request_time=datetime.now(timezone.utc)
     )
     db.session.add(new_ride)
     db.session.commit()
@@ -169,8 +170,8 @@ def assign_ride():
     ride.status = 'Assigned'
     ride.assigned_time = datetime.now(timezone.utc)
     driver.status = 'On Trip'
-    driver.current_lat = ride.pickup_lat + 0.01
-    driver.current_lon = ride.pickup_lon + 0.01
+    driver.current_lat = ride.pickup_lat
+    driver.current_lon = ride.pickup_lon
     db.session.commit()
     return jsonify({'message': 'Ride assigned successfully'})
 
@@ -294,9 +295,10 @@ def rate_ride():
 
 @app.route('/api/all-feedback')
 def get_all_feedback():
-    feedback_items = Feedback.query.order_by(Feedback.submitted_at.desc()).all()
+    feedback_items = Feedback.query.order_by(Feedback.is_resolved.asc(), Feedback.submitted_at.desc()).all()
     return jsonify([
         {
+            'id': f.id,
             'ride_id': f.ride_id,
             'passenger_name': f.ride.user.name,
             'driver_name': f.ride.driver.name if f.ride.driver else 'N/A',
@@ -310,12 +312,39 @@ def get_all_feedback():
         for f in feedback_items
     ])
 
+@app.route('/api/unread-feedback-count')
+def get_unread_feedback_count():
+    count = Feedback.query.filter_by(is_resolved=False).count()
+    return jsonify({'count': count})
+
+@app.route('/api/feedback/resolve/<int:feedback_id>', methods=['POST'])
+def resolve_feedback(feedback_id):
+    feedback = Feedback.query.get_or_404(feedback_id)
+    feedback.is_resolved = True
+    db.session.commit()
+    return jsonify({'message': 'Feedback marked as resolved.'})
+
 
 # --- Data Fetching API Routes ---
 @app.route('/api/pending-rides')
 def get_pending_rides():
     rides = Ride.query.filter_by(status='Requested').order_by(Ride.request_time.desc()).all()
-    return jsonify([ { 'id': r.id, 'user_name': r.user.name, 'user_phone': r.user.phone_number, 'pickup_address': r.pickup_address, 'pickup_lat': r.pickup_lat, 'pickup_lon': r.pickup_lon, 'dest_address': r.dest_address, 'dest_lat': r.dest_lat, 'dest_lon': r.dest_lon, 'fare': r.fare, 'vehicle_type': r.vehicle_type, 'note': r.note, 'request_time': r.request_time.strftime('%Y-%m-%d %H:%M:%S') } for r in rides ])
+    return jsonify([
+        {
+            'id': r.id,
+            'user_name': r.user.name,
+            'user_phone': r.user.phone_number,
+            'pickup_address': r.pickup_address,
+            'pickup_lat': r.pickup_lat,
+            'pickup_lon': r.pickup_lon,
+            'dest_address': r.dest_address,
+            'fare': r.fare,
+            'vehicle_type': r.vehicle_type,
+            'note': r.note,
+            'request_time': r.request_time.strftime('%I:%M %p'),
+        }
+        for r in rides
+    ])
 
 @app.route('/api/active-rides')
 def get_active_rides():
@@ -345,8 +374,15 @@ def get_available_drivers():
     query = Driver.query.filter_by(status='Available')
     if vehicle_type:
         query = query.filter_by(vehicle_type=vehicle_type)
+    
     drivers = query.all()
-    return jsonify([{'id': d.id, 'name': d.name, 'vehicle_type': d.vehicle_type, 'status': d.status} for d in drivers])
+    
+    drivers_data = [
+        {'id': d.id, 'name': d.name, 'vehicle_type': d.vehicle_type, 'status': d.status}
+        for d in drivers
+    ]
+
+    return jsonify(drivers_data)
 
 
 @app.route('/api/all-rides-data')
@@ -471,16 +507,27 @@ def get_analytics_data():
     if start_date: base_query = base_query.filter(Ride.request_time.between(start_date, end_date))
 
     completed_rides_sq = base_query.filter(Ride.status == 'Completed').subquery()
-    completed_rides_in_period = db.session.query(func.count(completed_rides_sq.c.id)).scalar()
+    completed_rides_in_period = db.session.query(func.count(completed_rides_sq.c.id)).scalar() or 0
     revenue_in_period = db.session.query(func.sum(completed_rides_sq.c.fare)).scalar() or 0
     prev_start_date, prev_end_date = _get_previous_period(start_date, end_date)
     prev_revenue, prev_completed_rides = (0, 0) if not prev_start_date else _calculate_kpis_for_period(prev_start_date, prev_end_date)
     
     now_week_start = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
-    top_drivers_query = db.session.query(Driver.name, Driver.profile_picture, func.count(Ride.id).label('completed_rides'), func.avg(Feedback.rating).label('avg_rating')).join(Ride, Driver.id == Ride.driver_id).join(Feedback, Ride.id == Feedback.ride_id).filter(Ride.status == 'Completed', Ride.request_time >= now_week_start).group_by(Driver.id).order_by(func.count(Ride.id).desc()).limit(5).all()
+    
+    top_drivers_query = db.session.query(
+        Driver.name,
+        Driver.profile_picture,
+        func.count(Ride.id).label('completed_rides'),
+        func.avg(Feedback.rating).label('avg_rating')
+    ).join(Ride, Driver.id == Ride.driver_id).outerjoin(Feedback, Ride.id == Feedback.ride_id).filter(
+        Ride.status == 'Completed',
+        Ride.request_time >= now_week_start
+    ).group_by(Driver.id).order_by(
+        func.count(Ride.id).desc()
+    ).limit(5).all()
 
     return jsonify({
-        'kpis': { 'rides_completed': completed_rides_in_period, 'rides_canceled': db.session.query(func.count(base_query.filter(Ride.status == 'Canceled').subquery().c.id)).scalar(), 'total_revenue': round(revenue_in_period, 2), 'avg_fare': round(db.session.query(func.avg(completed_rides_sq.c.fare)).scalar() or 0, 2), 'active_rides_now': Ride.query.filter(Ride.status.in_(['Assigned', 'On Trip'])).count(), 'trends': { 'revenue': _calculate_trend(revenue_in_period, prev_revenue), 'rides': _calculate_trend(completed_rides_in_period, prev_completed_rides) } },
+        'kpis': { 'rides_completed': completed_rides_in_period, 'rides_canceled': base_query.filter(Ride.status == 'Canceled').count(), 'total_revenue': round(revenue_in_period, 2), 'avg_fare': round(db.session.query(func.avg(completed_rides_sq.c.fare)).scalar() or 0, 2), 'active_rides_now': Ride.query.filter(Ride.status.in_(['Assigned', 'On Trip'])).count(), 'trends': { 'revenue': _calculate_trend(revenue_in_period, prev_revenue), 'rides': _calculate_trend(completed_rides_in_period, prev_completed_rides) } },
         'charts': { 'revenue_over_time': { 'labels': [i[0] for i in db.session.query(func.date(completed_rides_sq.c.request_time).label('d'), func.sum(completed_rides_sq.c.fare)).group_by('d').order_by('d').all()], 'data': [float(i[1] or 0) for i in db.session.query(func.date(completed_rides_sq.c.request_time).label('d'), func.sum(completed_rides_sq.c.fare)).group_by('d').order_by('d').all()] }, 'vehicle_distribution': dict(base_query.with_entities(Ride.vehicle_type, func.count(Ride.id)).group_by(Ride.vehicle_type).all()), 'payment_method_distribution': dict(base_query.with_entities(Ride.payment_method, func.count(Ride.id)).group_by(Ride.payment_method).all()), },
         'performance': { 'top_drivers': [{'name': d.name, 'avatar': d.profile_picture, 'completed_rides': d.completed_rides, 'avg_rating': round(d.avg_rating or 0, 2)} for d in top_drivers_query] }
     })
