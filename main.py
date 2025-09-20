@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, send_from_directory
+from flask import Flask, render_template, request, jsonify, send_from_directory, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 import os
@@ -6,6 +6,8 @@ import requests
 from sqlalchemy import func, case
 from datetime import datetime, timedelta, timezone
 from werkzeug.utils import secure_filename
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
@@ -20,13 +22,27 @@ base_dir = os.path.abspath(os.path.dirname(__file__))
 app = Flask(__name__)
 CORS(app)
 
+app.config['SECRET_KEY'] = 'a-very-secret-key-that-should-be-changed'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(base_dir, 'app.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = os.path.join(base_dir, 'static/uploads')
 db = SQLAlchemy(app)
+login_manager = LoginManager(app)
+login_manager.login_view = 'login'
 
 
 # --- Database Models ---
+class Admin(UserMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password_hash = db.Column(db.String(200), nullable=False)
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     phone_number = db.Column(db.String(20), unique=True, nullable=False)
@@ -99,17 +115,63 @@ def get_setting(key, default=None):
 
 # --- Helper Functions ---
 def _handle_file_upload(file_storage, existing_path=None):
-    """Saves a file and returns its path, or returns existing path if no new file."""
-    if file_storage and file_storage.filename != '':
-        filename = secure_filename(file_storage.filename)
-        filename = f"{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}_{filename}"
-        upload_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file_storage.save(upload_path)
-        return os.path.join('static/uploads', filename).replace("\\", "/")
-    return existing_path
+    """
+    Save an uploaded FileStorage to app.config['UPLOAD_FOLDER'] and return a web-relative path.
+    If no file is provided, return existing_path (so caller keeps previous value).
+    """
+    if not file_storage:
+        return existing_path
+
+    filename = secure_filename(file_storage.filename or '')
+    if not filename:
+        return existing_path
+
+    # Ensure upload folder exists
+    os.makedirs(app.config.get('UPLOAD_FOLDER', os.path.join(base_dir, 'static', 'uploads')), exist_ok=True)
+
+    # Avoid overwriting existing files by appending a timestamp if needed
+    save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    if os.path.exists(save_path):
+        name, ext = os.path.splitext(filename)
+        filename = f"{name}_{int(datetime.utcnow().timestamp())}{ext}"
+        save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+
+    # Save file
+    file_storage.save(save_path)
+
+    # Return a path usable by templates (static relative path)
+    rel_path = os.path.join('static', 'uploads', filename).replace('\\', '/')
+    return rel_path
+
+# --- Authentication ---
+@login_manager.user_loader
+def load_user(user_id):
+    return Admin.query.get(int(user_id))
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('dispatcher_dashboard'))
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        admin = Admin.query.filter_by(username=username).first()
+        if admin and admin.check_password(password):
+            login_user(admin)
+            return redirect(url_for('dispatcher_dashboard'))
+        else:
+            flash('Invalid username or password', 'danger')
+    return render_template('login.html')
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for('login'))
 
 # --- Frontend Routes ---
 @app.route('/')
+@login_required
 def dispatcher_dashboard():
     return render_template('dashboard.html')
 
@@ -159,6 +221,7 @@ def request_ride():
 
 
 @app.route('/api/assign-ride', methods=['POST'])
+@login_required
 def assign_ride():
     data = request.json
     ride = Ride.query.get(data.get('ride_id'))
@@ -177,6 +240,7 @@ def assign_ride():
 
 
 @app.route('/api/complete-ride', methods=['POST'])
+@login_required
 def complete_ride():
     ride = Ride.query.get(request.json.get('ride_id'))
     if not ride:
@@ -189,6 +253,7 @@ def complete_ride():
 
 
 @app.route('/api/cancel-ride', methods=['POST'])
+@login_required
 def cancel_ride():
     ride = Ride.query.get(request.json.get('ride_id'))
     if not ride:
@@ -213,6 +278,7 @@ def cancel_ride():
 
 
 @app.route('/api/add-driver', methods=['POST'])
+@login_required
 def add_driver():
     new_driver = Driver(
         name=request.form.get('name'),
@@ -233,6 +299,7 @@ def add_driver():
     return jsonify({'message': 'Driver added successfully'}), 201
 
 @app.route('/api/update-driver/<int:driver_id>', methods=['POST'])
+@login_required
 def update_driver(driver_id):
     driver = Driver.query.get_or_404(driver_id)
     driver.name = request.form.get('name', driver.name)
@@ -251,6 +318,7 @@ def update_driver(driver_id):
 
 
 @app.route('/api/delete-driver', methods=['POST'])
+@login_required
 def delete_driver():
     data = request.json
     driver = Driver.query.get(data.get('driver_id'))
@@ -262,6 +330,7 @@ def delete_driver():
 
 
 @app.route('/api/update-driver-status', methods=['POST'])
+@login_required
 def update_driver_status():
     data = request.json
     driver = Driver.query.get(data.get('driver_id'))
@@ -294,6 +363,7 @@ def rate_ride():
     return jsonify({'message': 'Thank you for your feedback!'})
 
 @app.route('/api/all-feedback')
+@login_required
 def get_all_feedback():
     feedback_items = Feedback.query.order_by(Feedback.is_resolved.asc(), Feedback.submitted_at.desc()).all()
     return jsonify([
@@ -313,11 +383,13 @@ def get_all_feedback():
     ])
 
 @app.route('/api/unread-feedback-count')
+@login_required
 def get_unread_feedback_count():
     count = Feedback.query.filter_by(is_resolved=False).count()
     return jsonify({'count': count})
 
 @app.route('/api/feedback/resolve/<int:feedback_id>', methods=['POST'])
+@login_required
 def resolve_feedback(feedback_id):
     feedback = Feedback.query.get_or_404(feedback_id)
     feedback.is_resolved = True
@@ -327,6 +399,7 @@ def resolve_feedback(feedback_id):
 
 # --- Data Fetching API Routes ---
 @app.route('/api/pending-rides')
+@login_required
 def get_pending_rides():
     rides = Ride.query.filter_by(status='Requested').order_by(Ride.request_time.desc()).all()
     return jsonify([
@@ -347,12 +420,25 @@ def get_pending_rides():
     ])
 
 @app.route('/api/active-rides')
+@login_required
 def get_active_rides():
     rides = Ride.query.filter(Ride.status.in_(['Assigned', 'On Trip'])).order_by(Ride.request_time.asc()).all()
-    return jsonify([ { 'id': r.id, 'user_name': r.user.name, 'driver_name': r.driver.name if r.driver else "N/A", 'dest_address': r.dest_address, 'status': r.status, 'request_time': r.request_time.strftime('%Y-%m-%d %H:%M') } for r in rides ])
+    return jsonify([ { 
+        'id': r.id, 
+        'user_name': r.user.name, 
+        'driver_name': r.driver.name if r.driver else "N/A", 
+        'dest_address': r.dest_address, 
+        'status': r.status, 
+        'request_time': r.request_time.strftime('%Y-%m-%d %H:%M'),
+        'pickup_lat': r.pickup_lat,
+        'pickup_lon': r.pickup_lon,
+        'dest_lat': r.dest_lat,
+        'dest_lon': r.dest_lon
+    } for r in rides ])
 
 
 @app.route('/api/drivers')
+@login_required
 def get_all_drivers():
     drivers = Driver.query.all()
     drivers_data = []
@@ -363,12 +449,14 @@ def get_all_drivers():
 
 
 @app.route('/api/driver/<int:driver_id>')
+@login_required
 def get_driver(driver_id):
     driver = Driver.query.get_or_404(driver_id)
     return jsonify({ "id": driver.id, "name": driver.name, "phone_number": driver.phone_number, "vehicle_type": driver.vehicle_type, "vehicle_details": driver.vehicle_details, "vehicle_plate_number": driver.vehicle_plate_number, "license_info": driver.license_info, "profile_picture": driver.profile_picture, "license_document": driver.license_document, "vehicle_document": driver.vehicle_document, })
 
 
 @app.route('/api/available-drivers')
+@login_required
 def get_available_drivers():
     vehicle_type = request.args.get('vehicle_type')
     query = Driver.query.filter_by(status='Available')
@@ -386,6 +474,7 @@ def get_available_drivers():
 
 
 @app.route('/api/all-rides-data')
+@login_required
 def get_all_rides_data():
     rides = Ride.query.options(db.joinedload(Ride.feedback)).order_by(Ride.request_time.desc()).all()
     return jsonify([
@@ -414,6 +503,7 @@ def get_ride_status(ride_id):
 
 
 @app.route('/api/driver-details/<int:driver_id>')
+@login_required
 def get_driver_details(driver_id):
     driver = Driver.query.get_or_404(driver_id)
     
@@ -453,12 +543,13 @@ def fare_estimate():
 
 
 @app.route('/api/dashboard-stats')
+@login_required
 def get_dashboard_stats():
     total_revenue = db.session.query(func.sum(Ride.fare)).filter(Ride.status == 'Completed').scalar() or 0
     total_rides = Ride.query.count()
     drivers_online = Driver.query.filter(Driver.status == 'Available').count()
     pending_requests = Ride.query.filter(Ride.status == 'Requested').count()
-    return jsonify({ 'total_revenue': round(total_revenue, 2), 'total_rides': total_rides, 'drivers_online': drivers_online, 'pending_requests': pending_requests, })
+    return jsonify({ 'total_revenue': round(total_revenue, 2), 'total_rides': total_rides, 'drivers_online': drivers_online, 'pending_requests': pending_requests, 'active_rides': Ride.query.filter(Ride.status.in_(['Assigned', 'On Trip'])).count() })
 
 # --- Analytics and Reporting ---
 def _get_previous_period(start_date, end_date):
@@ -481,36 +572,52 @@ def _calculate_trend(current, previous):
     return round(((current - previous) / previous) * 100)
     
 def _get_date_range_from_request():
+    """Parses date filter arguments from the request and returns timezone-aware start and end datetimes (UTC)."""
     period = request.args.get('period')
     start_date_str = request.args.get('start_date')
     end_date_str = request.args.get('end_date')
 
-    now = datetime.now(timezone.utc)
-    end_date = now.replace(hour=23, minute=59, second=59)
-    start_date = None
+    if period == 'all' or not period:
+        return None, None
 
-    if period == 'today': start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    elif period == 'week': start_date = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
-    elif period == 'month': start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    now = datetime.now(timezone.utc)
+
+    if period == 'today':
+        start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_date = now
+    elif period == 'week':
+        start_date = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+        end_date = now
+    elif period == 'month':
+        start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        end_date = now
     elif start_date_str and end_date_str:
         try:
-            start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
-            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
-        except (ValueError, TypeError): start_date = None
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').replace(tzinfo=timezone.utc)
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59, tzinfo=timezone.utc)
+        except (ValueError, TypeError):
+            # invalid date format -> no filter
+            return None, None
+    else:
+        # invalid period or missing explicit dates
+        return None, None
+
     return start_date, end_date
 
 @app.route('/api/analytics-data')
+@login_required
 def get_analytics_data():
     start_date, end_date = _get_date_range_from_request()
     now = datetime.now(timezone.utc)
     base_query = Ride.query
-    if start_date: base_query = base_query.filter(Ride.request_time.between(start_date, end_date))
+    if start_date and end_date:
+        base_query = base_query.filter(Ride.request_time.between(start_date, end_date))
 
     completed_rides_sq = base_query.filter(Ride.status == 'Completed').subquery()
     completed_rides_in_period = db.session.query(func.count(completed_rides_sq.c.id)).scalar() or 0
     revenue_in_period = db.session.query(func.sum(completed_rides_sq.c.fare)).scalar() or 0
     prev_start_date, prev_end_date = _get_previous_period(start_date, end_date)
-    prev_revenue, prev_completed_rides = (0, 0) if not prev_start_date else _calculate_kpis_for_period(prev_start_date, prev_end_date)
+    prev_revenue, prev_completed_rides = (0, 0) if not (prev_start_date and prev_end_date) else _calculate_kpis_for_period(prev_start_date, prev_end_date)
     
     now_week_start = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
     
@@ -533,17 +640,24 @@ def get_analytics_data():
     })
 
 @app.route('/api/export-report')
+@login_required
 def export_report():
     file_format = request.args.get('format', 'pdf')
     start_date, end_date = _get_date_range_from_request()
     
     ride_query = Ride.query.options(db.joinedload(Ride.user), db.joinedload(Ride.driver)).order_by(Ride.request_time.desc())
-    if start_date: ride_query = ride_query.filter(Ride.request_time.between(start_date, end_date))
+    if start_date and end_date:
+        ride_query = ride_query.filter(Ride.request_time.between(start_date, end_date))
     
     all_rides_in_period = ride_query.all()
     all_drivers = Driver.query.all()
-    kpis = get_analytics_data().get_json()['kpis']
-    report_title = f"Analytics Report ({start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')})" if start_date else "Analytics Report (All Time)"
+    
+    # Create a new request context to call the analytics endpoint internally
+    with app.test_request_context(f'/api/analytics-data?{request.query_string.decode("utf-8")}'):
+        kpis_response = get_analytics_data()
+        kpis = kpis_response.get_json().get('kpis', {}) if kpis_response.get_json() else {}
+
+    report_title = f"Analytics Report ({start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')})" if start_date and end_date else "Analytics Report (All Time)"
 
     if file_format == 'pdf':
         buffer = io.BytesIO()
@@ -569,25 +683,28 @@ def export_report():
         ws_summary.append(["Metric", "Value"])
         for cell in ws_summary[4]:
             cell.font = Font(bold=True)
-        ws_summary.append(["Rides Completed", kpis['rides_completed']])
-        ws_summary.append(["Rides Canceled", kpis['rides_canceled']])
-        ws_summary.append(["Total Revenue (ETB)", kpis['total_revenue']])
-        ws_summary.append(["Average Fare (ETB)", kpis['avg_fare']])
+        ws_summary.append(["Rides Completed", kpis.get('rides_completed', 'N/A')])
+        ws_summary.append(["Rides Canceled", kpis.get('rides_canceled', 'N/A')])
+        ws_summary.append(["Total Revenue (ETB)", kpis.get('total_revenue', 'N/A')])
+        ws_summary.append(["Average Fare (ETB)", kpis.get('avg_fare', 'N/A')])
         ws_summary['D4'] = "Rides Trend"; ws_summary['D4'].font = Font(bold=True)
-        ws_summary['E4'] = f"{kpis['trends']['rides']}%"
+        ws_summary['E4'] = f"{kpis.get('trends', {}).get('rides', 'N/A')}%"
         ws_summary['D5'] = "Revenue Trend"; ws_summary['D5'].font = Font(bold=True)
-        ws_summary['E5'] = f"{kpis['trends']['revenue']}%"
+        ws_summary['E5'] = f"{kpis.get('trends', {}).get('revenue', 'N/A')}%"
         
         ws_drivers = wb.create_sheet("Driver Performance")
         ws_drivers.append(["Driver ID", "Name", "Rides in Period", "Revenue in Period (ETB)", "Average Rating"])
         for cell in ws_drivers[1]:
             cell.font = Font(bold=True)
         for driver in all_drivers:
-            rides_in_period = Ride.query.filter(Ride.driver_id == driver.id, Ride.status == 'Completed')
-            if start_date: rides_in_period = rides_in_period.filter(Ride.request_time.between(start_date, end_date))
-            total_revenue = rides_in_period.with_entities(func.sum(Ride.fare)).scalar() or 0
+            rides_in_period_query = Ride.query.filter(Ride.driver_id == driver.id, Ride.status == 'Completed')
+            if start_date and end_date: 
+                rides_in_period_query = rides_in_period_query.filter(Ride.request_time.between(start_date, end_date))
+            
+            rides_in_period_count = rides_in_period_query.count()
+            total_revenue = rides_in_period_query.with_entities(func.sum(Ride.fare)).scalar() or 0
             avg_rating = db.session.query(func.avg(Feedback.rating)).join(Ride).filter(Ride.driver_id == driver.id, Feedback.rating.isnot(None)).scalar() or 0
-            ws_drivers.append([ driver.driver_uid, driver.name, rides_in_period.count(), round(total_revenue, 2), round(avg_rating, 2) ])
+            ws_drivers.append([ driver.driver_uid, driver.name, rides_in_period_count, round(total_revenue, 2), round(avg_rating, 2) if avg_rating else 0 ])
 
         ws_raw = wb.create_sheet("Raw Ride Data")
         ws_raw.append(["Ride ID", "Request Time", "Status", "Passenger Name", "Passenger Phone", "Driver Name", "Fare", "Vehicle", "Payment", "Rating"])
@@ -603,7 +720,7 @@ def export_report():
                     try: 
                         if len(str(cell.value)) > max_length: max_length = len(str(cell.value))
                     except: pass
-                ws.column_dimensions[column_letter].width = (max_length + 2)
+                ws.column_dimensions[column_letter].width = (max_length + 2) if max_length < 50 else 50
         buffer = io.BytesIO()
         wb.save(buffer)
         buffer.seek(0)
@@ -612,6 +729,7 @@ def export_report():
 
 
 @app.route('/api/settings', methods=['GET', 'POST'])
+@login_required
 def handle_settings():
     if request.method == 'POST':
         for key, value in request.json.items():
@@ -621,12 +739,81 @@ def handle_settings():
         db.session.commit(); return jsonify({'message': 'Settings saved successfully!'})
     else: return jsonify({s.key: s.value for s in Setting.query.all()})
 
+# --- Admin Management API ---
+@app.route('/api/admins', methods=['GET'])
+@login_required
+def get_admins():
+    admins = Admin.query.all()
+    return jsonify([{'id': admin.id, 'username': admin.username} for admin in admins])
+
+@app.route('/api/admins/add', methods=['POST'])
+@login_required
+def add_admin():
+    data = request.json
+    username = data.get('username')
+    password = data.get('password')
+
+    if not username or not password:
+        return jsonify({'error': 'Username and password are required'}), 400
+    
+    if Admin.query.filter_by(username=username).first():
+        return jsonify({'error': 'Username already exists'}), 409
+
+    new_admin = Admin(username=username)
+    new_admin.set_password(password)
+    db.session.add(new_admin)
+    db.session.commit()
+    return jsonify({'message': 'Admin added successfully', 'admin': {'id': new_admin.id, 'username': new_admin.username}}), 201
+
+@app.route('/api/admins/delete', methods=['POST'])
+@login_required
+def delete_admin():
+    data = request.json
+    admin_id = data.get('admin_id')
+    
+    if admin_id == current_user.id:
+        return jsonify({'error': 'You cannot delete your own account'}), 403
+
+    if Admin.query.count() <= 1:
+        return jsonify({'error': 'Cannot delete the last admin account'}), 403
+
+    admin_to_delete = Admin.query.get(admin_id)
+    if not admin_to_delete:
+        return jsonify({'error': 'Admin not found'}), 404
+        
+    db.session.delete(admin_to_delete)
+    db.session.commit()
+    return jsonify({'message': 'Admin deleted successfully'})
+
+@app.route('/api/admins/change-password', methods=['POST'])
+@login_required
+def change_password():
+    data = request.json
+    current_password = data.get('current_password')
+    new_password = data.get('new_password')
+
+    if not current_user.check_password(current_password):
+        return jsonify({'error': 'Current password is not correct'}), 403
+    
+    current_user.set_password(new_password)
+    db.session.commit()
+    return jsonify({'message': 'Password changed successfully'})
+
 
 # --- Main Execution ---
 if __name__ == '__main__':
     with app.app_context():
         os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
         db.create_all()
+        
+        # Create a default admin user if none exists
+        if not Admin.query.first():
+            default_admin = Admin(username='admin')
+            default_admin.set_password('password') # You should change this password
+            db.session.add(default_admin)
+            db.session.commit()
+            print("Default admin 'admin' with password 'password' created.")
+
         if Driver.query.filter(Driver.driver_uid == None).first():
             for driver in Driver.query.filter(Driver.driver_uid == None).all(): driver.driver_uid = f"DRV-{driver.id:04d}"
             db.session.commit()
