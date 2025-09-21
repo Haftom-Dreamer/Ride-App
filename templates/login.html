@@ -2,19 +2,36 @@
 
 {% block title %}Dispatcher Login{% endblock %}
 
+{% block head %}
+<style>
+    .login-bg {
+        background-color: #f3f4f6;
+        background-image:
+            radial-gradient(at 47% 33%, hsl(209.00, 89%, 87%) 0, transparent 59%),
+            radial-gradient(at 82% 65%, hsl(218.00, 89%, 83%) 0, transparent 55%);
+    }
+    .dark .login-bg {
+         background-color: #030712;
+         background-image:
+            radial-gradient(at 47% 33%, hsl(240.00, 35%, 15%) 0, transparent 59%),
+            radial-gradient(at 82% 65%, hsl(240.00, 35%, 10%) 0, transparent 55%);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col justify-center items-center p-4">
+<div class="min-h-screen login-bg flex flex-col justify-center items-center p-4">
     <div class="max-w-md w-full mx-auto">
         <img src="/static/img/Selamawi-logo 2 png.png" alt="Ride App Logo" class="h-24 w-auto mx-auto mb-6">
         <h2 class="text-2xl font-bold text-center text-gray-900 dark:text-white">Dispatcher Login</h2>
     </div>
 
-    <div class="max-w-md w-full mx-auto bg-white dark:bg-gray-800 p-8 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg mt-6">
+    <div class="max-w-md w-full mx-auto bg-white/70 dark:bg-gray-800/80 backdrop-blur-sm p-8 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl mt-6">
         <form method="POST" action="{{ url_for('login') }}">
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
                     {% for category, message in messages %}
-                        <div class="p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-lg dark:bg-red-200 dark:text-red-800" role="alert">
+                        <div class="p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-lg dark:bg-red-900/50 dark:text-red-300" role="alert">
                             {{ message }}
                         </div>
                     {% endfor %}
@@ -26,7 +43,10 @@
                     <input id="username" name="username" type="text" required class="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
                 </div>
                 <div>
-                    <label for="password" class="text-sm font-medium text-gray-700 dark:text-gray-300">Password</label>
+                    <div class="flex justify-between items-center">
+                        <label for="password" class="text-sm font-medium text-gray-700 dark:text-gray-300">Password</label>
+                        <a href="#" id="forgot-password-link" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">Forgot password?</a>
+                    </div>
                     <input id="password" name="password" type="password" required class="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
                 </div>
                 <div>
@@ -38,4 +58,26 @@
         </form>
     </div>
 </div>
+
+<div id="recovery-modal" class="modal fixed inset-0 z-50 items-center justify-center hidden">
+    <div class="absolute inset-0 bg-black opacity-50"></div>
+    <div class="modal-content p-8 rounded-lg shadow-xl z-10 w-full max-w-sm text-center">
+        <h2 class="text-xl font-bold mb-2">Password Recovery</h2>
+        <p class="text-secondary mb-6">For security reasons, please contact the primary system administrator to have your password reset.</p>
+        <button type="button" class="cancel-modal-btn px-6 py-2 bg-indigo-600 text-white rounded-lg">Got it</button>
+    </div>
+</div>
+
+<script>
+    document.getElementById('forgot-password-link').addEventListener('click', e => {
+        e.preventDefault();
+        document.getElementById('recovery-modal').classList.remove('hidden');
+        document.getElementById('recovery-modal').classList.add('flex');
+    });
+    document.querySelector('#recovery-modal .cancel-modal-btn').addEventListener('click', () => {
+        document.getElementById('recovery-modal').classList.add('hidden');
+        document.getElementById('recovery-modal').classList.remove('flex');
+    });
+</script>
 {% endblock %}
+

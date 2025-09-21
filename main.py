@@ -785,19 +785,27 @@ def delete_admin():
     db.session.commit()
     return jsonify({'message': 'Admin deleted successfully'})
 
-@app.route('/api/admins/change-password', methods=['POST'])
+@app.route('/api/admins/update-profile', methods=['POST'])
 @login_required
-def change_password():
+def update_profile():
     data = request.json
+    new_username = data.get('username')
     current_password = data.get('current_password')
     new_password = data.get('new_password')
 
     if not current_user.check_password(current_password):
-        return jsonify({'error': 'Current password is not correct'}), 403
+        return jsonify({'error': 'Your current password is not correct'}), 403
     
-    current_user.set_password(new_password)
+    if new_username and new_username != current_user.username:
+        if Admin.query.filter_by(username=new_username).first():
+            return jsonify({'error': 'New username is already taken'}), 409
+        current_user.username = new_username
+    
+    if new_password:
+        current_user.set_password(new_password)
+        
     db.session.commit()
-    return jsonify({'message': 'Password changed successfully'})
+    return jsonify({'message': 'Profile updated successfully'})
 
 
 # --- Main Execution ---
