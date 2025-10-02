@@ -36,6 +36,8 @@ class Admin(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
+    profile_picture = db.Column(db.String(255), nullable=True, default='static/img/default_avatar.png')
+
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -788,10 +790,10 @@ def delete_admin():
 @app.route('/api/admins/update-profile', methods=['POST'])
 @login_required
 def update_profile():
-    data = request.json
-    new_username = data.get('username')
-    current_password = data.get('current_password')
-    new_password = data.get('new_password')
+    new_username = request.form.get('username')
+    current_password = request.form.get('current_password')
+    new_password = request.form.get('new_password')
+    profile_picture = request.files.get('profile_picture')
 
     if not current_user.check_password(current_password):
         return jsonify({'error': 'Your current password is not correct'}), 403
@@ -803,9 +805,12 @@ def update_profile():
     
     if new_password:
         current_user.set_password(new_password)
-        
+    
+    if profile_picture:
+        current_user.profile_picture = _handle_file_upload(profile_picture, current_user.profile_picture)
+
     db.session.commit()
-    return jsonify({'message': 'Profile updated successfully'})
+    return jsonify({'message': 'Profile updated successfully', 'profile_picture': current_user.profile_picture})
 
 
 # --- Main Execution ---
@@ -828,4 +833,3 @@ if __name__ == '__main__':
         if not Setting.query.first():
             db.session.add(Setting(key='base_fare', value='25')); db.session.add(Setting(key='per_km_bajaj', value='8')); db.session.add(Setting(key='per_km_car', value='12')); db.session.commit()
     app.run(debug=True)
-

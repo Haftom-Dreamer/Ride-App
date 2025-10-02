@@ -128,7 +128,7 @@
     <aside class="w-64 sidebar text-gray-300 flex flex-col flex-shrink-0">
         <div class="p-4 flex justify-between items-center border-b border-gray-700">
             <div class="sidebar-header-text flex-grow">
-                <img src="/static/img/Selamawi-logo 2 png.png" alt="Ride App Logo" class="h-12 w-full object-contain">
+                <img src="/static/img/Selamawi-logo 1 png.png" alt="Ride App Logo" class="h-12 w-full object-contain">
             </div>
             <button id="sidebar-toggle-btn" class="p-2 rounded-md hover:bg-gray-700"><svg class="h-6 w-6 text-white transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
         </div>
@@ -219,7 +219,7 @@
         <div class="p-4 border-t border-gray-700 mt-auto">
             <div class="flex items-center justify-between">
                 <div class="flex items-center">
-                    <img src="/static/img/default_avatar.png" class="h-10 w-10 rounded-full object-cover flex-shrink-0" alt="Dispatcher">
+                    <img id="sidebar-avatar" src="/{{ current_user.profile_picture or 'static/img/default_avatar.png' }}" class="h-10 w-10 rounded-full object-cover flex-shrink-0" alt="Dispatcher">
                     <div class="ml-3 user-info">
                         <p class="text-sm font-semibold text-white">{{ current_user.username | capitalize }}</p>
                         <a href="{{ url_for('logout') }}" class="text-xs text-red-400 hover:underline">Logout</a>
@@ -376,9 +376,17 @@
                     <div id="profile-settings-content" class="settings-content active">
                         <h3 class="text-xl font-semibold mb-4 text-primary">Your Account</h3>
                         <form id="update-profile-form" class="space-y-4 max-w-md">
-                            <div><label for="update-username" class="block text-sm font-medium">Username</label><input type="text" id="update-username" required class="border p-2 rounded-md w-full mt-1"></div>
-                            <div><label for="update-new-password" class="block text-sm font-medium">New Password (optional)</label><input type="password" id="update-new-password" class="border p-2 rounded-md w-full mt-1"></div>
-                            <div><label for="update-current-password" class="block text-sm font-medium">Current Password (to confirm changes)</label><input type="password" id="update-current-password" required class="border p-2 rounded-md w-full mt-1"></div>
+                             <div class="flex items-center space-x-4">
+                                <img id="settings-avatar" src="/{{ current_user.profile_picture or 'static/img/default_avatar.png' }}" class="h-16 w-16 rounded-full object-cover" alt="Your Avatar">
+                                <div>
+                                    <label for="update-profile-picture" class="file-input-label hover:bg-[--border-color]">Change Picture</label>
+                                    <input type="file" name="profile_picture" id="update-profile-picture" class="hidden" accept="image/*" onchange="updateFilenameLabel(this.id, 'profile-picture-filename')">
+                                    <p id="profile-picture-filename" class="file-input-filename text-xs mt-1">No file chosen</p>
+                                </div>
+                            </div>
+                            <div><label for="update-username" class="block text-sm font-medium">Username</label><input type="text" name="username" id="update-username" value="{{ current_user.username }}" required class="border p-2 rounded-md w-full mt-1"></div>
+                            <div><label for="update-new-password" class="block text-sm font-medium">New Password (optional)</label><input type="password" name="new_password" id="update-new-password" class="border p-2 rounded-md w-full mt-1"></div>
+                            <div><label for="update-current-password" class="block text-sm font-medium">Current Password (to confirm changes)</label><input type="password" name="current_password" id="update-current-password" required class="border p-2 rounded-md w-full mt-1"></div>
                             <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">Save Changes</button>
                             <p id="profile-feedback" class="text-sm mt-2"></p>
                         </form>
@@ -486,7 +494,7 @@
         // --- HELPER FUNCTIONS ---
         const fetchData = async (endpoint, params = '') => { try { const r = await fetch(`${API_BASE_URL}/${endpoint}?${params}`, { cache: "no-store" }); if (!r.ok) throw new Error(`HTTP error ${r.status}`); return await r.json(); } catch (e) { console.error(`Fetch error for ${endpoint}:`, e); if (e instanceof TypeError) {} else if (r.status === 401) { window.location.href = '/login'; } return null; } };
         const postData = async (endpoint, data, method = 'POST') => { try { const r = await fetch(`${API_BASE_URL}/${endpoint}`, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); const result = await r.json(); if (!r.ok) throw new Error(result.error || `HTTP error ${r.status}`); return result; } catch (e) { console.error(`Post error for ${endpoint}:`, e); if (e instanceof TypeError) {} else if (r.status === 401) { window.location.href = '/login'; } return {error: e.message}; } };
-        const postFormData = async (endpoint, formData) => { try { const r = await fetch(`${API_BASE_URL}/${endpoint}`, { method: 'POST', body: formData }); if (!r.ok) throw new Error(`HTTP error ${r.status}`); return await r.json(); } catch (e) { console.error(`Post Form error for ${endpoint}:`, e); if (e instanceof TypeError) {} else if (r.status === 401) { window.location.href = '/login'; } return null; } };
+        const postFormData = async (endpoint, formData) => { try { const r = await fetch(`${API_BASE_URL}/${endpoint}`, { method: 'POST', body: formData }); if (!r.ok) { const err = await r.json(); throw new Error(err.error || `HTTP error ${r.status}`); } return await r.json(); } catch (e) { console.error(`Post Form error for ${endpoint}:`, e); if (e instanceof TypeError) {} else if (r.status === 401) { window.location.href = '/login'; } return {error: e.message}; } };
         const showModal = (id) => { hideModals(); document.getElementById(id).classList.remove('hidden'); document.getElementById(id).classList.add('flex'); };
         const hideModals = () => document.querySelectorAll('.modal').forEach(m => { m.classList.add('hidden'); m.classList.remove('flex'); });
 
@@ -707,24 +715,29 @@
 
         document.getElementById('update-profile-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const username = document.getElementById('update-username').value;
-            const newPassword = document.getElementById('update-new-password').value;
-            const currentPassword = document.getElementById('update-current-password').value;
+            const form = e.target;
+            const formData = new FormData(form);
             
-            const payload = {
-                username: username,
-                current_password: currentPassword,
-                new_password: newPassword || null
-            };
-
-            const result = await postData('admins/update-profile', payload);
+            const result = await postFormData('admins/update-profile', formData); 
+        
             if (result && !result.error) {
                 setFeedbackMessage('profile-feedback', 'Profile updated successfully!');
-                e.target.reset();
-                // Optionally update username in the sidebar display
-                document.querySelector('.user-info .font-semibold').textContent = username.charAt(0).toUpperCase() + username.slice(1);
+                form.elements.new_password.value = '';
+                form.elements.current_password.value = '';
+                form.elements.profile_picture.value = '';
+                document.getElementById('profile-picture-filename').textContent = 'No file chosen';
+
+                const newUsername = form.elements.username.value;
+                document.querySelector('.user-info .font-semibold').textContent = newUsername.charAt(0).toUpperCase() + newUsername.slice(1);
+        
+                if (result.profile_picture) {
+                    const newAvatarSrc = `/${result.profile_picture}?v=${new Date().getTime()}`;
+                    document.getElementById('sidebar-avatar').src = newAvatarSrc;
+                    document.getElementById('settings-avatar').src = newAvatarSrc;
+                }
             } else {
-                setFeedbackMessage('profile-feedback', `Error: ${result.error}`, true);
+                const errorMessage = result ? result.error : 'An unexpected error occurred. Please try again.';
+                setFeedbackMessage('profile-feedback', `Error: ${errorMessage}`, true);
             }
         });
 
@@ -791,7 +804,6 @@
         const initDashboardMap = () => { if (!dashboardMap) { dashboardMap = L.map('dashboard-map').setView([14.275, 39.46], 13); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(dashboardMap); } }
         
         document.querySelector('.analytics-filter-btn[data-period="week"]').classList.add('active-filter');
-        document.getElementById('update-username').value = '{{ current_user.username }}';
         showPane('dashboard');
         refreshAllData();
         setInterval(refreshDashboardData, 10000);
@@ -799,4 +811,3 @@
     });
 </script>
 {% endblock %}
-
