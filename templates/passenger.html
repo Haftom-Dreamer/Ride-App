@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "passenger_base.html" %}
 
 {% block title %}Request a Ride{% endblock %}
 
@@ -6,11 +6,6 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 <style>
-    body {
-        background-color: #f8fafc;
-        font-family: 'Inter', sans-serif;
-    }
-
     #main-container {
         transition: all 0.5s ease-in-out;
     }
@@ -176,7 +171,7 @@
 {% endblock %}
 
 {% block content %}
-<div id="main-container" class="w-full max-w-lg mx-auto bg-white p-4 sm:p-6 rounded-2xl shadow-xl mt-8">
+<div id="main-container" class="w-full max-w-lg mx-auto bg-white p-4 sm:p-6 rounded-2xl shadow-xl">
 
     <!-- Booking UI -->
     <div id="booking-container">
@@ -246,19 +241,11 @@
                     placeholder="e.g., I am wearing a red shirt"></textarea>
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1">
                 <div id="fare-info" class="bg-gray-50 p-3 rounded-lg text-center hidden">
                     <p class="text-sm text-gray-600">Fare: <strong class="text-gray-900"><span
                                 id="fare-display">--</span> ETB</strong></p>
                     <p class="text-xs text-gray-500">Distance: <span id="distance-display">--</span> km</p>
-                </div>
-                <div class="col-span-2" id="phone-container"><label for="phone-input"
-                        class="block text-sm font-medium text-gray-700">Your Phone Number</label>
-                    <div class="mt-1 flex rounded-md shadow-sm"><span
-                            class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">+251</span><input
-                            type="tel" id="phone-input"
-                            class="flex-1 block w-full rounded-none rounded-r-md border-gray-300"
-                            placeholder="912345678"></div>
                 </div>
             </div>
             <button id="request-ride-btn"
@@ -346,7 +333,20 @@
 
         // --- Constants ---
         const API_BASE_URL = 'http://127.0.0.1:5000/api';
-        const commonLandmarks = [{ "name": "Adigrat University", "lat": 14.283, "lon": 39.462, "display_name": "Adigrat University, Adigrat" }, { "name": "St. George's Church", "lat": 14.276, "lon": 39.459, "display_name": "St. George's Church, Adigrat" }, { "name": "Adigrat General Hospital", "lat": 14.270, "lon": 39.465, "display_name": "Adigrat General Hospital, Adigrat" }, { "name": "Martyrs Memorial Monument", "lat": 14.278, "lon": 39.468, "display_name": "Martyrs Memorial Monument, Adigrat" }, { "name": "Central Market (Mercato)", "lat": 14.275, "lon": 39.461, "display_name": "Central Market (Mercato), Adigrat" }, { "name": "Adigrat Bus Station", "lat": 14.272, "lon": 39.458, "display_name": "Adigrat Bus Station, Adigrat" }, { "name": "Medhane Alem Cathedral", "lat": 14.279, "lon": 39.455, "display_name": "Medhane Alem Cathedral, Adigrat" }, { "name": "Gebre's Hotel", "lat": 14.277, "lon": 39.462, "display_name": "Gebre's Hotel, Adigrat" }, { "name": "Agazi School", "lat": 14.274, "lon": 39.463, "display_name": "Agazi School, Adigrat" }, { "name": "Commercial Bank of Ethiopia", "lat": 14.275, "lon": 39.460, "display_name": "Commercial Bank of Ethiopia, Adigrat" }, { "name": "Total Gas Station", "lat": 14.271, "lon": 39.459, "display_name": "Total Gas Station, Adigrat" }, { "name": "Adigrat Stadium", "lat": 14.280, "lon": 39.470, "display_name": "Adigrat Stadium, Adigrat" }, { "name": "Abune Aregawi Church", "lat": 14.281, "lon": 39.458, "display_name": "Abune Aregawi Church, Adigrat" }];
+        const commonLandmarks = [
+            // Adigrat Landmarks
+            { "name": "Adigrat University", "lat": 14.283, "lon": 39.462, "display_name": "Adigrat University, Adigrat" },
+            { "name": "St. George's Church", "lat": 14.276, "lon": 39.459, "display_name": "St. George's Church, Adigrat" },
+            { "name": "Adigrat General Hospital", "lat": 14.270, "lon": 39.465, "display_name": "Adigrat General Hospital, Adigrat" },
+            { "name": "Adigrat Bus Station", "lat": 14.272, "lon": 39.458, "display_name": "Adigrat Bus Station, Adigrat" },
+            { "name": "Adigrat Stadium", "lat": 14.280, "lon": 39.470, "display_name": "Adigrat Stadium, Adigrat" },
+            // Mekelle Landmarks
+            { "name": "Mekelle University", "lat": 13.488, "lon": 39.482, "display_name": "Mekelle University, Mekelle" },
+            { "name": "Martyrs' Memorial Monument", "lat": 13.507, "lon": 39.475, "display_name": "Martyrs' Memorial Monument, Mekelle" },
+            { "name": "Yohannes IV Museum", "lat": 13.498, "lon": 39.467, "display_name": "Yohannes IV Museum, Mekelle" },
+            { "name": "Atse Yohannes Hotel", "lat": 13.496, "lon": 39.471, "display_name": "Atse Yohannes Hotel, Mekelle" },
+            { "name": "Mekelle General Hospital", "lat": 13.493, "lon": 39.479, "display_name": "Mekelle General Hospital, Mekelle" }
+        ];
 
         // --- Element Selectors ---
         const bookingContainer = document.getElementById('booking-container');
@@ -361,7 +361,6 @@
         const fareInfo = document.getElementById('fare-info');
         const fareDisplay = document.getElementById('fare-display');
         const distanceDisplay = document.getElementById('distance-display');
-        const phoneInput = document.getElementById('phone-input');
         const noteInput = document.getElementById('ride-note-input');
         const requestRideBtn = document.getElementById('request-ride-btn');
         const pickupSuggestions = document.getElementById('pickup-suggestions');
@@ -397,7 +396,7 @@
             requestRideBtn.addEventListener('click', handleRideRequest);
             cancelRequestBtn.addEventListener('click', handleCancelRequest);
             newRideBtn.addEventListener('click', () => window.location.reload());
-            doneBtn.addEventListener('click', () => window.location.reload());
+            doneBtn.addEventListener('click', () => { window.location.href = "{{ url_for('passenger_history') }}"});
 
             setupAutocomplete(pickupInput, pickupSuggestions, (place) => {
                 userPickup = { lat: parseFloat(place.lat), lon: parseFloat(place.lon), address: place.display_name };
@@ -435,10 +434,7 @@
 
         const handleRideRequest = () => {
             if (!userPickup || !userDestination || !rideDetails) return;
-            const phone = phoneInput.value.trim();
-            if (!phone || phone.length < 9) return alert('Please enter a valid phone number.');
             const rideData = { 
-                phone_number: `+251${phone}`,
                 pickup_address: userPickup.address,
                 pickup_lat: userPickup.lat, 
                 pickup_lon: userPickup.lon, 
@@ -541,7 +537,7 @@
         const initLeafletMap = (mapId) => {
             const targetMapEl = document.getElementById(mapId);
             if (targetMapEl && targetMapEl._leaflet_id) { return; }
-            const newMap = L.map(mapId).setView([14.275, 39.46], 15);
+            const newMap = L.map(mapId).setView([13.88, 39.46], 10);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(newMap);
             if (mapId === 'map') {
                 map = newMap;
@@ -551,9 +547,9 @@
 
         function handleCancelRequest() { if (!currentRideId) return; fetch(`${API_BASE_URL}/cancel-ride`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ride_id: currentRideId }) }); }
         function handleMapClick(e) { const { lat, lng } = e.latlng; const isSettingPickup = !userPickup || (userPickup && userDestination); const targetInput = isSettingPickup ? pickupInput : destinationInput; setStatus('Fetching address...', 'blue'); fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`).then(res => res.json()).then(data => { if (!data || !data.display_name) throw new Error('Could not find address.'); const location = { lat: lat, lon: lng, address: data.display_name }; targetInput.value = location.address; if (isSettingPickup) { userPickup = location; userDestination = null; destinationInput.value = ''; } else { userDestination = location; } setStatus(isSettingPickup ? 'Pickup set!' : 'Destination set!', 'green'); updateMapAndFare(); }).catch(err => setStatus(err.message, 'red')); }
-        function setupAutocomplete(inputEl, suggestionsEl, callback) { suggestionsEl.addEventListener('click', (e) => { if (e.target && e.target.classList.contains('autocomplete-suggestion')) { const placeData = JSON.parse(e.target.dataset.place); inputEl.value = placeData.display_name; suggestionsEl.innerHTML = ''; callback(placeData); } }); inputEl.addEventListener('input', () => { clearTimeout(searchTimeout); const query = inputEl.value.toLowerCase(); suggestionsEl.innerHTML = ''; if (query.length < 1) return; const localResults = commonLandmarks.filter(place => place.name.toLowerCase().includes(query)); localResults.forEach(place => renderSuggestion(place, suggestionsEl)); const searchingMsg = document.createElement('div'); searchingMsg.className = 'autocomplete-searching'; searchingMsg.textContent = 'Searching for more...'; suggestionsEl.appendChild(searchingMsg); searchTimeout = setTimeout(async () => { const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&viewbox=39.44,14.26,39.48,14.29&bounded=1&countrycodes=et`; try { const response = await fetch(url); const apiResults = await response.json(); searchingMsg.remove(); apiResults.slice(0, 5).forEach(place => { if (!localResults.some(local => local.name === place.name)) { renderSuggestion(place, suggestionsEl); } }); } catch (error) { console.error("Autocomplete API error:", error); searchingMsg.textContent = 'Search error.'; } }, 300); }); document.addEventListener('click', e => { if (e.target !== inputEl) suggestionsEl.innerHTML = ''; }); }
+        function setupAutocomplete(inputEl, suggestionsEl, callback) { suggestionsEl.addEventListener('click', (e) => { if (e.target && e.target.classList.contains('autocomplete-suggestion')) { const placeData = JSON.parse(e.target.dataset.place); inputEl.value = placeData.display_name; suggestionsEl.innerHTML = ''; callback(placeData); } }); inputEl.addEventListener('input', () => { clearTimeout(searchTimeout); const query = inputEl.value.toLowerCase(); suggestionsEl.innerHTML = ''; if (query.length < 1) return; const localResults = commonLandmarks.filter(place => place.name.toLowerCase().includes(query)); localResults.forEach(place => renderSuggestion(place, suggestionsEl)); const searchingMsg = document.createElement('div'); searchingMsg.className = 'autocomplete-searching'; searchingMsg.textContent = 'Searching for more...'; suggestionsEl.appendChild(searchingMsg); searchTimeout = setTimeout(async () => { const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&viewbox=39.40,13.45,39.55,14.35&bounded=1&countrycodes=et`; try { const response = await fetch(url); const apiResults = await response.json(); searchingMsg.remove(); apiResults.slice(0, 5).forEach(place => { if (!localResults.some(local => local.name === place.name)) { renderSuggestion(place, suggestionsEl); } }); } catch (error) { console.error("Autocomplete API error:", error); searchingMsg.textContent = 'Search error.'; } }, 300); }); document.addEventListener('click', e => { if (e.target !== inputEl) suggestionsEl.innerHTML = ''; }); }
         function renderSuggestion(place, suggestionsEl) { const div = document.createElement('div'); div.innerHTML = place.display_name; div.className = 'autocomplete-suggestion'; div.dataset.place = JSON.stringify({ lat: place.lat, lon: place.lon, display_name: place.display_name }); suggestionsEl.appendChild(div); }
-        function getUserLocation() { setStatus('Finding your location...', 'blue'); navigator.geolocation.getCurrentPosition(pos => { const { latitude, longitude } = pos.coords; fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`).then(res => res.json()).then(data => { const lon = parseFloat(data.lon), lat = parseFloat(data.lat), v = "39.44,14.26,39.48,14.29".split(','); if (lon >= parseFloat(v[0]) && lon <= parseFloat(v[2]) && lat >= parseFloat(v[1]) && lat <= parseFloat(v[3])) { userPickup = { lat: latitude, lon: longitude, address: data.display_name || "Current Location" }; pickupInput.value = userPickup.address; setStatus('Location found!', 'green'); updateMapAndFare(); } else { setStatus('Service is only available in Adigrat.', 'red'); userPickup = null; } }); }, () => setStatus('Please enable location services.', 'red')); }
+        function getUserLocation() { setStatus('Finding your location...', 'blue'); navigator.geolocation.getCurrentPosition(pos => { const { latitude, longitude } = pos.coords; fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`).then(res => res.json()).then(data => { const lon = parseFloat(data.lon), lat = parseFloat(data.lat), v = "39.40,13.45,39.55,14.35".split(','); if (lon >= parseFloat(v[0]) && lon <= parseFloat(v[2]) && lat >= parseFloat(v[1]) && lat <= parseFloat(v[3])) { userPickup = { lat: latitude, lon: longitude, address: data.display_name || "Current Location" }; pickupInput.value = userPickup.address; setStatus('Location found!', 'green'); updateMapAndFare(); } else { setStatus('Service is only available in Adigrat or Mekelle.', 'red'); userPickup = null; } }); }, () => setStatus('Please enable location services.', 'red')); }
         function updateMapAndFare() { if (pickupMarker) map.removeLayer(pickupMarker); if (destinationMarker) map.removeLayer(destinationMarker); if (routeLayer) map.removeLayer(routeLayer); if (userPickup) pickupMarker = L.marker([userPickup.lat, userPickup.lon]).addTo(map).bindPopup('Pickup').openPopup(); if (userDestination) destinationMarker = L.marker([userDestination.lat, userDestination.lon]).addTo(map).bindPopup('Destination'); if (userPickup && userDestination) { drawRouteOnMap(userPickup, userDestination, map); calculateFare(); fareInfo.classList.remove('hidden'); requestRideBtn.disabled = false; } else { fareInfo.classList.add('hidden'); requestRideBtn.disabled = true; } if (userPickup) map.setView([userPickup.lat, userPickup.lon], 16); updateMapInstruction(); }
         function updateMapInstruction() { mapInstruction.classList.remove('hidden'); if (!userPickup) { mapInstruction.textContent = 'Click on the map or search to set your pickup location.'; } else if (!userDestination) { mapInstruction.textContent = 'Now, click on the map or search to set your destination.'; } else { mapInstruction.classList.add('hidden'); } }
         async function drawRouteOnMap(pickup, destination, targetMap) { const currentMap = targetMap || map; const url = `https://router.project-osrm.org/route/v1/driving/${pickup.lon},${pickup.lat};${destination.lon},${destination.lat}?overview=full&geometries=geojson`; try { const response = await fetch(url); const data = await response.json(); if (data.routes && data.routes.length > 0) { const routeCoords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]); const routeLine = L.polyline(routeCoords, { color: '#6d28d9', weight: 5 }).addTo(currentMap); currentMap.fitBounds(routeLine.getBounds(), { padding: [50, 50] }); } } catch (error) { console.error('Error fetching route:', error); } }
@@ -562,3 +558,5 @@
     });
 </script>
 {% endblock %}
+
+

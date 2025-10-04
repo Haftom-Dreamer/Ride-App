@@ -175,6 +175,11 @@
                         <span class="sidebar-link-text">Drivers</span>
                         <span class="sidebar-badge" id="drivers-badge">0</span>
                     </a>
+                    <a href="#" class="sidebar-link flex items-center p-3 rounded-lg" data-pane="passengers" title="Passengers">
+                        <span class="icon-outline"><svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m-7.284.144A9.09 9.09 0 0 1 9 18.72M5.25 8.25A3.75 3.75 0 0 1 9 4.5h6a3.75 3.75 0 0 1 3.75 3.75v3.75a3.75 3.75 0 0 1-3.75 3.75H9a3.75 3.75 0 0 1-3.75-3.75V8.25ZM9 16.5h6" /></svg></span>
+                        <span class="icon-solid"><svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M10 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM3.465 14.493a1.23 1.23 0 0 0 .41 1.412A9.957 9.957 0 0 0 10 18c2.31 0 4.438-.784 6.131-2.095a1.23 1.23 0 0 0 .41-1.412A9.995 9.995 0 0 0 10 12c-2.31 0-4.438.784-6.131 2.095Z" /></svg></span>
+                        <span class="sidebar-link-text">Passengers</span>
+                    </a>
                      <a href="#" class="sidebar-link flex items-center p-3 rounded-lg" data-pane="inbox" title="Inbox">
                         <span class="icon-outline"><svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg></span>
                         <span class="icon-solid"><svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" /><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" /></svg></span>
@@ -355,6 +360,29 @@
                 <div class="overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b border-border"><th class="p-2">ID</th><th>Name</th><th>Contact</th><th>Vehicle</th><th>Status</th><th>Rating</th><th>Actions</th></tr></thead><tbody id="drivers-table-body"></tbody></table></div>
             </div>
         </div>
+        <div id="passengers-pane" class="pane">
+            <h2 class="text-3xl font-bold mb-6 title-gradient">Passenger Management</h2>
+            <div class="card p-6 rounded-lg shadow">
+                <div class="flex justify-between items-center mb-4">
+                    <input type="text" id="passenger-search-input" placeholder="Search by name or phone..." class="border p-2 rounded-md w-64">
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="border-b border-border">
+                                <th class="p-2">Name</th>
+                                <th>Contact</th>
+                                <th>Rides Taken</th>
+                                <th>Member Since</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="passengers-table-body">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
         <div id="rides-pane" class="pane">
             <h2 class="text-3xl font-bold mb-6 title-gradient">Ride History</h2>
             <div class="card p-6 rounded-lg shadow">
@@ -472,6 +500,17 @@
     </div>
 </div>
 
+<div id="passenger-details-modal" class="modal fixed inset-0 z-50 items-center justify-center hidden overflow-y-auto">
+    <div class="absolute inset-0 bg-black opacity-50"></div>
+    <div class="modal-content p-8 rounded-lg shadow-xl z-10 w-full max-w-3xl my-8">
+        <div class="flex justify-between items-start">
+            <h2 class="text-2xl font-bold mb-4">Passenger Details</h2>
+            <button type="button" class="cancel-modal-btn -mt-2 -mr-2 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">&times;</button>
+        </div>
+        <div id="passenger-details-content" class="max-h-[75vh] overflow-y-auto pr-4"></div>
+    </div>
+</div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
     const updateFilenameLabel = (inputId, labelId) => { const input = document.getElementById(inputId); const label = document.getElementById(labelId); label.textContent = input.files.length > 0 ? input.files[0].name : 'No file chosen'; };
@@ -480,15 +519,16 @@
         // --- STATE & CONFIG ---
         const API_BASE_URL = 'http://127.0.0.1:5000/api';
         let dashboardMap, revenueChart, vehicleDistChart, paymentDistChart;
-        let pendingRideMarkers = {}, activeRideLayers = {};
+        let rideLayers = {};
         let currentAnalyticsParams = 'period=week';
         let currentReportParams = 'period=all';
-        let allDrivers = [], allRidesHistory = [], allFeedback = [], allPendingRides = [], allActiveRides = [], recentNotifications = [];
+        let allDrivers = [], allRidesHistory = [], allFeedback = [], allPendingRides = [], allActiveRides = [], allPassengers = [], recentNotifications = [];
         let rideHistoryPage = 1, RIDES_PER_PAGE = 10, lastPendingCount = 0;
         const notificationSound = new Audio("data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU"+Array(500).join("12345678"));
         const getCssVar = (varName) => getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
         const chartTextColor = () => getCssVar('--text-primary');
-        const defaultIcon = L.icon({ iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png', shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png', iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41] });
+        const pendingIcon = L.icon({ iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png', shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png', iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41] });
+        const activeIcon = L.icon({ iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png', shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png', iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41] });
         const destIcon = L.icon({ iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png', shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png', iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41] });
 
         // --- HELPER FUNCTIONS ---
@@ -588,6 +628,36 @@
         };
 
         const updateDriversTable = () => { const searchTerm = document.getElementById('driver-search-input').value.toLowerCase(); const statusFilter = document.getElementById('driver-status-filter').value; const filtered = allDrivers.filter(d => (d.name.toLowerCase().includes(searchTerm) || d.phone_number.includes(searchTerm) || (d.driver_uid && d.driver_uid.toLowerCase().includes(searchTerm))) && (statusFilter === 'All' || d.status === statusFilter)); const tbody = document.getElementById('drivers-table-body'); tbody.innerHTML = ''; if (!filtered.length) { tbody.innerHTML = '<tr><td colspan="7" class="text-center p-4">No drivers found.</td></tr>'; return; } filtered.forEach(d => { const row = tbody.insertRow(); row.innerHTML = `<td class="p-2 font-mono text-xs">${d.driver_uid||'N/A'}</td><td class="flex items-center"><img src="/${d.profile_picture}" class="h-8 w-8 rounded-full mr-3 object-cover" onerror="this.src='/static/img/default_avatar.png'">${d.name}</td><td><a href="tel:${d.phone_number}" class="text-blue-500">${d.phone_number}</a></td><td>${d.vehicle_type}</td><td><select class="driver-status-select status-select-${d.status.replace(' ','-')}" data-driver-id="${d.id}">${['Available','On Trip','Offline'].map(s => `<option value="${s}" ${d.status===s?'selected':''}>${s}</option>`).join('')}</select></td><td>${d.avg_rating.toFixed(1)} ★</td><td class="space-x-2"><button class="action-btn view" data-driver-id="${d.id}">👁️</button><button class="action-btn edit" data-driver-id="${d.id}">✏️</button><button class="action-btn delete" data-driver-id="${d.id}">🗑️</button></td>`; }); };
+        
+        const updatePassengersTable = () => {
+            const searchTerm = document.getElementById('passenger-search-input').value.toLowerCase();
+            const filtered = allPassengers.filter(p =>
+                p.username.toLowerCase().includes(searchTerm) ||
+                p.phone_number.includes(searchTerm)
+            );
+            const tbody = document.getElementById('passengers-table-body');
+            tbody.innerHTML = '';
+            if (!filtered.length) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center p-4">No passengers found.</td></tr>';
+                return;
+            }
+            filtered.forEach(p => {
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td class="p-2 flex items-center">
+                        <img src="/${p.profile_picture}" class="h-8 w-8 rounded-full mr-3 object-cover" onerror="this.src='/static/img/default_avatar.png'">
+                        ${p.username}
+                    </td>
+                    <td><a href="tel:${p.phone_number}" class="text-blue-500">${p.phone_number}</a></td>
+                    <td>${p.rides_taken}</td>
+                    <td>${p.join_date}</td>
+                    <td class="space-x-2">
+                        <button class="action-btn view view-passenger-btn" data-passenger-id="${p.id}">👁️</button>
+                    </td>
+                `;
+            });
+        };
+
         const updateActiveRidesTable = (rides) => { const tbody = document.getElementById('active-rides-table-body'); tbody.innerHTML = ''; if (!rides?.length) { tbody.innerHTML = '<tr><td colspan="5" class="text-center p-4">No active rides</td></tr>'; return; } rides.forEach(r => { const row = tbody.insertRow(); row.innerHTML = `<td class="p-2">${r.user_name}</td><td>${r.driver_name}</td><td class="text-xs max-w-xs truncate">${r.dest_address}</td><td><span class="status-badge status-${r.status.replace(' ','-')}">${r.status}</span></td><td class="space-x-2"><button class="px-3 py-1 bg-green-500 text-white text-xs rounded complete-ride-btn" data-ride-id="${r.id}">Complete</button><button class="px-3 py-1 bg-yellow-500 text-white text-xs rounded reassign-ride-btn" data-ride-id="${r.id}">Re-assign</button></td>`; }); };
         const updateRideHistoryTable = () => { const tbody = document.getElementById('rides-history-table-body'); tbody.innerHTML = ''; if (!allRidesHistory?.length) { tbody.innerHTML = '<tr><td colspan="7" class="text-center p-4">No ride history.</td></tr>'; return; } const search = document.getElementById('ride-history-search').value.toLowerCase(); const filtered = allRidesHistory.filter(r => r.user_name.toLowerCase().includes(search) || r.driver_name?.toLowerCase().includes(search)); const pageInfo = document.getElementById('ride-history-page-info'); const totalPages = Math.ceil(filtered.length / RIDES_PER_PAGE); rideHistoryPage = Math.min(rideHistoryPage, totalPages) || 1; pageInfo.textContent = `Page ${rideHistoryPage} of ${totalPages}`; const paginated = filtered.slice((rideHistoryPage - 1) * RIDES_PER_PAGE, rideHistoryPage * RIDES_PER_PAGE); paginated.forEach(r => { const row = tbody.insertRow(); row.innerHTML = `<td class="p-2">${r.id}</td><td>${r.user_name}</td><td>${r.driver_name}</td><td>${r.fare} ETB</td><td><span class="status-badge status-${r.status}">${r.status}</span></td><td>${r.rating ? '★'.repeat(r.rating) : 'N/A'}</td><td>${r.request_time}</td>`; }); };
         const refreshFeedback = async () => { allFeedback = await fetchData('all-feedback') || []; const list = document.getElementById('feedback-list'); list.innerHTML = ''; if(!allFeedback.length) { list.innerHTML = '<p class="text-secondary text-center">No feedback yet.</p>'; return; } allFeedback.forEach(f => { const item = document.createElement('div'); item.className = `border-b pb-3 ${f.is_resolved ? 'opacity-50' : ''}`; item.innerHTML = `<div class="flex justify-between items-center"><p class="font-semibold">Ride #${f.ride_id} - ${f.passenger_name}</p><span class="text-xs text-secondary">${f.date}</span></div><div class="flex items-center mt-1"><span class="text-yellow-500">${f.rating ? '★'.repeat(f.rating) : ''}</span><p class="ml-2 text-sm italic">"${f.comment || 'No comment'}"</p></div><div class="flex justify-between items-center mt-1"><p class="text-xs text-secondary">Driver: ${f.driver_name}</p>${!f.is_resolved ? `<button data-id="${f.id}" class="resolve-feedback-btn px-2 py-1 text-xs bg-green-500 text-white rounded">Mark as Resolved</button>`: '<span class="text-xs text-green-600 font-semibold">Resolved</span>'}</div>`; list.appendChild(item); }); };
@@ -620,22 +690,71 @@
         document.getElementById('feedback-list').addEventListener('click', async e => { if (e.target.classList.contains('resolve-feedback-btn')) { await postData(`feedback/resolve/${e.target.dataset.id}`, {}); refreshFeedback(); refreshUnreadCount(); } });
         document.getElementById('settings-form').addEventListener('submit', async e => { e.preventDefault(); await postData('settings', Object.fromEntries(new FormData(e.target))); alert('Settings Saved!'); });
         document.getElementById('driver-search-input').addEventListener('input', updateDriversTable);
+        document.getElementById('passenger-search-input').addEventListener('input', updatePassengersTable);
         document.getElementById('driver-status-filter').addEventListener('change', updateDriversTable);
         document.getElementById('ride-history-search').addEventListener('input', () => { rideHistoryPage = 1; updateRideHistoryTable(); });
         document.getElementById('ride-history-prev').addEventListener('click', () => { if (rideHistoryPage > 1) { rideHistoryPage--; updateRideHistoryTable(); } });
         document.getElementById('ride-history-next').addEventListener('click', () => { rideHistoryPage++; updateRideHistoryTable(); });
 
+        document.getElementById('passengers-table-body').addEventListener('click', async e => {
+            const btn = e.target.closest('.view-passenger-btn');
+            if (btn) {
+                const id = btn.dataset.passengerId;
+                const data = await fetchData(`passenger-details/${id}`);
+                if(data) showPassengerDetails(data);
+            }
+        });
+
+
         // --- DRIVER DETAILS & MAP ---
         const showDriverDetails = (data) => { const content = document.getElementById('driver-details-content'); const p = data.profile; const docLink = (path, name) => path ? `<a href="/${path}" target="_blank" class="text-blue-500 hover:underline">${name}</a>` : 'Not Uploaded'; content.innerHTML = `<div class="grid md:grid-cols-3 gap-6"><div class="text-center"><img src="/${p.avatar}" class="rounded-full w-32 h-32 mx-auto border-4 object-cover" onerror="this.src='/static/img/default_avatar.png'"><h3 class="text-xl font-bold mt-4">${p.name}</h3><p class="text-sm font-mono">${p.driver_uid}</p><p class="text-sm">${p.phone_number}</p><span class="status-badge status-${p.status.replace(' ','-')} mt-2 inline-block">${p.status}</span></div><div class="md:col-span-2 space-y-4"><div><h4 class="font-bold border-b pb-1 mb-2">Vehicle & Docs</h4><div class="text-sm space-y-1"><p><strong>Type:</strong> ${p.vehicle_type}</p><p><strong>Details:</strong> ${p.vehicle_details}</p><p><strong>Plate:</strong> ${p.plate_number}</p><p><strong>License:</strong> ${p.license}</p><p><strong>License Doc:</strong> ${docLink(p.license_document, 'View')}</p><p><strong>Vehicle Doc:</strong> ${docLink(p.vehicle_document, 'View')}</p></div></div><div><h4 class="font-bold border-b pb-1 mb-2">Performance</h4><div class="grid grid-cols-2 gap-4 mt-2 text-sm"><div class="card p-3"><p class="font-semibold">Completed Rides</p><p class="text-2xl font-bold">${data.stats.completed_rides}</p></div><div class="card p-3"><p class="font-semibold">Avg. Rating</p><p class="text-2xl font-bold">${data.stats.avg_rating.toFixed(2)} ★</p></div><div class="card p-3"><p class="font-semibold">Weekly Earnings</p><p class="text-2xl font-bold">${data.stats.total_earnings_weekly} ETB</p></div><div class="card p-3"><p class="font-semibold">Total Earnings</p><p class="text-2xl font-bold">${data.stats.total_earnings_all_time} ETB</p></div></div></div></div></div><div class="mt-6"><h4 class="font-bold border-b pb-1 mb-2">Recent History</h4>${data.history.length ? data.history.map(r => `<div class="grid grid-cols-4 text-sm p-2 border-b"><span>#${r.id}</span><span>${r.date}</span><span>${r.fare} ETB</span><span class="status-badge status-${r.status}">${r.status}</span></div>`).join('') : '<p class="text-center p-4">No recent history.</p>'}</div>`; showModal('driver-details-modal'); };
         
-        async function drawRouteOnMap(pickup, destination, targetMap, color) {
+        const showPassengerDetails = (data) => {
+            const content = document.getElementById('passenger-details-content');
+            const p = data.profile;
+            content.innerHTML = `
+                <div class="grid md:grid-cols-3 gap-6">
+                    <div class="text-center">
+                        <img src="/${p.avatar}" class="rounded-full w-32 h-32 mx-auto border-4 object-cover" onerror="this.src='/static/img/default_avatar.png'">
+                        <h3 class="text-xl font-bold mt-4">${p.name}</h3>
+                        <p class="text-sm">${p.phone_number}</p>
+                        <p class="text-xs text-secondary mt-1">Member since ${p.join_date}</p>
+                    </div>
+                    <div class="md:col-span-2 space-y-4">
+                        <div>
+                            <h4 class="font-bold border-b pb-1 mb-2">Performance</h4>
+                            <div class="grid grid-cols-3 gap-4 mt-2 text-sm">
+                                <div class="card p-3 text-center"><p class="font-semibold">Total Rides</p><p class="text-2xl font-bold">${data.stats.total_rides}</p></div>
+                                <div class="card p-3 text-center"><p class="font-semibold">Total Spent</p><p class="text-2xl font-bold">${data.stats.total_spent} ETB</p></div>
+                                <div class="card p-3 text-center"><p class="font-semibold">Avg. Rating Given</p><p class="text-2xl font-bold">${data.stats.avg_rating_given.toFixed(2)} ★</p></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-6">
+                    <h4 class="font-bold border-b pb-1 mb-2">Recent Ride History (Up to 20)</h4>
+                    <div class="space-y-2">
+                    ${data.history.length ? data.history.map(r => `
+                        <div class="grid grid-cols-4 gap-2 text-xs p-2 border-b">
+                            <span class="col-span-4"><strong class="text-primary">#${r.id}</strong> - ${r.date}</span>
+                            <span class="col-span-2"><strong>From:</strong> ${r.pickup_address || 'N/A'}</span>
+                            <span class="col-span-2"><strong>To:</strong> ${r.dest_address}</span>
+                            <span><strong>Driver:</strong> ${r.driver_name}</span>
+                            <span><strong>Fare:</strong> ${r.fare} ETB</span>
+                            <span colspan="2"><span class="status-badge status-${r.status}">${r.status}</span></span>
+                        </div>`).join('') : '<p class="text-center text-secondary p-4">No ride history.</p>'}
+                    </div>
+                </div>`;
+            showModal('passenger-details-modal');
+        };
+
+        async function drawRouteOnMap(pickup, destination, color) {
             const url = `https://router.project-osrm.org/route/v1/driving/${pickup.lon},${pickup.lat};${destination.lon},${destination.lat}?overview=full&geometries=geojson`;
             try {
                 const response = await fetch(url);
                 const data = await response.json();
                 if (data.routes?.length) {
-                    const routeLine = L.polyline(data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]), { color: color || getCssVar('--chart-purple'), weight: 5 });
-                    return routeLine;
+                    return L.polyline(data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]), { color: color || getCssVar('--chart-purple'), weight: 5 });
                 }
             } catch (error) { console.error('Error fetching route:', error); }
             return null;
@@ -644,50 +763,41 @@
         const updateLiveMap = async () => {
             if (!dashboardMap) return;
 
-            // 1. Clear existing ride layers
-            Object.values(pendingRideMarkers).forEach(marker => dashboardMap.removeLayer(marker));
-            pendingRideMarkers = {};
-            Object.values(activeRideLayers).forEach(group => group.forEach(layer => dashboardMap.removeLayer(layer)));
-            activeRideLayers = {};
-
+            // Clear existing ride layers
+            Object.values(rideLayers).forEach(layerGroup => dashboardMap.removeLayer(layerGroup));
+            rideLayers = {};
             const allBounds = [];
 
-            // 2. Process and draw PENDING rides
-            allPendingRides.forEach(ride => {
-                const marker = L.marker([ride.pickup_lat, ride.pickup_lon], { icon: defaultIcon })
-                    .bindPopup(`<b>Request from:</b> ${ride.user_name}<br><b>To:</b> ${ride.dest_address}`);
-                pendingRideMarkers[ride.id] = marker;
-                allBounds.push([ride.pickup_lat, ride.pickup_lon]);
-            });
-
-            // 3. Process and draw ACTIVE rides
-            const activeRidePromises = allActiveRides.map(async (ride) => {
+            const processRide = async (ride, isPending) => {
                 const pickup = { lat: ride.pickup_lat, lon: ride.pickup_lon };
                 const dest = { lat: ride.dest_lat, lon: ride.dest_lon };
                 
-                const pickupMarker = L.marker([pickup.lat, pickup.lon], { icon: defaultIcon }).bindPopup(`<b>Pickup for ${ride.user_name}</b><br>Driver: ${ride.driver_name}`);
-                const destMarker = L.marker([dest.lat, dest.lon], { icon: destIcon }).bindPopup(`<b>Destination for ${ride.user_name}</b>`);
-                const routeLine = await drawRouteOnMap(pickup, dest, dashboardMap, getCssVar('--chart-red'));
+                const pickupPopup = `<b>${isPending ? 'Request from' : 'Pickup for'}: ${ride.user_name}</b><br>To: ${ride.dest_address}`;
+                const destPopup = `<b>Destination for ${ride.user_name}</b>`;
                 
-                const layers = [pickupMarker, destMarker];
-                if (routeLine) layers.push(routeLine);
-                activeRideLayers[ride.id] = layers;
+                const pickupMarker = L.marker([pickup.lat, pickup.lon], { icon: isPending ? pendingIcon : activeIcon }).bindPopup(pickupPopup);
+                const destMarker = L.marker([dest.lat, dest.lon], { icon: destIcon }).bindPopup(destPopup);
+                const routeLine = await drawRouteOnMap(pickup, dest, isPending ? getCssVar('--chart-blue') : getCssVar('--chart-red'));
                 
-                allBounds.push([pickup.lat, pickup.lon]);
-                allBounds.push([dest.lat, dest.lon]);
-            });
+                const layerGroup = L.layerGroup([pickupMarker, destMarker]);
+                if (routeLine) layerGroup.addLayer(routeLine);
+                
+                rideLayers[ride.id] = layerGroup;
+                allBounds.push([pickup.lat, pickup.lon], [dest.lat, dest.lon]);
+            };
 
-            await Promise.all(activeRidePromises);
+            const ridePromises = [
+                ...allPendingRides.map(ride => processRide(ride, true)),
+                ...allActiveRides.map(ride => processRide(ride, false))
+            ];
+            await Promise.all(ridePromises);
 
-            // Add all new layers to the map
-            Object.values(pendingRideMarkers).forEach(marker => marker.addTo(dashboardMap));
-            Object.values(activeRideLayers).forEach(group => group.forEach(layer => layer.addTo(dashboardMap)));
-            
-            // 4. Adjust map view
+            // Add all new layers to the map and adjust view
+            Object.values(rideLayers).forEach(layerGroup => layerGroup.addTo(dashboardMap));
             if (allBounds.length > 0) {
                 dashboardMap.fitBounds(allBounds, { padding: [50, 50], maxZoom: 15 });
             } else {
-                dashboardMap.setView([14.275, 39.46], 13);
+                dashboardMap.setView([13.88, 39.46], 10); // Center between Mekelle and Adigrat
             }
         };
 
@@ -783,7 +893,7 @@
         const refreshUnreadCount = async () => { const data = await fetchData('unread-feedback-count'); updateBadges(null, data?.count); };
         const refreshDashboardData = async () => {
              const [stats, pending, active, availableDrivers] = await Promise.all([ fetchData('dashboard-stats'), fetchData('pending-rides'), fetchData('active-rides'), fetchData('available-drivers') ]);
-            if (!stats) return; // Exit if fetch fails (e.g., due to 401 Unauthorized)
+            if (!stats) return; 
             updateDashboardStats(stats);
             
             const oldPendingIds = new Set(allPendingRides.map(r => r.id));
@@ -800,8 +910,22 @@
             updateActiveRidesTable(allActiveRides);
             updateBadges(stats);
         };
-        const refreshAllData = async () => { const [drivers, rides] = await Promise.all([ fetchData('drivers'), fetchData('all-rides-data') ]); allDrivers = drivers || []; allRidesHistory = rides || []; updateDriversTable(); updateRideHistoryTable(); refreshDashboardData(); refreshUnreadCount(); };
-        const initDashboardMap = () => { if (!dashboardMap) { dashboardMap = L.map('dashboard-map').setView([14.275, 39.46], 13); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(dashboardMap); } }
+        const refreshAllData = async () => { 
+            const [drivers, rides, passengers] = await Promise.all([ 
+                fetchData('drivers'), 
+                fetchData('all-rides-data'),
+                fetchData('passengers')
+            ]); 
+            allDrivers = drivers || []; 
+            allRidesHistory = rides || []; 
+            allPassengers = passengers || [];
+            updateDriversTable(); 
+            updatePassengersTable();
+            updateRideHistoryTable(); 
+            refreshDashboardData(); 
+            refreshUnreadCount(); 
+        };
+        const initDashboardMap = () => { if (!dashboardMap) { dashboardMap = L.map('dashboard-map').setView([13.88, 39.46], 10); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(dashboardMap); } }
         
         document.querySelector('.analytics-filter-btn[data-period="week"]').classList.add('active-filter');
         showPane('dashboard');
@@ -811,3 +935,5 @@
     });
 </script>
 {% endblock %}
+
+

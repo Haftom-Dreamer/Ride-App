@@ -1,0 +1,172 @@
+{% extends "passenger_base.html" %}
+
+{% block title %}My Rides{% endblock %}
+
+{% block head %}
+<style>
+    .rating-stars .star { color: #d1d5db; cursor: pointer; transition: color 0.2s; font-size: 1.8rem; }
+    .rating-stars .star.highlight, .rating-stars .star.selected { color: #f59e0b; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4">
+    <h1 class="text-2xl font-bold text-gray-800 mb-6">My Ride History</h1>
+    <div id="ride-history-container" class="space-y-4">
+        <!-- Rides will be loaded here by JavaScript -->
+        <p id="loading-message">Loading your rides...</p>
+    </div>
+</div>
+
+<!-- Feedback Modal -->
+<div id="feedback-modal" class="fixed inset-0 z-50 items-center justify-center bg-black bg-opacity-50 hidden">
+    <div class="bg-white p-6 rounded-lg shadow-xl z-10 w-full max-w-md mx-4">
+        <h2 class="text-xl font-bold mb-4">Rate Your Ride</h2>
+        <input type="hidden" id="feedback-ride-id">
+        <div>
+            <p class="text-lg font-semibold text-gray-700">How was it?</p>
+            <div id="modal-rating-stars" class="rating-stars flex text-4xl mt-2">
+                <span class="star" data-value="1">★</span><span class="star" data-value="2">★</span>
+                <span class="star" data-value="3">★</span><span class="star" data-value="4">★</span>
+                <span class="star" data-value="5">★</span>
+            </div>
+            <textarea id="modal-rating-comment" class="mt-4 w-full border border-gray-300 rounded-md shadow-sm" rows="3" placeholder="Add an optional comment..."></textarea>
+        </div>
+        <div class="flex justify-end space-x-4 mt-6">
+            <button id="cancel-feedback-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg">Cancel</button>
+            <button id="submit-feedback-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">Submit</button>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const historyContainer = document.getElementById('ride-history-container');
+    const loadingMessage = document.getElementById('loading-message');
+    const modal = document.getElementById('feedback-modal');
+    const rideIdInput = document.getElementById('feedback-ride-id');
+    const modalStars = document.getElementById('modal-rating-stars');
+    const modalComment = document.getElementById('modal-rating-comment');
+    let selectedRating = 0;
+
+    const fetchRideHistory = async () => {
+        try {
+            const response = await fetch('/api/passenger/ride-history');
+            if (!response.ok) throw new Error('Failed to fetch history');
+            const rides = await response.json();
+            renderRides(rides);
+        } catch (error) {
+            loadingMessage.textContent = 'Could not load ride history.';
+            console.error(error);
+        }
+    };
+
+    const renderRides = (rides) => {
+        historyContainer.innerHTML = '';
+        if (rides.length === 0) {
+            historyContainer.innerHTML = '<p class="text-gray-600">You haven\'t taken any rides yet.</p>';
+            return;
+        }
+
+        rides.forEach(ride => {
+            const rideCard = document.createElement('div');
+            rideCard.className = 'bg-white p-4 rounded-lg shadow-md border';
+
+            const ratingDisplay = ride.rating 
+                ? `<div class="text-yellow-400">${'★'.repeat(ride.rating)}${'☆'.repeat(5 - ride.rating)}</div>`
+                : `<button class="rate-ride-btn text-sm text-indigo-600 font-semibold" data-ride-id="${ride.id}">Rate this ride</button>`;
+
+            rideCard.innerHTML = `
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="font-bold text-gray-800">To: ${ride.dest_address}</p>
+                        <p class="text-sm text-gray-500">${ride.request_time}</p>
+                    </div>
+                    <span class="text-sm font-semibold px-2 py-1 rounded-full ${ride.status === 'Completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">${ride.status}</span>
+                </div>
+                <div class="mt-3 border-t pt-3 flex justify-between items-center">
+                    <div class="text-sm">
+                        <p>Driver: <span class="font-medium">${ride.driver_name}</span></p>
+                        <p>Fare: <span class="font-medium">${ride.fare} ETB</span></p>
+                    </div>
+                    <div class="text-right">
+                        ${ratingDisplay}
+                    </div>
+                </div>
+            `;
+            historyContainer.appendChild(rideCard);
+        });
+    };
+
+    historyContainer.addEventListener('click', e => {
+        if (e.target.classList.contains('rate-ride-btn')) {
+            const rideId = e.target.dataset.rideId;
+            openFeedbackModal(rideId);
+        }
+    });
+    
+    const openFeedbackModal = (rideId) => {
+        rideIdInput.value = rideId;
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    };
+
+    const closeFeedbackModal = () => {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        // Reset modal state
+        selectedRating = 0;
+        highlightStars(0);
+        modalComment.value = '';
+    };
+
+    modal.addEventListener('click', e => {
+        if (e.target.id === 'feedback-modal' || e.target.id === 'cancel-feedback-btn') {
+            closeFeedbackModal();
+        }
+    });
+
+    modalStars.addEventListener('mouseover', (e) => {
+        if (e.target.classList.contains('star')) highlightStars(e.target.dataset.value);
+    });
+    modalStars.addEventListener('mouseout', () => highlightStars(selectedRating));
+    modalStars.addEventListener('click', (e) => {
+        if (e.target.classList.contains('star')) {
+            selectedRating = e.target.dataset.value;
+            highlightStars(selectedRating, true);
+        }
+    });
+    
+    const highlightStars = (rating, isSelect = false) => {
+        modalStars.querySelectorAll('.star').forEach(star => {
+            star.classList.toggle('highlight', star.dataset.value <= rating);
+            if(isSelect) star.classList.toggle('selected', star.dataset.value <= rating);
+        });
+    };
+
+    document.getElementById('submit-feedback-btn').addEventListener('click', async () => {
+        const ride_id = rideIdInput.value;
+        const comment = modalComment.value;
+        if (selectedRating === 0) {
+            alert('Please select a rating.');
+            return;
+        }
+
+        try {
+            await fetch('/api/rate-ride', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ride_id: parseInt(ride_id), rating: parseInt(selectedRating), comment: comment })
+            });
+            closeFeedbackModal();
+            fetchRideHistory(); // Refresh list to show new rating
+        } catch (error) {
+            console.error("Failed to submit rating", error);
+            alert('Could not submit feedback. Please try again.');
+        }
+    });
+
+    fetchRideHistory();
+});
+</script>
+{% endblock %}

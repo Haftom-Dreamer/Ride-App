@@ -1,0 +1,77 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Gebeta Maps quick test</title>
+
+  <!-- Gebeta tiles SDK + CSS (from migration guide / docs) -->
+  <link rel="stylesheet" href="https://tiles.gebeta.app/static/gebeta-maps-lib.css" />
+  <script type="module" src="https://tiles.gebeta.app/static/gebeta-maps.umd.js"></script>
+
+  <style>
+    body { margin: 0; font-family: sans-serif; }
+    #map { height: 90vh; width: 100%; }
+    #log { height: 10vh; overflow:auto; font-size:12px; background:#f6f6f6; padding:6px; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div id="log">log:</div>
+
+  <script>
+    const log = (m) => { document.getElementById('log').innerText += '\n' + m; console.log(m); };
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      try {
+        // ------------- CONFIG -------------
+        const API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjb21wYW55bmFtZSI6IkhhZnRvbSIsImRlc2NyaXB0aW9uIjoiZDlkNjE3ZDItZjkzMi00NDRhLWJhZmQtMzJhNTg4ZTAzYWIzIiwiaWQiOiJlNDVjZjhiNi0wNDg3LTQzMWEtODFiMC00MjZmMDI2NjViYzEiLCJpc3N1ZWRfYXQiOjE3NTcyMzM2MTUsImlzc3VlciI6Imh0dHBzOi8vbWFwYXBpLmdlYmV0YS5hcHAiLCJqd3RfaWQiOiIwIiwic2NvcGVzIjpbIkZFQVRVUkVfQUxMIl0sInVzZXJuYW1lIjoiaGFmdG9tZHJlYW1lciJ9.HJ_ahlEhicxeZR8RS4w0LiwsIw_DslFWYUOgmBLYJFA"; // <<--- put your real key here
+        // center: [lng, lat]
+        const center = [39.4624, 14.2784]; // Addis Ababa
+
+        // ------------- INIT SDK & MAP -------------
+        // Note: docs show creating a GebetaMaps instance then calling init(...)
+        const gebeta = new GebetaMaps({ apiKey: API_KEY });
+        const map = gebeta.init({
+          container: 'map',
+          center: center,
+          zoom: 13
+        });
+
+        log('Map initialized — waiting 1s then adding marker...');
+        // tiny delay so map tiles can start loading
+        setTimeout(() => {
+          try {
+            map.addMarker({ lng: center[0], lat: center[1], popup: 'Center' });
+            log('Marker added at ' + center.join(', '));
+          } catch (err) {
+            log('Error adding marker: ' + err);
+            console.error(err);
+          }
+        }, 1000);
+
+        // ------------- OPTIONAL: quick geocode test (client-side) -------------
+        try {
+          const name = encodeURIComponent('bole');
+          const geocodeUrl = `https://mapapi.gebeta.app/api/v1/route/geocoding?name=${name}&apiKey=${API_KEY}`;
+          fetch(geocodeUrl)
+            .then(r => r.json())
+            .then(d => {
+              log('Geocode test response length: ' + (d?.length ?? JSON.stringify(d).length));
+              console.log('Geocode result:', d);
+            })
+            .catch(e => {
+              log('Geocode request failed: ' + e);
+            });
+        } catch (e) {
+          log('Skipping geocode test: ' + e);
+        }
+
+      } catch (e) {
+        log('Init failed: ' + e);
+        console.error(e);
+      }
+    });
+  </script>
+</body>
+</html>

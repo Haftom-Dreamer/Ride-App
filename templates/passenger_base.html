@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Ride App{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f3f4f6;
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+
+<body class="font-sans">
+    {% if current_user.is_authenticated and session.get('user_type') == 'passenger' %}
+    <nav class="bg-white shadow-md">
+        <div class="max-w-4xl mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex-shrink-0">
+                    <a href="{{ url_for('passenger_app') }}">
+                        <img src="/static/img/Selamawi-logo 2 png.png" alt="Logo" class="h-10 w-auto">
+                    </a>
+                </div>
+                <div class="hidden md:flex items-center space-x-4">
+                    <a href="{{ url_for('passenger_app') }}"
+                        class="px-3 py-2 rounded-md text-sm font-medium {{ 'text-indigo-600' if 'request' in request.path else 'text-gray-700 hover:text-indigo-600' }}">Request
+                        Ride</a>
+                    <a href="{{ url_for('passenger_history') }}"
+                        class="px-3 py-2 rounded-md text-sm font-medium {{ 'text-indigo-600' if 'history' in request.path else 'text-gray-700 hover:text-indigo-600' }}">My
+                        Rides</a>
+                    <a href="{{ url_for('passenger_profile') }}"
+                        class="px-3 py-2 rounded-md text-sm font-medium {{ 'text-indigo-600' if 'profile' in request.path else 'text-gray-700 hover:text-indigo-600' }}">Profile</a>
+                    <a href="{{ url_for('logout') }}"
+                        class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-indigo-600">Logout</a>
+                </div>
+                <div class="flex items-center">
+                    <span class="text-gray-800 text-sm font-medium hidden md:block">Hello, {{ current_user.username }}!</span>
+                    <img src="/{{ current_user.profile_picture or 'static/img/default_avatar.png' }}" alt="Avatar" class="h-8 w-8 rounded-full ml-3 object-cover">
+                </div>
+            </div>
+        </div>
+    </nav>
+    {% endif %}
+
+    <main class="py-5">
+        {% block content %}{% endblock %}
+    </main>
+
+</body>
+
+</html>
+

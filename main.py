@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, send_from_directory, redirect, url_for, flash
+from flask import Flask, render_template, request, jsonify, send_from_directory, redirect, url_for, flash, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 import os
@@ -28,8 +28,15 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = os.path.join(base_dir, 'static/uploads')
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
-login_manager.login_view = 'login'
+login_manager.login_view = 'passenger_login'
 
+
+# --- Helper Functions ---
+def to_eat(utc_dt):
+    """Converts a UTC datetime object to East Africa Time (EAT)."""
+    if utc_dt is None:
+        return None
+    return utc_dt.replace(tzinfo=timezone.utc).astimezone(timezone(timedelta(hours=3)))
 
 # --- Database Models ---
 class Admin(UserMixin, db.Model):
@@ -38,17 +45,27 @@ class Admin(UserMixin, db.Model):
     password_hash = db.Column(db.String(200), nullable=False)
     profile_picture = db.Column(db.String(255), nullable=True, default='static/img/default_avatar.png')
 
-
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
-class User(db.Model):
+class Passenger(UserMixin, db.Model):
+    __tablename__ = 'passenger'
     id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), nullable=False)
     phone_number = db.Column(db.String(20), unique=True, nullable=False)
-    name = db.Column(db.String(100), nullable=True, default='Guest')
+    password_hash = db.Column(db.String(200), nullable=False)
+    profile_picture = db.Column(db.String(255), nullable=True, default='static/img/default_avatar.png')
+    join_date = db.Column(db.DateTime, server_default=db.func.now())
+
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
 
 
 class Driver(db.Model):
@@ -71,7 +88,7 @@ class Driver(db.Model):
 
 class Ride(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    passenger_id = db.Column(db.Integer, db.ForeignKey('passenger.id'), nullable=False)
     driver_id = db.Column(db.Integer, db.ForeignKey('driver.id'), nullable=True)
     pickup_address = db.Column(db.String(255), nullable=True)
     pickup_lat = db.Column(db.Float, nullable=False)
@@ -89,7 +106,7 @@ class Ride(db.Model):
     payment_method = db.Column(db.String(20), nullable=False, default='Cash')
 
 
-    user = db.relationship('User', backref=db.backref('rides', lazy=True))
+    passenger = db.relationship('Passenger', backref=db.backref('rides', lazy=True))
     driver = db.relationship('Driver', backref=db.backref('rides', lazy=True))
     feedback = db.relationship('Feedback', backref='ride', uselist=False, cascade="all, delete-orphan")
 
@@ -115,44 +132,36 @@ def get_setting(key, default=None):
     setting = Setting.query.filter_by(key=key).first()
     return setting.value if setting else default
 
-# --- Helper Functions ---
 def _handle_file_upload(file_storage, existing_path=None):
-    """
-    Save an uploaded FileStorage to app.config['UPLOAD_FOLDER'] and return a web-relative path.
-    If no file is provided, return existing_path (so caller keeps previous value).
-    """
     if not file_storage:
         return existing_path
-
     filename = secure_filename(file_storage.filename or '')
     if not filename:
         return existing_path
-
-    # Ensure upload folder exists
     os.makedirs(app.config.get('UPLOAD_FOLDER', os.path.join(base_dir, 'static', 'uploads')), exist_ok=True)
-
-    # Avoid overwriting existing files by appending a timestamp if needed
     save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     if os.path.exists(save_path):
         name, ext = os.path.splitext(filename)
         filename = f"{name}_{int(datetime.utcnow().timestamp())}{ext}"
         save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-
-    # Save file
     file_storage.save(save_path)
-
-    # Return a path usable by templates (static relative path)
     rel_path = os.path.join('static', 'uploads', filename).replace('\\', '/')
     return rel_path
 
 # --- Authentication ---
 @login_manager.user_loader
 def load_user(user_id):
-    return Admin.query.get(int(user_id))
+    user_type = session.get('user_type')
+    if user_type == 'admin':
+        return Admin.query.get(int(user_id))
+    elif user_type == 'passenger':
+        return Passenger.query.get(int(user_id))
+    return None
 
+# -- Admin Auth ---
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if current_user.is_authenticated:
+    if current_user.is_authenticated and session.get('user_type') == 'admin':
         return redirect(url_for('dispatcher_dashboard'))
     if request.method == 'POST':
         username = request.form.get('username')
@@ -160,16 +169,65 @@ def login():
         admin = Admin.query.filter_by(username=username).first()
         if admin and admin.check_password(password):
             login_user(admin)
+            session['user_type'] = 'admin'
             return redirect(url_for('dispatcher_dashboard'))
         else:
             flash('Invalid username or password', 'danger')
     return render_template('login.html')
 
+# -- Passenger Auth ---
+@app.route('/passenger/signup', methods=['GET', 'POST'])
+def passenger_signup():
+    if current_user.is_authenticated and session.get('user_type') == 'passenger':
+        return redirect(url_for('passenger_app'))
+    if request.method == 'POST':
+        username = request.form.get('username')
+        phone_number = "+251" + request.form.get('phone_number')
+        password = request.form.get('password')
+        
+        existing_passenger = Passenger.query.filter_by(phone_number=phone_number).first()
+        if existing_passenger:
+            flash('Phone number already registered.', 'danger')
+            return redirect(url_for('passenger_signup'))
+        
+        new_passenger = Passenger(username=username, phone_number=phone_number)
+        new_passenger.set_password(password)
+        db.session.add(new_passenger)
+        db.session.commit()
+        
+        flash('Account created successfully! Please log in.', 'success')
+        return redirect(url_for('passenger_login'))
+    return render_template('passenger_signup.html')
+
+
+@app.route('/passenger/login', methods=['GET', 'POST'])
+def passenger_login():
+    if current_user.is_authenticated and session.get('user_type') == 'passenger':
+        return redirect(url_for('passenger_app'))
+    if request.method == 'POST':
+        phone_number = "+251" + request.form.get('phone_number')
+        password = request.form.get('password')
+        passenger = Passenger.query.filter_by(phone_number=phone_number).first()
+        
+        if passenger and passenger.check_password(password):
+            login_user(passenger)
+            session['user_type'] = 'passenger'
+            return redirect(url_for('passenger_app'))
+        else:
+            flash('Invalid phone number or password.', 'danger')
+    return render_template('passenger_login.html')
+
+
 @app.route('/logout')
 @login_required
 def logout():
+    user_type = session.get('user_type')
     logout_user()
-    return redirect(url_for('login'))
+    session.pop('user_type', None)
+    if user_type == 'admin':
+        return redirect(url_for('login'))
+    else:
+        return redirect(url_for('passenger_login'))
 
 # --- Frontend Routes ---
 @app.route('/')
@@ -177,10 +235,56 @@ def logout():
 def dispatcher_dashboard():
     return render_template('dashboard.html')
 
+@app.route('/passenger')
+def passenger_home():
+    if current_user.is_authenticated and session.get('user_type') == 'passenger':
+        return redirect(url_for('passenger_app'))
+    return redirect(url_for('passenger_login'))
 
 @app.route('/request')
+@login_required
 def passenger_app():
+    if session.get('user_type') != 'passenger':
+        flash('Please log in to request a ride.', 'warning')
+        return redirect(url_for('passenger_login'))
     return render_template('passenger.html')
+
+@app.route('/passenger/profile', methods=['GET', 'POST'])
+@login_required
+def passenger_profile():
+    if session.get('user_type') != 'passenger':
+        return redirect(url_for('passenger_login'))
+    
+    passenger = current_user
+    if request.method == 'POST':
+        current_password = request.form.get('current_password')
+        if not passenger.check_password(current_password):
+            flash('Your current password is not correct.', 'danger')
+            return redirect(url_for('passenger_profile'))
+        
+        passenger.username = request.form.get('username', passenger.username)
+        
+        new_password = request.form.get('new_password')
+        if new_password:
+            passenger.set_password(new_password)
+        
+        if 'profile_picture' in request.files:
+            passenger.profile_picture = _handle_file_upload(request.files['profile_picture'], passenger.profile_picture)
+
+        db.session.commit()
+        flash('Profile updated successfully!', 'success')
+        return redirect(url_for('passenger_profile'))
+
+    return render_template('passenger_profile.html')
+
+
+@app.route('/passenger/history')
+@login_required
+def passenger_history():
+    if session.get('user_type') != 'passenger':
+        return redirect(url_for('passenger_login'))
+    return render_template('passenger_history.html')
+
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
@@ -188,21 +292,15 @@ def uploaded_file(filename):
 
 # --- API Routes ---
 @app.route('/api/ride-request', methods=['POST'])
+@login_required
 def request_ride():
+    if session.get('user_type') != 'passenger':
+        return jsonify({'error': 'Unauthorized'}), 403
+
     data = request.json
-    phone_number = data.get('phone_number')
-    user_name = data.get('name', 'Guest')
-
-    user = User.query.filter_by(phone_number=phone_number).first()
-    if not user:
-        user = User(phone_number=phone_number, name=user_name)
-        db.session.add(user)
-    elif user.name == 'Guest' and user_name != 'Guest':
-        user.name = user_name
-    db.session.commit()
-
+    
     new_ride = Ride(
-        user_id=user.id,
+        passenger_id=current_user.id,
         pickup_address=data.get('pickup_address'),
         pickup_lat=data.get('pickup_lat'),
         pickup_lon=data.get('pickup_lon'),
@@ -372,14 +470,14 @@ def get_all_feedback():
         {
             'id': f.id,
             'ride_id': f.ride_id,
-            'passenger_name': f.ride.user.name,
+            'passenger_name': f.ride.passenger.username,
             'driver_name': f.ride.driver.name if f.ride.driver else 'N/A',
             'rating': f.rating,
             'comment': f.comment,
             'type': f.feedback_type,
             'details': f.details,
             'is_resolved': f.is_resolved,
-            'date': f.submitted_at.strftime('%Y-%m-%d %H:%M')
+            'date': to_eat(f.submitted_at).strftime('%Y-%m-%d %H:%M')
         }
         for f in feedback_items
     ])
@@ -407,16 +505,18 @@ def get_pending_rides():
     return jsonify([
         {
             'id': r.id,
-            'user_name': r.user.name,
-            'user_phone': r.user.phone_number,
+            'user_name': r.passenger.username,
+            'user_phone': r.passenger.phone_number,
             'pickup_address': r.pickup_address,
             'pickup_lat': r.pickup_lat,
             'pickup_lon': r.pickup_lon,
             'dest_address': r.dest_address,
+            'dest_lat': r.dest_lat,
+            'dest_lon': r.dest_lon,
             'fare': r.fare,
             'vehicle_type': r.vehicle_type,
             'note': r.note,
-            'request_time': r.request_time.strftime('%I:%M %p'),
+            'request_time': to_eat(r.request_time).strftime('%I:%M %p'),
         }
         for r in rides
     ])
@@ -427,11 +527,11 @@ def get_active_rides():
     rides = Ride.query.filter(Ride.status.in_(['Assigned', 'On Trip'])).order_by(Ride.request_time.asc()).all()
     return jsonify([ { 
         'id': r.id, 
-        'user_name': r.user.name, 
+        'user_name': r.passenger.username, 
         'driver_name': r.driver.name if r.driver else "N/A", 
         'dest_address': r.dest_address, 
         'status': r.status, 
-        'request_time': r.request_time.strftime('%Y-%m-%d %H:%M'),
+        'request_time': to_eat(r.request_time).strftime('%Y-%m-%d %H:%M'),
         'pickup_lat': r.pickup_lat,
         'pickup_lon': r.pickup_lon,
         'dest_lat': r.dest_lat,
@@ -482,15 +582,30 @@ def get_all_rides_data():
     return jsonify([
         {
             'id': r.id,
-            'user_name': r.user.name,
-            'user_phone': r.user.phone_number,
+            'user_name': r.passenger.username,
+            'user_phone': r.passenger.phone_number,
             'driver_name': r.driver.name if r.driver else "N/A",
             'fare': r.fare,
             'status': r.status,
             'rating': r.feedback.rating if r.feedback else None,
-            'request_time': r.request_time.strftime('%Y-%m-%d %H:%M')
+            'request_time': to_eat(r.request_time).strftime('%Y-%m-%d %H:%M')
         }
         for r in rides
+    ])
+
+@app.route('/api/passengers')
+@login_required
+def get_passengers():
+    passengers = Passenger.query.options(db.selectinload(Passenger.rides)).all()
+    return jsonify([
+        {
+            "id": p.id,
+            "username": p.username,
+            "phone_number": p.phone_number,
+            "profile_picture": p.profile_picture,
+            "rides_taken": len(p.rides),
+            "join_date": p.join_date.strftime('%Y-%m-%d')
+        } for p in passengers
     ])
 
 
@@ -502,6 +617,51 @@ def get_ride_status(ride_id):
         driver_info = { 'id': ride.driver.id, 'name': ride.driver.name, 'phone_number': ride.driver.phone_number, 'vehicle_details': ride.driver.vehicle_details }
     ride_details = {'fare': ride.fare, 'dest_address': ride.dest_address} if ride.status == 'Completed' else None
     return jsonify({'status': ride.status, 'driver': driver_info, 'ride_details': ride_details})
+
+
+@app.route('/api/passenger-details/<int:passenger_id>')
+@login_required
+def get_passenger_details(passenger_id):
+    passenger = Passenger.query.get_or_404(passenger_id)
+
+    total_spent = db.session.query(func.sum(Ride.fare)).filter(
+        Ride.passenger_id == passenger_id,
+        Ride.status == 'Completed'
+    ).scalar() or 0
+
+    avg_rating_given = db.session.query(func.avg(Feedback.rating)).join(Ride).filter(
+        Ride.passenger_id == passenger_id,
+        Feedback.rating.isnot(None)
+    ).scalar() or 0
+
+    stats = {
+        'total_rides': len(passenger.rides),
+        'total_spent': total_spent,
+        'avg_rating_given': avg_rating_given
+    }
+
+    history = Ride.query.filter_by(passenger_id=passenger_id)\
+        .options(db.joinedload(Ride.driver))\
+        .order_by(Ride.request_time.desc()).limit(20).all()
+
+    return jsonify({
+        'profile': {
+            'name': passenger.username,
+            'phone_number': passenger.phone_number,
+            'avatar': passenger.profile_picture,
+            'join_date': passenger.join_date.strftime('%b %d, %Y')
+        },
+        'stats': {k: round(v, 2) if isinstance(v, float) else v for k, v in stats.items()},
+        'history': [{
+            'id': r.id,
+            'status': r.status,
+            'fare': r.fare,
+            'date': to_eat(r.request_time).strftime('%Y-%m-%d %H:%M'),
+            'driver_name': r.driver.name if r.driver else 'N/A',
+            'pickup_address': r.pickup_address,
+            'dest_address': r.dest_address
+        } for r in history]
+    })
 
 
 @app.route('/api/driver-details/<int:driver_id>')
@@ -523,8 +683,31 @@ def get_driver_details(driver_id):
     return jsonify({
         'profile': { 'name': driver.name, 'driver_uid': driver.driver_uid, 'status': driver.status, 'avatar': driver.profile_picture, 'phone_number': driver.phone_number, 'vehicle_type': driver.vehicle_type, 'vehicle_details': driver.vehicle_details, 'plate_number': driver.vehicle_plate_number, 'license': driver.license_info, 'license_document': driver.license_document, 'vehicle_document': driver.vehicle_document },
         'stats': {k: round(v, 2) if isinstance(v, float) else v for k, v in stats.items()},
-        'history': [{'id': r.id, 'status': r.status, 'fare': r.fare, 'date': r.request_time.strftime('%Y-%m-%d')} for r in history]
+        'history': [{'id': r.id, 'status': r.status, 'fare': r.fare, 'date': to_eat(r.request_time).strftime('%Y-%m-%d')} for r in history]
     })
+
+@app.route('/api/passenger/ride-history')
+@login_required
+def api_passenger_history():
+    if session.get('user_type') != 'passenger':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    rides = Ride.query.filter_by(passenger_id=current_user.id)\
+        .options(db.joinedload(Ride.feedback), db.joinedload(Ride.driver))\
+        .order_by(Ride.request_time.desc()).all()
+    
+    return jsonify([
+        {
+            'id': r.id,
+            'driver_name': r.driver.name if r.driver else "N/A",
+            'dest_address': r.dest_address,
+            'fare': r.fare,
+            'status': r.status,
+            'request_time': to_eat(r.request_time).strftime('%b %d, %Y at %I:%M %p'),
+            'rating': r.feedback.rating if r.feedback else None,
+            'comment': r.feedback.comment if r.feedback else None
+        } for r in rides
+    ])
 
 
 @app.route('/api/fare-estimate', methods=['POST'])
@@ -574,7 +757,6 @@ def _calculate_trend(current, previous):
     return round(((current - previous) / previous) * 100)
     
 def _get_date_range_from_request():
-    """Parses date filter arguments from the request and returns timezone-aware start and end datetimes (UTC)."""
     period = request.args.get('period')
     start_date_str = request.args.get('start_date')
     end_date_str = request.args.get('end_date')
@@ -598,10 +780,8 @@ def _get_date_range_from_request():
             start_date = datetime.strptime(start_date_str, '%Y-%m-%d').replace(tzinfo=timezone.utc)
             end_date = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59, tzinfo=timezone.utc)
         except (ValueError, TypeError):
-            # invalid date format -> no filter
             return None, None
     else:
-        # invalid period or missing explicit dates
         return None, None
 
     return start_date, end_date
@@ -647,19 +827,18 @@ def export_report():
     file_format = request.args.get('format', 'pdf')
     start_date, end_date = _get_date_range_from_request()
     
-    ride_query = Ride.query.options(db.joinedload(Ride.user), db.joinedload(Ride.driver)).order_by(Ride.request_time.desc())
+    ride_query = Ride.query.options(db.joinedload(Ride.passenger), db.joinedload(Ride.driver)).order_by(Ride.request_time.desc())
     if start_date and end_date:
         ride_query = ride_query.filter(Ride.request_time.between(start_date, end_date))
     
     all_rides_in_period = ride_query.all()
     all_drivers = Driver.query.all()
     
-    # Create a new request context to call the analytics endpoint internally
     with app.test_request_context(f'/api/analytics-data?{request.query_string.decode("utf-8")}'):
         kpis_response = get_analytics_data()
         kpis = kpis_response.get_json().get('kpis', {}) if kpis_response.get_json() else {}
 
-    report_title = f"Analytics Report ({start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')})" if start_date and end_date else "Analytics Report (All Time)"
+    report_title = f"Analytics Report ({to_eat(start_date).strftime('%Y-%m-%d')} to {to_eat(end_date).strftime('%Y-%m-%d')})" if start_date and end_date else "Analytics Report (All Time)"
 
     if file_format == 'pdf':
         buffer = io.BytesIO()
@@ -669,7 +848,7 @@ def export_report():
         kpi_data = [ ["Metric", "Value", "Trend"], ["Rides Completed", f"{kpis['rides_completed']}", f"{kpis['trends']['rides']}%"], ["Total Revenue", f"{kpis['total_revenue']} ETB", f"{kpis['trends']['revenue']}%"], ["Rides Canceled", kpis['rides_canceled'], ""], ["Average Fare", f"{kpis['avg_fare']} ETB", ""], ]
         kpi_table = Table(kpi_data, colWidths=[200, 150, 100]); kpi_table.setStyle(TableStyle([ ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#4A5568')), ('TEXTCOLOR',(0,0),(-1,0),colors.whitesmoke), ('ALIGN', (0,0), (-1,-1), 'CENTER'), ('VALIGN', (0,0), (-1,-1), 'MIDDLE'), ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'), ('GRID', (0,0), (-1,-1), 1, colors.black) ])); elements.extend([Paragraph("Key Metrics Summary", styles['h3']), kpi_table, Spacer(1, 24)])
         ride_data_for_table = [["ID", "Date", "Passenger", "Driver", "Fare", "Status"]]
-        for ride in all_rides_in_period: ride_data_for_table.append([ ride.id, ride.request_time.strftime('%Y-%m-%d %H:%M'), ride.user.name, ride.driver.name if ride.driver else 'N/A', f"{ride.fare} ETB", ride.status ])
+        for ride in all_rides_in_period: ride_data_for_table.append([ ride.id, to_eat(ride.request_time).strftime('%Y-%m-%d %H:%M'), ride.passenger.username, ride.driver.name if ride.driver else 'N/A', f"{ride.fare} ETB", ride.status ])
         ride_table = Table(ride_data_for_table, colWidths=[40, 120, 120, 120, 80, 80]); ride_table.setStyle(TableStyle([ ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#2D3748')), ('TEXTCOLOR',(0,0),(-1,0),colors.whitesmoke), ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'), ('GRID', (0,0), (-1,-1), 1, colors.black), ('ALIGN', (0,0), (-1,-1), 'CENTER'), ])); elements.extend([Paragraph("All Rides in Period", styles['h3']), ride_table]); doc.build(elements); buffer.seek(0)
         return buffer.getvalue(), 200, { 'Content-Type': 'application/pdf', 'Content-Disposition': 'attachment; filename="analytics_report.pdf"' }
 
@@ -709,10 +888,10 @@ def export_report():
             ws_drivers.append([ driver.driver_uid, driver.name, rides_in_period_count, round(total_revenue, 2), round(avg_rating, 2) if avg_rating else 0 ])
 
         ws_raw = wb.create_sheet("Raw Ride Data")
-        ws_raw.append(["Ride ID", "Request Time", "Status", "Passenger Name", "Passenger Phone", "Driver Name", "Fare", "Vehicle", "Payment", "Rating"])
+        ws_raw.append(["Ride ID", "Request Time (EAT)", "Status", "Passenger Name", "Passenger Phone", "Driver Name", "Fare", "Vehicle", "Payment", "Rating"])
         for cell in ws_raw[1]:
             cell.font = Font(bold=True)
-        for ride in all_rides_in_period: ws_raw.append([ ride.id, ride.request_time.strftime('%Y-%m-%d %H:%M'), ride.status, ride.user.name, ride.user.phone_number, ride.driver.name if ride.driver else 'N/A', ride.fare, ride.vehicle_type, ride.payment_method, ride.feedback.rating if ride.feedback else None ])
+        for ride in all_rides_in_period: ws_raw.append([ ride.id, to_eat(ride.request_time).strftime('%Y-%m-%d %H:%M'), ride.status, ride.passenger.username, ride.passenger.phone_number, ride.driver.name if ride.driver else 'N/A', ride.fare, ride.vehicle_type, ride.payment_method, ride.feedback.rating if ride.feedback else None ])
         
         for ws in wb.worksheets:
             for col in ws.columns:
@@ -819,10 +998,9 @@ if __name__ == '__main__':
         os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
         db.create_all()
         
-        # Create a default admin user if none exists
         if not Admin.query.first():
             default_admin = Admin(username='admin')
-            default_admin.set_password('password') # You should change this password
+            default_admin.set_password('password')
             db.session.add(default_admin)
             db.session.commit()
             print("Default admin 'admin' with password 'password' created.")
@@ -833,3 +1011,5 @@ if __name__ == '__main__':
         if not Setting.query.first():
             db.session.add(Setting(key='base_fare', value='25')); db.session.add(Setting(key='per_km_bajaj', value='8')); db.session.add(Setting(key='per_km_car', value='12')); db.session.commit()
     app.run(debug=True)
+
+
