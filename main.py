@@ -43,7 +43,7 @@ class Admin(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
-    profile_picture = db.Column(db.String(255), nullable=True, default='static/img/default_avatar.png')
+    profile_picture = db.Column(db.String(255), nullable=True, default='static/img/default_user.svg')
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -54,10 +54,11 @@ class Admin(UserMixin, db.Model):
 class Passenger(UserMixin, db.Model):
     __tablename__ = 'passenger'
     id = db.Column(db.Integer, primary_key=True)
+    passenger_uid = db.Column(db.String(20), unique=True, nullable=True)
     username = db.Column(db.String(80), nullable=False)
     phone_number = db.Column(db.String(20), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
-    profile_picture = db.Column(db.String(255), nullable=True, default='static/img/default_avatar.png')
+    profile_picture = db.Column(db.String(255), nullable=True, default='static/img/default_user.svg')
     join_date = db.Column(db.DateTime, server_default=db.func.now())
 
 
@@ -78,7 +79,7 @@ class Driver(db.Model):
     vehicle_plate_number = db.Column(db.String(50), nullable=True)
     license_info = db.Column(db.String(100), nullable=True)
     status = db.Column(db.String(20), default='Offline', nullable=False)
-    profile_picture = db.Column(db.String(255), nullable=True, default='static/img/default_avatar.png')
+    profile_picture = db.Column(db.String(255), nullable=True, default='static/img/default_user.svg')
     license_document = db.Column(db.String(255), nullable=True)
     vehicle_document = db.Column(db.String(255), nullable=True)
     join_date = db.Column(db.DateTime, server_default=db.func.now())
@@ -193,6 +194,10 @@ def passenger_signup():
         new_passenger = Passenger(username=username, phone_number=phone_number)
         new_passenger.set_password(password)
         db.session.add(new_passenger)
+        db.session.commit()
+
+        db.session.flush()
+        new_passenger.passenger_uid = f"PAX-{new_passenger.id:05d}"
         db.session.commit()
         
         flash('Account created successfully! Please log in.', 'success')
@@ -388,7 +393,7 @@ def add_driver():
         vehicle_plate_number=request.form.get('vehicle_plate_number'),
         license_info=request.form.get('license_info'),
         status='Offline',
-        profile_picture=_handle_file_upload(request.files.get('profile_picture'), 'static/img/default_avatar.png'),
+        profile_picture=_handle_file_upload(request.files.get('profile_picture'), 'static/img/default_user.svg'),
         license_document=_handle_file_upload(request.files.get('license_document')),
         vehicle_document=_handle_file_upload(request.files.get('vehicle_document'))
     )
@@ -641,12 +646,13 @@ def get_passenger_details(passenger_id):
     }
 
     history = Ride.query.filter_by(passenger_id=passenger_id)\
-        .options(db.joinedload(Ride.driver))\
+        .options(db.joinedload(Ride.driver), db.joinedload(Ride.feedback))\
         .order_by(Ride.request_time.desc()).limit(20).all()
 
     return jsonify({
         'profile': {
             'name': passenger.username,
+            'passenger_uid': passenger.passenger_uid,
             'phone_number': passenger.phone_number,
             'avatar': passenger.profile_picture,
             'join_date': passenger.join_date.strftime('%b %d, %Y')
@@ -659,8 +665,53 @@ def get_passenger_details(passenger_id):
             'date': to_eat(r.request_time).strftime('%Y-%m-%d %H:%M'),
             'driver_name': r.driver.name if r.driver else 'N/A',
             'pickup_address': r.pickup_address,
-            'dest_address': r.dest_address
+            'dest_address': r.dest_address,
+            'rating_given': r.feedback.rating if r.feedback and r.feedback.rating is not None else 'N/A'
         } for r in history]
+    })
+
+
+@app.route('/api/ride-details/<int:ride_id>')
+@login_required
+def get_ride_details(ride_id):
+    ride = Ride.query.options(
+        db.joinedload(Ride.passenger),
+        db.joinedload(Ride.driver),
+        db.joinedload(Ride.feedback)
+    ).get_or_404(ride_id)
+
+    return jsonify({
+        'trip_info': {
+            'id': ride.id,
+            'status': ride.status,
+            'fare': ride.fare,
+            'distance': ride.distance_km,
+            'payment_method': ride.payment_method,
+            'vehicle_type': ride.vehicle_type,
+            'pickup_address': ride.pickup_address,
+            'dest_address': ride.dest_address,
+            'pickup_coords': {'lat': ride.pickup_lat, 'lon': ride.pickup_lon},
+            'dest_coords': {'lat': ride.dest_lat, 'lon': ride.dest_lon},
+        },
+        'passenger': {
+            'name': ride.passenger.username,
+            'avatar': ride.passenger.profile_picture,
+            'phone': ride.passenger.phone_number
+        },
+        'driver': {
+            'name': ride.driver.name if ride.driver else 'N/A',
+            'avatar': ride.driver.profile_picture if ride.driver else 'static/img/default_user.svg',
+            'phone': ride.driver.phone_number if ride.driver else 'N/A',
+            'vehicle': ride.driver.vehicle_details if ride.driver else 'N/A'
+        },
+        'timestamps': {
+            'requested': to_eat(ride.request_time).strftime('%b %d, %Y at %I:%M %p'),
+            'assigned': to_eat(ride.assigned_time).strftime('%I:%M %p') if ride.assigned_time else 'N/A',
+        },
+        'feedback': {
+            'rating': ride.feedback.rating if ride.feedback else None,
+            'comment': ride.feedback.comment if ride.feedback else None
+        }
     })
 
 
@@ -1008,8 +1059,13 @@ if __name__ == '__main__':
         if Driver.query.filter(Driver.driver_uid == None).first():
             for driver in Driver.query.filter(Driver.driver_uid == None).all(): driver.driver_uid = f"DRV-{driver.id:04d}"
             db.session.commit()
+        if Passenger.query.filter(Passenger.passenger_uid == None).first():
+            for p in Passenger.query.filter(Passenger.passenger_uid == None).all():
+                p.passenger_uid = f"PAX-{p.id:05d}"
+            db.session.commit()
         if not Setting.query.first():
             db.session.add(Setting(key='base_fare', value='25')); db.session.add(Setting(key='per_km_bajaj', value='8')); db.session.add(Setting(key='per_km_car', value='12')); db.session.commit()
     app.run(debug=True)
+
 
 
