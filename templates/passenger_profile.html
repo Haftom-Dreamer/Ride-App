@@ -4,15 +4,15 @@
 
 {% block content %}
 <div class="max-w-4xl mx-auto px-4">
-    <div class="bg-white p-6 rounded-lg shadow-md">
-        <h1 class="text-2xl font-bold text-gray-800 mb-6">Manage Your Profile</h1>
+    <div class="bg-white p-6 rounded-lg shadow-md dark:bg-gray-800">
+        <h1 class="text-2xl font-bold text-gray-800 mb-6 dark:text-white">Manage Your Profile</h1>
 
         <form method="POST" action="{{ url_for('passenger_profile') }}" enctype="multipart/form-data" class="space-y-6 max-w-lg">
             
             <div class="flex items-center space-x-4">
-                <img id="settings-avatar" src="/{{ current_user.profile_picture or 'static/img/default_avatar.png' }}" class="h-20 w-20 rounded-full object-cover border-2 border-gray-200" alt="Your Avatar">
+                <img id="settings-avatar" src="/{{ current_user.profile_picture or 'static/img/default_avatar.png' }}" class="h-20 w-20 rounded-full object-cover border-2 border-gray-200 dark:border-gray-600" alt="Your Avatar">
                 <div>
-                    <label for="update-profile-picture" class="cursor-pointer bg-white py-2 px-3 border border-gray-300 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 hover:bg-gray-50">
+                    <label for="update-profile-picture" class="cursor-pointer bg-white py-2 px-3 border border-gray-300 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600">
                         Change Picture
                     </label>
                     <input type="file" name="profile_picture" id="update-profile-picture" class="hidden" accept="image/*">
@@ -20,25 +20,37 @@
             </div>
 
             <div>
-                <label for="username" class="block text-sm font-medium text-gray-700">Full Name</label>
-                <input type="text" name="username" id="username" value="{{ current_user.username }}" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                <label for="username" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Full Name</label>
+                <input type="text" name="username" id="username" value="{{ current_user.username }}" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
             </div>
 
             <div>
-                <label for="phone_number" class="block text-sm font-medium text-gray-700">Phone Number</label>
-                <input type="text" name="phone_number" id="phone_number" value="{{ current_user.phone_number }}" disabled class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100">
+                <label for="phone_number" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Phone Number</label>
+                <input type="text" name="phone_number" id="phone_number" value="{{ current_user.phone_number }}" disabled class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-400">
             </div>
 
-            <div class="border-t pt-6">
-                 <h2 class="text-lg font-semibold text-gray-800">Change Password</h2>
-                 <p class="text-sm text-gray-500 mb-4">Leave the new password field blank to keep your current password.</p>
+            <div class="border-t pt-6 dark:border-gray-700">
+                 <h2 class="text-lg font-semibold text-gray-800 dark:text-white">Change Password</h2>
+                 <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Leave the new password field blank to keep your current password.</p>
                 <div>
-                    <label for="update-new-password" class="block text-sm font-medium text-gray-700">New Password (optional)</label>
-                    <input type="password" name="new_password" id="update-new-password" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                    <label for="update-new-password" class="block text-sm font-medium text-gray-700 dark:text-gray-300">New Password (optional)</label>
+                    <div class="relative">
+                        <input type="password" name="new_password" id="update-new-password" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm pr-10 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                        <button type="button" class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-500 dark:text-gray-400" onclick="togglePasswordVisibility('update-new-password')">
+                           <svg id="eye-icon-update-new-password" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z" /><path fill-rule="evenodd" d="M.458 10C3.732 4.943 7.523 3 10 3s6.268 1.943 9.542 7c-3.274 5.057-7.03 7-9.542 7S3.732 15.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" /></svg>
+                           <svg id="eye-off-icon-update-new-password" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 hidden" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.27 8.138 15.522 6 10 6a9.95 9.95 0 00-4.323.934L3.707 2.293zM10 12a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" /><path d="M2 10s3.732 5 8 5 8-5 8-5a9.958 9.958 0 00-1.473-2.146l-1.414 1.414A8.003 8.003 0 0118 10c-3.274 4.057-7.03 6-8 6s-4.726-1.943-8-6a9.986 9.986 0 012.316-3.778L2.146 4.316A.997.997 0 012 4.5V10z" /></svg>
+                        </button>
+                    </div>
                 </div>
                  <div class="mt-4">
-                    <label for="update-current-password" class="block text-sm font-medium text-gray-700">Current Password (to confirm changes)</label>
-                    <input type="password" name="current_password" id="update-current-password" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                    <label for="update-current-password" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Current Password (to confirm changes)</label>
+                    <div class="relative">
+                        <input type="password" name="current_password" id="update-current-password" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm pr-10 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                         <button type="button" class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-500 dark:text-gray-400" onclick="togglePasswordVisibility('update-current-password')">
+                           <svg id="eye-icon-update-current-password" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z" /><path fill-rule="evenodd" d="M.458 10C3.732 4.943 7.523 3 10 3s6.268 1.943 9.542 7c-3.274 5.057-7.03 7-9.542 7S3.732 15.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" /></svg>
+                           <svg id="eye-off-icon-update-current-password" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 hidden" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.27 8.138 15.522 6 10 6a9.95 9.95 0 00-4.323.934L3.707 2.293zM10 12a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" /><path d="M2 10s3.732 5 8 5 8-5 8-5a9.958 9.958 0 00-1.473-2.146l-1.414 1.414A8.003 8.003 0 0118 10c-3.274 4.057-7.03 6-8 6s-4.726-1.943-8-6a9.986 9.986 0 012.316-3.778L2.146 4.316A.997.997 0 012 4.5V10z" /></svg>
+                        </button>
+                    </div>
                 </div>
             </div>
             
@@ -50,4 +62,20 @@
         </form>
     </div>
 </div>
+<script>
+    function togglePasswordVisibility(inputId) {
+        const input = document.getElementById(inputId);
+        const eyeIcon = document.getElementById(`eye-icon-${inputId}`);
+        const eyeOffIcon = document.getElementById(`eye-off-icon-${inputId}`);
+        if (input.type === 'password') {
+            input.type = 'text';
+            eyeIcon.classList.add('hidden');
+            eyeOffIcon.classList.remove('hidden');
+        } else {
+            input.type = 'password';
+            eyeIcon.classList.remove('hidden');
+            eyeOffIcon.classList.add('hidden');
+        }
+    }
+</script>
 {% endblock %}

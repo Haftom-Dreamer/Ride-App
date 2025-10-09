@@ -167,6 +167,30 @@
             transform: scaleX(1);
         }
     }
+
+    /* Dark mode styles */
+    .dark #main-container { background-color: #1f2937; }
+    .dark .text-gray-900 { color: #f9fafb; }
+    .dark .text-gray-800 { color: #f3f4f5; }
+    .dark .text-gray-700 { color: #e5e7eb; }
+    .dark .text-gray-600 { color: #9ca3af; }
+    .dark .text-gray-500 { color: #9ca3af; }
+    .dark #map { background-color: #374151; border-color: #4b5563; }
+    .dark input, .dark textarea { background-color: #374151; border-color: #4b5563; color: #f9fafb; }
+    .dark input::placeholder, .dark textarea::placeholder { color: #9ca3af; }
+    .dark .autocomplete-suggestions { background-color: #374151; border-color: #4b5563; }
+    .dark .autocomplete-suggestion:hover { background-color: #4b5563; }
+    .dark .vehicle-option { border-color: #4b5563; }
+    .dark .vehicle-option.selected { border-color: #4f46e5; background-color: #312e81; }
+    .dark .vehicle-option.disabled { background-color: #374151; opacity: 0.4; }
+    .dark #fare-info { background-color: #374151; }
+    .dark .bg-gray-50 { background-color: #374151; }
+    .dark .border, .dark .border-gray-300 { border-color: #4b5563; }
+    .dark .loader-car::before { border-color: #4b5563; }
+    .dark .rating-stars .star { color: #4b5563; }
+    .dark #road-animation-container { background-color: #4b5563; }
+    .dark #road-lines { background-image: linear-gradient(to right, #6b7280 50%, transparent 50%); }
+
 </style>
 {% endblock %}
 
@@ -194,7 +218,7 @@
                         </svg></div><input type="text" id="pickup-input"
                         class="w-full pl-10 pr-20 py-2 border border-gray-300 rounded-md shadow-sm"
                         placeholder="Enter pickup address"><button id="get-location-btn"
-                        class="absolute inset-y-0 right-0 pr-3 flex items-center text-sm text-indigo-600 font-semibold hover:text-indigo-800">Find
+                        class="absolute inset-y-0 right-0 pr-3 flex items-center text-sm text-indigo-600 font-semibold hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300">Find
                         Me</button>
                 </div>
                 <p id="location-status" class="text-xs text-gray-500 mt-1"></p>
@@ -261,7 +285,7 @@
         </div>
         <h2 class="text-2xl font-bold text-gray-800 mt-8">Finding your driver...</h2>
         <p class="text-gray-600 mt-2">Connecting you with a nearby professional.</p><button id="cancel-request-btn"
-            class="mt-6 text-sm text-red-600 hover:text-red-800 font-semibold">Cancel Request</button>
+            class="mt-6 text-sm text-red-600 hover:text-red-800 font-semibold dark:text-red-500 dark:hover:text-red-400">Cancel Request</button>
     </div>
 
     <div id="assigned-screen" class="status-screen">
@@ -272,7 +296,7 @@
         </div>
         <div class="text-left p-4 bg-gray-50 rounded-lg border">
             <div class="flex items-center">
-                <div class="bg-gray-200 rounded-full h-12 w-12 flex-shrink-0"></div>
+                <div class="bg-gray-200 rounded-full h-12 w-12 flex-shrink-0 dark:bg-gray-600"></div>
                 <div class="ml-4">
                     <p id="driver-name" class="text-lg font-bold text-gray-900"></p>
                     <p class="text-sm text-gray-500">Your Driver</p>
@@ -315,7 +339,7 @@
                 class="mt-4 px-6 py-2 bg-indigo-600 text-white rounded-full font-semibold hidden">Submit
                 Feedback</button>
         </div>
-        <div id="rating-thanks" class="mt-4 text-green-600 font-semibold hidden">Thank you for your feedback!</div>
+        <div id="rating-thanks" class="mt-4 text-green-600 font-semibold dark:text-green-400 hidden">Thank you for your feedback!</div>
         <button id="done-btn" class="mt-6 px-6 py-3 bg-gray-600 text-white rounded-full font-bold">Done</button>
     </div>
 </div>
@@ -334,13 +358,11 @@
         // --- Constants ---
         const API_BASE_URL = 'http://127.0.0.1:5000/api';
         const commonLandmarks = [
-            // Adigrat Landmarks
             { "name": "Adigrat University", "lat": 14.283, "lon": 39.462, "display_name": "Adigrat University, Adigrat" },
             { "name": "St. George's Church", "lat": 14.276, "lon": 39.459, "display_name": "St. George's Church, Adigrat" },
             { "name": "Adigrat General Hospital", "lat": 14.270, "lon": 39.465, "display_name": "Adigrat General Hospital, Adigrat" },
             { "name": "Adigrat Bus Station", "lat": 14.272, "lon": 39.458, "display_name": "Adigrat Bus Station, Adigrat" },
             { "name": "Adigrat Stadium", "lat": 14.280, "lon": 39.470, "display_name": "Adigrat Stadium, Adigrat" },
-            // Mekelle Landmarks
             { "name": "Mekelle University", "lat": 13.488, "lon": 39.482, "display_name": "Mekelle University, Mekelle" },
             { "name": "Martyrs' Memorial Monument", "lat": 13.507, "lon": 39.475, "display_name": "Martyrs' Memorial Monument, Mekelle" },
             { "name": "Yohannes IV Museum", "lat": 13.498, "lon": 39.467, "display_name": "Yohannes IV Museum, Mekelle" },
@@ -383,7 +405,7 @@
 
         const setStatus = (message, color) => {
             locationStatus.textContent = message;
-            locationStatus.className = `text-xs text-${color}-500 mt-1`;
+            locationStatus.className = `text-xs mt-1 text-${color}-600 dark:text-${color}-400`;
         };
 
         // --- Main Logic ---
@@ -444,7 +466,8 @@
                 distance_km: rideDetails.distance_km, 
                 fare: rideDetails.estimated_fare, 
                 vehicle_type: selectedVehicle, 
-                note: noteInput.value.trim() 
+                note: noteInput.value.trim(),
+                payment_method: 'Cash' // Assuming cash for now
             };
 
             requestRideBtn.disabled = true;
@@ -476,25 +499,27 @@
         };
 
         const startPolling = (rideId) => {
+            if(pollingInterval) clearInterval(pollingInterval);
             pollingInterval = setInterval(() => checkRideStatus(rideId), 3000);
         };
 
         const checkRideStatus = (rideId) => {
             fetch(`${API_BASE_URL}/ride-status/${rideId}`)
-                .then(res => res.json())
+                .then(res => {
+                    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+                    return res.json();
+                })
                 .then(data => {
                     if (data.status === 'Completed') {
                         clearInterval(pollingInterval);
                         displayRideSummary(data.ride_details);
-                        return;
-                    }
-                    if (data.status === 'Canceled') {
+                    } else if (data.status === 'Canceled') {
                         clearInterval(pollingInterval);
                         showScreen('canceled');
-                        return;
-                    }
-                    if (data.status === 'Assigned' && assignedScreen.style.display === 'none') {
-                        displayAssignedDriver(data.driver);
+                    } else if (data.status === 'Assigned' || data.status === 'On Trip') {
+                        if (assignedScreen.style.display === 'none') {
+                             displayAssignedDriver(data.driver);
+                        }
                     }
                 }).catch(err => {
                     console.error('Polling error:', err);
@@ -525,7 +550,7 @@
                 await fetch(`${API_BASE_URL}/rate-ride`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ride_id: currentRideId, rating: rating, comment: comment })
+                    body: JSON.stringify({ ride_id: currentRideId, rating: parseInt(rating), comment: comment })
                 });
                 ratingStars.style.display = 'none';
                 ratingComment.style.display = 'none';
@@ -552,11 +577,10 @@
         function getUserLocation() { setStatus('Finding your location...', 'blue'); navigator.geolocation.getCurrentPosition(pos => { const { latitude, longitude } = pos.coords; fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`).then(res => res.json()).then(data => { const lon = parseFloat(data.lon), lat = parseFloat(data.lat), v = "39.40,13.45,39.55,14.35".split(','); if (lon >= parseFloat(v[0]) && lon <= parseFloat(v[2]) && lat >= parseFloat(v[1]) && lat <= parseFloat(v[3])) { userPickup = { lat: latitude, lon: longitude, address: data.display_name || "Current Location" }; pickupInput.value = userPickup.address; setStatus('Location found!', 'green'); updateMapAndFare(); } else { setStatus('Service is only available in Adigrat or Mekelle.', 'red'); userPickup = null; } }); }, () => setStatus('Please enable location services.', 'red')); }
         function updateMapAndFare() { if (pickupMarker) map.removeLayer(pickupMarker); if (destinationMarker) map.removeLayer(destinationMarker); if (routeLayer) map.removeLayer(routeLayer); if (userPickup) pickupMarker = L.marker([userPickup.lat, userPickup.lon]).addTo(map).bindPopup('Pickup').openPopup(); if (userDestination) destinationMarker = L.marker([userDestination.lat, userDestination.lon]).addTo(map).bindPopup('Destination'); if (userPickup && userDestination) { drawRouteOnMap(userPickup, userDestination, map); calculateFare(); fareInfo.classList.remove('hidden'); requestRideBtn.disabled = false; } else { fareInfo.classList.add('hidden'); requestRideBtn.disabled = true; } if (userPickup) map.setView([userPickup.lat, userPickup.lon], 16); updateMapInstruction(); }
         function updateMapInstruction() { mapInstruction.classList.remove('hidden'); if (!userPickup) { mapInstruction.textContent = 'Click on the map or search to set your pickup location.'; } else if (!userDestination) { mapInstruction.textContent = 'Now, click on the map or search to set your destination.'; } else { mapInstruction.classList.add('hidden'); } }
-        async function drawRouteOnMap(pickup, destination, targetMap) { const currentMap = targetMap || map; const url = `https://router.project-osrm.org/route/v1/driving/${pickup.lon},${pickup.lat};${destination.lon},${destination.lat}?overview=full&geometries=geojson`; try { const response = await fetch(url); const data = await response.json(); if (data.routes && data.routes.length > 0) { const routeCoords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]); const routeLine = L.polyline(routeCoords, { color: '#6d28d9', weight: 5 }).addTo(currentMap); currentMap.fitBounds(routeLine.getBounds(), { padding: [50, 50] }); } } catch (error) { console.error('Error fetching route:', error); } }
+        async function drawRouteOnMap(pickup, destination, targetMap) { const currentMap = targetMap || map; const url = `https://router.project-osrm.org/route/v1/driving/${pickup.lon},${pickup.lat};${destination.lon},${destination.lat}?overview=full&geometries=geojson`; try { const response = await fetch(url); const data = await response.json(); if (data.routes && data.routes.length > 0) { const routeCoords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]); const routeLine = L.polyline(routeCoords, { color: '#6d28d9', weight: 5 }).addTo(currentMap); if(routeLayer) currentMap.removeLayer(routeLayer); routeLayer = routeLine; currentMap.fitBounds(routeLine.getBounds(), { padding: [50, 50] }); } } catch (error) { console.error('Error fetching route:', error); } }
 
         init();
     });
 </script>
 {% endblock %}
-
 

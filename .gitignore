@@ -19,3 +19,5 @@ Thumbs.db
 # Python virtual environment
 venv/
 env/
+
+create_admin.py

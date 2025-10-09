@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from functools import wraps
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
@@ -28,8 +29,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = os.path.join(base_dir, 'static/uploads')
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
-login_manager.login_view = 'passenger_login'
-
+# Removed login_manager.login_view to handle redirects specifically per user type
 
 # --- Helper Functions ---
 def to_eat(utc_dt):
@@ -37,6 +37,25 @@ def to_eat(utc_dt):
     if utc_dt is None:
         return None
     return utc_dt.replace(tzinfo=timezone.utc).astimezone(timezone(timedelta(hours=3)))
+
+# --- Custom Decorators for Role-Based Access ---
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or session.get('user_type') != 'admin':
+            flash('You must be logged in as a dispatcher to view this page.', 'danger')
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def passenger_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or session.get('user_type') != 'passenger':
+            flash('Please log in to access this page.', 'warning')
+            return redirect(url_for('passenger_login'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 # --- Database Models ---
 class Admin(UserMixin, db.Model):
@@ -60,7 +79,6 @@ class Passenger(UserMixin, db.Model):
     password_hash = db.Column(db.String(200), nullable=False)
     profile_picture = db.Column(db.String(255), nullable=True, default='static/img/default_user.svg')
     join_date = db.Column(db.DateTime, server_default=db.func.now())
-
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -106,7 +124,6 @@ class Ride(db.Model):
     note = db.Column(db.String(255), nullable=True)
     payment_method = db.Column(db.String(20), nullable=False, default='Cash')
 
-
     passenger = db.relationship('Passenger', backref=db.backref('rides', lazy=True))
     driver = db.relationship('Driver', backref=db.backref('rides', lazy=True))
     feedback = db.relationship('Feedback', backref='ride', uselist=False, cascade="all, delete-orphan")
@@ -117,8 +134,8 @@ class Feedback(db.Model):
     ride_id = db.Column(db.Integer, db.ForeignKey('ride.id'), unique=True, nullable=False)
     rating = db.Column(db.Integer, nullable=True)
     comment = db.Column(db.String(500), nullable=True)
-    feedback_type = db.Column(db.String(50), nullable=False, default='Rating') # e.g., 'Rating', 'Complaint', 'Lost Item'
-    details = db.Column(db.Text, nullable=True) # For complaint/lost item details
+    feedback_type = db.Column(db.String(50), nullable=False, default='Rating')
+    details = db.Column(db.Text, nullable=True)
     is_resolved = db.Column(db.Boolean, default=False)
     submitted_at = db.Column(db.DateTime, server_default=db.func.now(timezone.utc))
 
@@ -236,7 +253,7 @@ def logout():
 
 # --- Frontend Routes ---
 @app.route('/')
-@login_required
+@admin_required
 def dispatcher_dashboard():
     return render_template('dashboard.html')
 
@@ -247,19 +264,13 @@ def passenger_home():
     return redirect(url_for('passenger_login'))
 
 @app.route('/request')
-@login_required
+@passenger_required
 def passenger_app():
-    if session.get('user_type') != 'passenger':
-        flash('Please log in to request a ride.', 'warning')
-        return redirect(url_for('passenger_login'))
     return render_template('passenger.html')
 
 @app.route('/passenger/profile', methods=['GET', 'POST'])
-@login_required
+@passenger_required
 def passenger_profile():
-    if session.get('user_type') != 'passenger':
-        return redirect(url_for('passenger_login'))
-    
     passenger = current_user
     if request.method == 'POST':
         current_password = request.form.get('current_password')
@@ -284,10 +295,8 @@ def passenger_profile():
 
 
 @app.route('/passenger/history')
-@login_required
+@passenger_required
 def passenger_history():
-    if session.get('user_type') != 'passenger':
-        return redirect(url_for('passenger_login'))
     return render_template('passenger_history.html')
 
 
@@ -297,11 +306,8 @@ def uploaded_file(filename):
 
 # --- API Routes ---
 @app.route('/api/ride-request', methods=['POST'])
-@login_required
+@passenger_required
 def request_ride():
-    if session.get('user_type') != 'passenger':
-        return jsonify({'error': 'Unauthorized'}), 403
-
     data = request.json
     
     new_ride = Ride(
@@ -326,7 +332,7 @@ def request_ride():
 
 
 @app.route('/api/assign-ride', methods=['POST'])
-@login_required
+@admin_required
 def assign_ride():
     data = request.json
     ride = Ride.query.get(data.get('ride_id'))
@@ -345,7 +351,7 @@ def assign_ride():
 
 
 @app.route('/api/complete-ride', methods=['POST'])
-@login_required
+@admin_required
 def complete_ride():
     ride = Ride.query.get(request.json.get('ride_id'))
     if not ride:
@@ -358,13 +364,17 @@ def complete_ride():
 
 
 @app.route('/api/cancel-ride', methods=['POST'])
-@login_required
+@login_required # Accessible by both for now, can be split if needed
 def cancel_ride():
     ride = Ride.query.get(request.json.get('ride_id'))
     if not ride:
         return jsonify({'error': 'Ride not found'}), 404
     
-    is_reassign = ride.status in ['Assigned', 'On Trip']
+    # Security check: only allow passenger who owns ride or an admin to cancel
+    if session.get('user_type') == 'passenger' and ride.passenger_id != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    is_reassign = ride.status in ['Assigned', 'On Trip'] and session.get('user_type') == 'admin'
 
     if ride.driver:
         ride.driver.status = 'Available'
@@ -383,7 +393,7 @@ def cancel_ride():
 
 
 @app.route('/api/add-driver', methods=['POST'])
-@login_required
+@admin_required
 def add_driver():
     new_driver = Driver(
         name=request.form.get('name'),
@@ -404,7 +414,7 @@ def add_driver():
     return jsonify({'message': 'Driver added successfully'}), 201
 
 @app.route('/api/update-driver/<int:driver_id>', methods=['POST'])
-@login_required
+@admin_required
 def update_driver(driver_id):
     driver = Driver.query.get_or_404(driver_id)
     driver.name = request.form.get('name', driver.name)
@@ -423,7 +433,7 @@ def update_driver(driver_id):
 
 
 @app.route('/api/delete-driver', methods=['POST'])
-@login_required
+@admin_required
 def delete_driver():
     data = request.json
     driver = Driver.query.get(data.get('driver_id'))
@@ -435,7 +445,7 @@ def delete_driver():
 
 
 @app.route('/api/update-driver-status', methods=['POST'])
-@login_required
+@admin_required
 def update_driver_status():
     data = request.json
     driver = Driver.query.get(data.get('driver_id'))
@@ -447,11 +457,14 @@ def update_driver_status():
 
 
 @app.route('/api/rate-ride', methods=['POST'])
+@passenger_required
 def rate_ride():
     data = request.json
     ride = Ride.query.get(data.get('ride_id'))
     if not ride:
         return jsonify({'error': 'Ride not found'}), 404
+    if ride.passenger_id != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
     if ride.status != 'Completed':
         return jsonify({'error': 'Only completed rides can be rated'}), 400
     
@@ -468,7 +481,7 @@ def rate_ride():
     return jsonify({'message': 'Thank you for your feedback!'})
 
 @app.route('/api/all-feedback')
-@login_required
+@admin_required
 def get_all_feedback():
     feedback_items = Feedback.query.order_by(Feedback.is_resolved.asc(), Feedback.submitted_at.desc()).all()
     return jsonify([
@@ -488,13 +501,13 @@ def get_all_feedback():
     ])
 
 @app.route('/api/unread-feedback-count')
-@login_required
+@admin_required
 def get_unread_feedback_count():
     count = Feedback.query.filter_by(is_resolved=False).count()
     return jsonify({'count': count})
 
 @app.route('/api/feedback/resolve/<int:feedback_id>', methods=['POST'])
-@login_required
+@admin_required
 def resolve_feedback(feedback_id):
     feedback = Feedback.query.get_or_404(feedback_id)
     feedback.is_resolved = True
@@ -504,7 +517,7 @@ def resolve_feedback(feedback_id):
 
 # --- Data Fetching API Routes ---
 @app.route('/api/pending-rides')
-@login_required
+@admin_required
 def get_pending_rides():
     rides = Ride.query.filter_by(status='Requested').order_by(Ride.request_time.desc()).all()
     return jsonify([
@@ -527,7 +540,7 @@ def get_pending_rides():
     ])
 
 @app.route('/api/active-rides')
-@login_required
+@admin_required
 def get_active_rides():
     rides = Ride.query.filter(Ride.status.in_(['Assigned', 'On Trip'])).order_by(Ride.request_time.asc()).all()
     return jsonify([ { 
@@ -545,7 +558,7 @@ def get_active_rides():
 
 
 @app.route('/api/drivers')
-@login_required
+@admin_required
 def get_all_drivers():
     drivers = Driver.query.all()
     drivers_data = []
@@ -556,14 +569,14 @@ def get_all_drivers():
 
 
 @app.route('/api/driver/<int:driver_id>')
-@login_required
+@admin_required
 def get_driver(driver_id):
     driver = Driver.query.get_or_404(driver_id)
     return jsonify({ "id": driver.id, "name": driver.name, "phone_number": driver.phone_number, "vehicle_type": driver.vehicle_type, "vehicle_details": driver.vehicle_details, "vehicle_plate_number": driver.vehicle_plate_number, "license_info": driver.license_info, "profile_picture": driver.profile_picture, "license_document": driver.license_document, "vehicle_document": driver.vehicle_document, })
 
 
 @app.route('/api/available-drivers')
-@login_required
+@admin_required
 def get_available_drivers():
     vehicle_type = request.args.get('vehicle_type')
     query = Driver.query.filter_by(status='Available')
@@ -581,7 +594,7 @@ def get_available_drivers():
 
 
 @app.route('/api/all-rides-data')
-@login_required
+@admin_required
 def get_all_rides_data():
     rides = Ride.query.options(db.joinedload(Ride.feedback)).order_by(Ride.request_time.desc()).all()
     return jsonify([
@@ -599,7 +612,7 @@ def get_all_rides_data():
     ])
 
 @app.route('/api/passengers')
-@login_required
+@admin_required
 def get_passengers():
     passengers = Passenger.query.options(db.selectinload(Passenger.rides)).all()
     return jsonify([
@@ -615,8 +628,12 @@ def get_passengers():
 
 
 @app.route('/api/ride-status/<int:ride_id>')
+@login_required # Checked inside
 def get_ride_status(ride_id):
     ride = Ride.query.get_or_404(ride_id)
+    if session.get('user_type') == 'passenger' and ride.passenger_id != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+        
     driver_info = None
     if ride.driver:
         driver_info = { 'id': ride.driver.id, 'name': ride.driver.name, 'phone_number': ride.driver.phone_number, 'vehicle_details': ride.driver.vehicle_details }
@@ -625,7 +642,7 @@ def get_ride_status(ride_id):
 
 
 @app.route('/api/passenger-details/<int:passenger_id>')
-@login_required
+@admin_required
 def get_passenger_details(passenger_id):
     passenger = Passenger.query.get_or_404(passenger_id)
 
@@ -672,7 +689,7 @@ def get_passenger_details(passenger_id):
 
 
 @app.route('/api/ride-details/<int:ride_id>')
-@login_required
+@admin_required
 def get_ride_details(ride_id):
     ride = Ride.query.options(
         db.joinedload(Ride.passenger),
@@ -716,7 +733,7 @@ def get_ride_details(ride_id):
 
 
 @app.route('/api/driver-details/<int:driver_id>')
-@login_required
+@admin_required
 def get_driver_details(driver_id):
     driver = Driver.query.get_or_404(driver_id)
     
@@ -738,11 +755,8 @@ def get_driver_details(driver_id):
     })
 
 @app.route('/api/passenger/ride-history')
-@login_required
+@passenger_required
 def api_passenger_history():
-    if session.get('user_type') != 'passenger':
-        return jsonify({'error': 'Unauthorized'}), 403
-    
     rides = Ride.query.filter_by(passenger_id=current_user.id)\
         .options(db.joinedload(Ride.feedback), db.joinedload(Ride.driver))\
         .order_by(Ride.request_time.desc()).all()
@@ -779,7 +793,7 @@ def fare_estimate():
 
 
 @app.route('/api/dashboard-stats')
-@login_required
+@admin_required
 def get_dashboard_stats():
     total_revenue = db.session.query(func.sum(Ride.fare)).filter(Ride.status == 'Completed').scalar() or 0
     total_rides = Ride.query.count()
@@ -838,7 +852,7 @@ def _get_date_range_from_request():
     return start_date, end_date
 
 @app.route('/api/analytics-data')
-@login_required
+@admin_required
 def get_analytics_data():
     start_date, end_date = _get_date_range_from_request()
     now = datetime.now(timezone.utc)
@@ -873,7 +887,7 @@ def get_analytics_data():
     })
 
 @app.route('/api/export-report')
-@login_required
+@admin_required
 def export_report():
     file_format = request.args.get('format', 'pdf')
     start_date, end_date = _get_date_range_from_request()
@@ -961,7 +975,7 @@ def export_report():
 
 
 @app.route('/api/settings', methods=['GET', 'POST'])
-@login_required
+@admin_required
 def handle_settings():
     if request.method == 'POST':
         for key, value in request.json.items():
@@ -973,13 +987,13 @@ def handle_settings():
 
 # --- Admin Management API ---
 @app.route('/api/admins', methods=['GET'])
-@login_required
+@admin_required
 def get_admins():
     admins = Admin.query.all()
     return jsonify([{'id': admin.id, 'username': admin.username} for admin in admins])
 
 @app.route('/api/admins/add', methods=['POST'])
-@login_required
+@admin_required
 def add_admin():
     data = request.json
     username = data.get('username')
@@ -998,7 +1012,7 @@ def add_admin():
     return jsonify({'message': 'Admin added successfully', 'admin': {'id': new_admin.id, 'username': new_admin.username}}), 201
 
 @app.route('/api/admins/delete', methods=['POST'])
-@login_required
+@admin_required
 def delete_admin():
     data = request.json
     admin_id = data.get('admin_id')
@@ -1018,7 +1032,7 @@ def delete_admin():
     return jsonify({'message': 'Admin deleted successfully'})
 
 @app.route('/api/admins/update-profile', methods=['POST'])
-@login_required
+@admin_required
 def update_profile():
     new_username = request.form.get('username')
     current_password = request.form.get('current_password')
@@ -1050,11 +1064,7 @@ if __name__ == '__main__':
         db.create_all()
         
         if not Admin.query.first():
-            default_admin = Admin(username='admin')
-            default_admin.set_password('password')
-            db.session.add(default_admin)
-            db.session.commit()
-            print("Default admin 'admin' with password 'password' created.")
+            print("WARNING: No admin user found. Please create one using the create_admin.py script.")
 
         if Driver.query.filter(Driver.driver_uid == None).first():
             for driver in Driver.query.filter(Driver.driver_uid == None).all(): driver.driver_uid = f"DRV-{driver.id:04d}"
@@ -1066,6 +1076,4 @@ if __name__ == '__main__':
         if not Setting.query.first():
             db.session.add(Setting(key='base_fare', value='25')); db.session.add(Setting(key='per_km_bajaj', value='8')); db.session.add(Setting(key='per_km_car', value='12')); db.session.commit()
     app.run(debug=True)
-
-
 

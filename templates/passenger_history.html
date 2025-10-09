@@ -5,35 +5,37 @@
 {% block head %}
 <style>
     .rating-stars .star { color: #d1d5db; cursor: pointer; transition: color 0.2s; font-size: 1.8rem; }
+    .dark .rating-stars .star { color: #4b5563; }
     .rating-stars .star.highlight, .rating-stars .star.selected { color: #f59e0b; }
+    .dark .rating-stars .star.highlight, .dark .rating-stars .star.selected { color: #f59e0b; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="max-w-4xl mx-auto px-4">
-    <h1 class="text-2xl font-bold text-gray-800 mb-6">My Ride History</h1>
+    <h1 class="text-2xl font-bold text-gray-800 dark:text-white mb-6">My Ride History</h1>
     <div id="ride-history-container" class="space-y-4">
         <!-- Rides will be loaded here by JavaScript -->
-        <p id="loading-message">Loading your rides...</p>
+        <p id="loading-message" class="text-gray-600 dark:text-gray-400">Loading your rides...</p>
     </div>
 </div>
 
 <!-- Feedback Modal -->
 <div id="feedback-modal" class="fixed inset-0 z-50 items-center justify-center bg-black bg-opacity-50 hidden">
-    <div class="bg-white p-6 rounded-lg shadow-xl z-10 w-full max-w-md mx-4">
-        <h2 class="text-xl font-bold mb-4">Rate Your Ride</h2>
+    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl z-10 w-full max-w-md mx-4">
+        <h2 class="text-xl font-bold mb-4 dark:text-white">Rate Your Ride</h2>
         <input type="hidden" id="feedback-ride-id">
         <div>
-            <p class="text-lg font-semibold text-gray-700">How was it?</p>
+            <p class="text-lg font-semibold text-gray-700 dark:text-gray-300">How was it?</p>
             <div id="modal-rating-stars" class="rating-stars flex text-4xl mt-2">
                 <span class="star" data-value="1">★</span><span class="star" data-value="2">★</span>
                 <span class="star" data-value="3">★</span><span class="star" data-value="4">★</span>
                 <span class="star" data-value="5">★</span>
             </div>
-            <textarea id="modal-rating-comment" class="mt-4 w-full border border-gray-300 rounded-md shadow-sm" rows="3" placeholder="Add an optional comment..."></textarea>
+            <textarea id="modal-rating-comment" class="mt-4 w-full border border-gray-300 rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white" rows="3" placeholder="Add an optional comment..."></textarea>
         </div>
         <div class="flex justify-end space-x-4 mt-6">
-            <button id="cancel-feedback-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg">Cancel</button>
+            <button id="cancel-feedback-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg dark:bg-gray-600 dark:text-gray-200">Cancel</button>
             <button id="submit-feedback-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">Submit</button>
         </div>
     </div>
@@ -64,28 +66,28 @@ document.addEventListener('DOMContentLoaded', () => {
     const renderRides = (rides) => {
         historyContainer.innerHTML = '';
         if (rides.length === 0) {
-            historyContainer.innerHTML = '<p class="text-gray-600">You haven\'t taken any rides yet.</p>';
+            historyContainer.innerHTML = '<p class="text-gray-600 dark:text-gray-400">You haven\'t taken any rides yet.</p>';
             return;
         }
 
         rides.forEach(ride => {
             const rideCard = document.createElement('div');
-            rideCard.className = 'bg-white p-4 rounded-lg shadow-md border';
+            rideCard.className = 'bg-white p-4 rounded-lg shadow-md border dark:bg-gray-800 dark:border-gray-700';
 
             const ratingDisplay = ride.rating 
                 ? `<div class="text-yellow-400">${'★'.repeat(ride.rating)}${'☆'.repeat(5 - ride.rating)}</div>`
-                : `<button class="rate-ride-btn text-sm text-indigo-600 font-semibold" data-ride-id="${ride.id}">Rate this ride</button>`;
+                : `<button class="rate-ride-btn text-sm text-indigo-600 font-semibold dark:text-indigo-400" data-ride-id="${ride.id}">Rate this ride</button>`;
 
             rideCard.innerHTML = `
                 <div class="flex justify-between items-start">
                     <div>
-                        <p class="font-bold text-gray-800">To: ${ride.dest_address}</p>
-                        <p class="text-sm text-gray-500">${ride.request_time}</p>
+                        <p class="font-bold text-gray-800 dark:text-white">To: ${ride.dest_address}</p>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">${ride.request_time}</p>
                     </div>
-                    <span class="text-sm font-semibold px-2 py-1 rounded-full ${ride.status === 'Completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">${ride.status}</span>
+                    <span class="text-sm font-semibold px-2 py-1 rounded-full ${ride.status === 'Completed' ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300'}">${ride.status}</span>
                 </div>
-                <div class="mt-3 border-t pt-3 flex justify-between items-center">
-                    <div class="text-sm">
+                <div class="mt-3 border-t dark:border-gray-700 pt-3 flex justify-between items-center">
+                    <div class="text-sm text-gray-700 dark:text-gray-300">
                         <p>Driver: <span class="font-medium">${ride.driver_name}</span></p>
                         <p>Fare: <span class="font-medium">${ride.fare} ETB</span></p>
                     </div>

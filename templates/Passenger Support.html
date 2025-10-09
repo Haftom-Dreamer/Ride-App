@@ -1,0 +1,69 @@
+{% extends "passenger_base.html" %}
+
+{% block title %}{{ _('support_center') }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4">
+    <div class="bg-white p-6 rounded-lg shadow-md dark:bg-gray-800">
+        <h1 class="text-2xl font-bold text-gray-800 dark:text-white">{{ _('support_center') }}</h1>
+        <p class="text-gray-600 dark:text-gray-400 mt-2 mb-6">{{ _('support_intro') }}</p>
+
+        <form id="support-form" class="space-y-6 max-w-lg">
+            
+            <div>
+                <label for="feedback-type" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ _('what_can_we_help_with') }}</label>
+                <select id="feedback-type" name="feedback_type" required class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <option value="" disabled selected>{{ _('select_issue_type') }}</option>
+                    <option value="Lost Item">{{ _('lost_item') }}</option>
+                    <option value="Ride Complaint">{{ _('ride_complaint') }}</option>
+                    <option value="General Feedback">{{ _('general_feedback') }}</option>
+                </select>
+            </div>
+
+            <div id="ride-selector-container" class="hidden">
+                <label for="ride-id" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ _('which_ride') }}</label>
+                <select id="ride-id" name="ride_id" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <option value="" selected>{{ _('select_a_ride') }}</option>
+                </select>
+            </div>
+
+            <div>
+                <label for="details" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ _('provide_details') }}</label>
+                <textarea id="details" name="details" rows="5" required class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"></textarea>
+            </div>
+
+            <div>
+                <button type="submit" class="w-full sm:w-auto flex justify-center py-2 px-6 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">
+                    {{ _('submit_report') }}
+                </button>
+            </div>
+            <p id="form-feedback" class="text-sm mt-2"></p>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const typeSelect = document.getElementById('feedback-type'), rideContainer = document.getElementById('ride-selector-container'), rideSelect = document.getElementById('ride-id'), form = document.getElementById('support-form'), feedback = document.getElementById('form-feedback');
+    const fetchRides = async () => { try { const res = await fetch('/api/passenger/ride-history'); if(res.ok) { const rides = await res.json(); rideSelect.innerHTML = `<option value="" selected>{{ _('select_a_ride') }}</option>`; rides.slice(0, 20).forEach(r => { const opt = document.createElement('option'); opt.value = r.id; opt.textContent = `${r.request_time.split(' at ')[0]} - To: ${r.dest_address}`; rideSelect.appendChild(opt); }); }} catch (e) { console.error("Could not fetch rides for support form:", e); }};
+    typeSelect.addEventListener('change', () => rideContainer.classList.toggle('hidden', !['Lost Item', 'Ride Complaint'].includes(typeSelect.value)));
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const data = { feedback_type: form.elements.feedback_type.value, ride_id: form.elements.ride_id.value || null, details: form.elements.details.value };
+        try {
+            const res = await fetch('/api/submit-support-ticket', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+            const result = await res.json();
+            if (!res.ok) throw new Error(result.error || 'Failed to submit.');
+            feedback.textContent = "{{ _('report_submitted_successfully') }}";
+            feedback.className = 'text-sm mt-2 text-green-600 dark:text-green-400';
+            form.reset(); rideContainer.classList.add('hidden');
+        } catch (err) {
+            feedback.textContent = `{{ _('error') }}: ${err.message}`;
+            feedback.className = 'text-sm mt-2 text-red-600 dark:text-red-400';
+        }
+    });
+    fetchRides();
+});
+</script>
+{% endblock %}
+

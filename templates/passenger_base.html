@@ -13,46 +13,100 @@
         body {
             background-color: #f3f4f6;
             font-family: 'Inter', sans-serif;
+            transition: background-color 0.3s ease;
+        }
+        .dark body {
+            background-color: #030712;
         }
     </style>
+    <script>
+        // Apply dark mode immediately to prevent flash of light mode
+        if (localStorage.getItem('passengerDarkMode') === 'true') {
+            document.documentElement.classList.add('dark');
+        }
+    </script>
     {% block head %}{% endblock %}
 </head>
 
 <body class="font-sans">
-    {% if current_user.is_authenticated and session.get('user_type') == 'passenger' %}
-    <nav class="bg-white shadow-md">
+    <header class="bg-white shadow-md dark:bg-gray-800 sticky top-0 z-40">
         <div class="max-w-4xl mx-auto px-4">
             <div class="flex justify-between items-center h-16">
                 <div class="flex-shrink-0">
-                    <a href="{{ url_for('passenger_app') }}">
+                    <a href="{{ url_for('passenger_app') if current_user.is_authenticated else url_for('passenger_home') }}">
                         <img src="/static/img/Selamawi-logo 2 png.png" alt="Logo" class="h-10 w-auto">
                     </a>
                 </div>
+                
+                {% if current_user.is_authenticated and session.get('user_type') == 'passenger' %}
                 <div class="hidden md:flex items-center space-x-4">
                     <a href="{{ url_for('passenger_app') }}"
-                        class="px-3 py-2 rounded-md text-sm font-medium {{ 'text-indigo-600' if 'request' in request.path else 'text-gray-700 hover:text-indigo-600' }}">Request
-                        Ride</a>
+                        class="px-3 py-2 rounded-md text-sm font-medium {{ 'text-indigo-600 dark:text-indigo-400' if 'request' in request.path else 'text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400' }}">Request Ride</a>
                     <a href="{{ url_for('passenger_history') }}"
-                        class="px-3 py-2 rounded-md text-sm font-medium {{ 'text-indigo-600' if 'history' in request.path else 'text-gray-700 hover:text-indigo-600' }}">My
-                        Rides</a>
+                        class="px-3 py-2 rounded-md text-sm font-medium {{ 'text-indigo-600 dark:text-indigo-400' if 'history' in request.path else 'text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400' }}">My Rides</a>
                     <a href="{{ url_for('passenger_profile') }}"
-                        class="px-3 py-2 rounded-md text-sm font-medium {{ 'text-indigo-600' if 'profile' in request.path else 'text-gray-700 hover:text-indigo-600' }}">Profile</a>
+                        class="px-3 py-2 rounded-md text-sm font-medium {{ 'text-indigo-600 dark:text-indigo-400' if 'profile' in request.path else 'text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400' }}">Profile</a>
                     <a href="{{ url_for('logout') }}"
-                        class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-indigo-600">Logout</a>
+                        class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400">Logout</a>
                 </div>
-                <div class="flex items-center">
-                    <span class="text-gray-800 text-sm font-medium hidden md:block">Hello, {{ current_user.username }}!</span>
-                    <img src="/{{ current_user.profile_picture or 'static/img/default_avatar.png' }}" alt="Avatar" class="h-8 w-8 rounded-full ml-3 object-cover">
+                {% endif %}
+
+                <div class="flex items-center gap-4">
+                    {% if current_user.is_authenticated and session.get('user_type') == 'passenger' %}
+                    <span class="text-gray-800 text-sm font-medium hidden md:block dark:text-gray-200">Hello, {{ current_user.username }}!</span>
+                    <img src="/{{ current_user.profile_picture or 'static/img/default_avatar.png' }}" alt="Avatar" class="h-8 w-8 rounded-full object-cover">
+                    {% endif %}
+                    
+                    <button id="dark-mode-toggle" class="p-2 rounded-full text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700" title="Toggle dark mode">
+                        <span id="dark-mode-icon"></span>
+                    </button>
                 </div>
             </div>
         </div>
-    </nav>
-    {% endif %}
+    </header>
 
     <main class="py-5">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div class="max-w-4xl mx-auto px-4 mb-4">
+                {% for category, message in messages %}
+                <div
+                    class="p-4 rounded-lg text-sm {{ 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' if category == 'success' else 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300' }}">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        {% endwith %}
         {% block content %}{% endblock %}
     </main>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const toggleButton = document.getElementById('dark-mode-toggle');
+            const icon = document.getElementById('dark-mode-icon');
+            const htmlEl = document.documentElement;
 
+            const setDarkMode = (isDark) => {
+                if (isDark) {
+                    htmlEl.classList.add('dark');
+                    icon.textContent = '☀️'; // Sun icon for light mode
+                    localStorage.setItem('passengerDarkMode', 'true');
+                } else {
+                    htmlEl.classList.remove('dark');
+                    icon.textContent = '🌙'; // Moon icon for dark mode
+                    localStorage.setItem('passengerDarkMode', 'false');
+                }
+            };
+
+            toggleButton.addEventListener('click', () => {
+                setDarkMode(!htmlEl.classList.contains('dark'));
+            });
+            
+            // Set initial icon state based on current mode
+            setDarkMode(htmlEl.classList.contains('dark'));
+        });
+    </script>
 </body>
 
 </html>
