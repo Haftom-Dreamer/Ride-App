@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, jsonify, send_from_directory,
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 import os
+import json
 import requests
 from sqlalchemy import func, case
 from datetime import datetime, timedelta, timezone
@@ -27,9 +28,63 @@ app.config['SECRET_KEY'] = 'a-very-secret-key-that-should-be-changed'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(base_dir, 'app.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = os.path.join(base_dir, 'static/uploads')
+
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
-# Removed login_manager.login_view to handle redirects specifically per user type
+
+# --- Language Translations ---
+translations = {}
+with open('translations.json', 'r', encoding='utf-8') as f:
+    translations = json.load(f)
+
+@app.context_processor
+def inject_gettext():
+    def _(key):
+        lang = get_locale()
+        return translations.get(lang, translations['en']).get(key, key)
+    return dict(_=_)
+
+def get_locale():
+    # First check session, then cookie for persistence
+    lang = session.get('language')
+    if not lang:
+        lang = request.cookies.get('language_preference', 'en')
+        if lang:
+            session['language'] = lang
+    return lang or 'en'
+
+@app.route('/change_language/<lang>')
+def change_language(lang):
+    # Validate language code
+    if lang not in ['en', 'am', 'ti']:
+        lang = 'en'  # Default to English if invalid
+    
+    session['language'] = lang
+    
+    # Also store in localStorage via cookie for persistence
+    response = redirect(request.referrer or url_for('passenger_home'))
+    response.set_cookie('language_preference', lang, max_age=365*24*60*60)  # 1 year
+    
+    return response
+
+@app.route('/api/get_language')
+def get_language():
+    """API endpoint to get current language preference"""
+    lang = get_locale()
+    return jsonify({'language': lang})
+
+@app.route('/api/set_language', methods=['POST'])
+def set_language():
+    """API endpoint to set language preference"""
+    data = request.get_json()
+    lang = data.get('language', 'en')
+    
+    # Validate language code
+    if lang not in ['en', 'am', 'ti']:
+        lang = 'en'
+    
+    session['language'] = lang
+    return jsonify({'success': True, 'language': lang})
 
 # --- Helper Functions ---
 def to_eat(utc_dt):
@@ -299,6 +354,11 @@ def passenger_profile():
 def passenger_history():
     return render_template('passenger_history.html')
 
+@app.route('/passenger/support')
+@passenger_required
+def passenger_support():
+    return render_template('Passenger Support.html')
+
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
@@ -479,6 +539,52 @@ def rate_ride():
 
     db.session.commit()
     return jsonify({'message': 'Thank you for your feedback!'})
+
+@app.route('/api/submit-support-ticket', methods=['POST'])
+@passenger_required
+def submit_support_ticket():
+    data = request.json
+    feedback_type = data.get('feedback_type')
+    details = data.get('details')
+    ride_id = data.get('ride_id')
+
+    if not feedback_type or not details:
+        return jsonify({'error': 'Type and details are required.'}), 400
+    
+    if ride_id:
+        ride = Ride.query.filter_by(id=ride_id, passenger_id=current_user.id).first()
+        if not ride:
+            return jsonify({'error': 'Invalid ride ID.'}), 404
+        
+        # For ride-specific issues, a new feedback entry is created
+        # Note: The current DB schema has a UNIQUE constraint on ride_id in Feedback.
+        # This means one ride can only have one feedback entry. If they rated and also file a complaint,
+        # we need to decide how to handle it. For now, we'll assume a new entry is fine if no rating exists.
+        # A better long-term solution might be to remove the unique constraint.
+        # Let's try to update if exists, or create if not.
+        feedback = Feedback.query.filter_by(ride_id=ride_id).first()
+        if feedback:
+             # If a rating already exists, we can't create a new one. Let's just add the details.
+             # This is a limitation of the current UNIQUE constraint.
+            feedback.feedback_type = f"{feedback.feedback_type}/{feedback_type}" # Append type
+            feedback.details = f"Complaint: {details}\n\nOriginal Comment: {feedback.comment or ''}"
+        else:
+            feedback = Feedback(
+                ride_id=ride_id,
+                feedback_type=feedback_type,
+                details=details
+            )
+            db.session.add(feedback)
+    else: # General feedback not linked to a ride - needs a dummy ride_id or schema change
+        # This part is tricky with the current schema (ride_id is NOT NULL and FOREIGN KEY).
+        # As a workaround, we can't store feedback without a ride.
+        # The frontend seems to only show ride selector for some cases, but not for 'General Feedback'.
+        # Let's return an error for now and suggest they select a recent ride if possible.
+        return jsonify({'error': 'For general feedback, please select your most recent ride if applicable or contact support directly.'}), 400
+
+    db.session.commit()
+    return jsonify({'message': 'Support ticket submitted successfully.'}), 201
+
 
 @app.route('/api/all-feedback')
 @admin_required
@@ -1076,4 +1182,3 @@ if __name__ == '__main__':
         if not Setting.query.first():
             db.session.add(Setting(key='base_fare', value='25')); db.session.add(Setting(key='per_km_bajaj', value='8')); db.session.add(Setting(key='per_km_car', value='12')); db.session.commit()
     app.run(debug=True)
-

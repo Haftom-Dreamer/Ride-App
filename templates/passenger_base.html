@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ session.get('language', 'en') }}">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Ride App{% endblock %}</title>
+    <title>{% block title %}{{ _('app_name') }}{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,6 +17,51 @@
         }
         .dark body {
             background-color: #030712;
+        }
+        .lang-dropdown {
+            position: relative;
+        }
+        .lang-dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            background-color: #f9f9f9;
+            min-width: 100px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            z-index: 1;
+        }
+        .dark .lang-dropdown-content {
+            background-color: #2d3748;
+        }
+        .lang-dropdown-content a {
+            color: black;
+            padding: 8px 12px;
+            text-decoration: none;
+            display: block;
+            font-size: 0.875rem;
+        }
+        .dark .lang-dropdown-content a {
+            color: white;
+        }
+        .lang-dropdown-content a:hover {
+            background-color: #f1f1f1;
+        }
+        .dark .lang-dropdown-content a:hover {
+            background-color: #4a5568;
+        }
+        .lang-dropdown:hover .lang-dropdown-content {
+            display: block;
+        }
+        
+        /* Fix placeholder text visibility in dark mode */
+        input::placeholder {
+            color: #6b7280;
+        }
+        .dark input::placeholder {
+            color: #9ca3af;
+        }
+        .dark input {
+            color: #f3f4f6;
         }
     </style>
     <script>
@@ -39,25 +84,35 @@
                 </div>
                 
                 {% if current_user.is_authenticated and session.get('user_type') == 'passenger' %}
-                <div class="hidden md:flex items-center space-x-4">
+                <div class="hidden md:flex items-center space-x-2">
                     <a href="{{ url_for('passenger_app') }}"
-                        class="px-3 py-2 rounded-md text-sm font-medium {{ 'text-indigo-600 dark:text-indigo-400' if 'request' in request.path else 'text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400' }}">Request Ride</a>
+                        class="px-3 py-2 rounded-md text-sm font-medium {{ 'text-indigo-600 dark:text-indigo-400' if 'request' in request.path else 'text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400' }}">{{ _('request_ride') }}</a>
                     <a href="{{ url_for('passenger_history') }}"
-                        class="px-3 py-2 rounded-md text-sm font-medium {{ 'text-indigo-600 dark:text-indigo-400' if 'history' in request.path else 'text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400' }}">My Rides</a>
+                        class="px-3 py-2 rounded-md text-sm font-medium {{ 'text-indigo-600 dark:text-indigo-400' if 'history' in request.path else 'text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400' }}">{{ _('my_rides') }}</a>
+                    <a href="{{ url_for('passenger_support') }}"
+                        class="px-3 py-2 rounded-md text-sm font-medium {{ 'text-indigo-600 dark:text-indigo-400' if 'support' in request.path else 'text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400' }}">{{ _('support') }}</a>
                     <a href="{{ url_for('passenger_profile') }}"
-                        class="px-3 py-2 rounded-md text-sm font-medium {{ 'text-indigo-600 dark:text-indigo-400' if 'profile' in request.path else 'text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400' }}">Profile</a>
+                        class="px-3 py-2 rounded-md text-sm font-medium {{ 'text-indigo-600 dark:text-indigo-400' if 'profile' in request.path else 'text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400' }}">{{ _('profile') }}</a>
                     <a href="{{ url_for('logout') }}"
-                        class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400">Logout</a>
+                        class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400">{{ _('logout') }}</a>
                 </div>
                 {% endif %}
 
                 <div class="flex items-center gap-4">
                     {% if current_user.is_authenticated and session.get('user_type') == 'passenger' %}
-                    <span class="text-gray-800 text-sm font-medium hidden md:block dark:text-gray-200">Hello, {{ current_user.username }}!</span>
+                    <span class="text-gray-800 text-sm font-medium hidden md:block dark:text-gray-200">{{ _('hello') }}, {{ current_user.username }}!</span>
                     <img src="/{{ current_user.profile_picture or 'static/img/default_avatar.png' }}" alt="Avatar" class="h-8 w-8 rounded-full object-cover">
                     {% endif %}
+
+                    <!-- Settings Button -->
+                    <button id="settings-toggle" class="p-2 rounded-full text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700" title="{{ _('settings') }}">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                    </button>
                     
-                    <button id="dark-mode-toggle" class="p-2 rounded-full text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700" title="Toggle dark mode">
+                    <button id="dark-mode-toggle" class="p-2 rounded-full text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700" title="{{ _('toggle_dark_mode') }}">
                         <span id="dark-mode-icon"></span>
                     </button>
                 </div>
@@ -80,25 +135,143 @@
         {% endwith %}
         {% block content %}{% endblock %}
     </main>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
+            <div class="mt-3">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">{{ _('settings') }}</h3>
+                    <button id="close-settings" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="space-y-6">
+                    <!-- Language Settings -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ _('language') }}</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button onclick="changeLanguage('en')" class="lang-btn px-3 py-2 text-sm rounded-md border {{ 'bg-indigo-100 border-indigo-500 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300' if session.get('language', 'en') == 'en' else 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600' }}">
+                                English
+                            </button>
+                            <button onclick="changeLanguage('am')" class="lang-btn px-3 py-2 text-sm rounded-md border {{ 'bg-indigo-100 border-indigo-500 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300' if session.get('language', 'en') == 'am' else 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600' }}">
+                                አማርኛ
+                            </button>
+                            <button onclick="changeLanguage('ti')" class="lang-btn px-3 py-2 text-sm rounded-md border {{ 'bg-indigo-100 border-indigo-500 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300' if session.get('language', 'en') == 'ti' else 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600' }}">
+                                ትግርኛ
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Dark Mode Settings -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ _('dark_mode') }}</label>
+                        <div class="flex items-center">
+                            <button id="modal-dark-mode-toggle" class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 bg-gray-200">
+                                <span class="sr-only">{{ _('toggle_dark_mode') }}</span>
+                                <span class="translate-x-0 pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"></span>
+                            </button>
+                            <span class="ml-3 text-sm text-gray-700 dark:text-gray-300" id="dark-mode-status">{{ _('light_mode') }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Additional Settings -->
+                    <div>
+                        <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ _('app_preferences') }}</h4>
+                        <div class="space-y-2">
+                            <label class="flex items-center">
+                                <input type="checkbox" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" checked>
+                                <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">{{ _('enable_notifications') }}</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" checked>
+                                <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">{{ _('auto_refresh_ride_status') }}</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end mt-6">
+                    <button id="save-settings" class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        {{ _('save_changes') }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
     
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const toggleButton = document.getElementById('dark-mode-toggle');
             const icon = document.getElementById('dark-mode-icon');
             const htmlEl = document.documentElement;
+            const settingsModal = document.getElementById('settings-modal');
+            const settingsToggle = document.getElementById('settings-toggle');
+            const closeSettings = document.getElementById('close-settings');
+            const modalDarkModeToggle = document.getElementById('modal-dark-mode-toggle');
+            const darkModeStatus = document.getElementById('dark-mode-status');
 
             const setDarkMode = (isDark) => {
                 if (isDark) {
                     htmlEl.classList.add('dark');
                     icon.textContent = '☀️'; // Sun icon for light mode
                     localStorage.setItem('passengerDarkMode', 'true');
+                    if (modalDarkModeToggle) {
+                        modalDarkModeToggle.classList.remove('bg-gray-200');
+                        modalDarkModeToggle.classList.add('bg-indigo-600');
+                        modalDarkModeToggle.querySelector('span:last-child').classList.add('translate-x-5');
+                    }
+                    if (darkModeStatus) {
+                        darkModeStatus.textContent = '{{ _("dark_mode") }}';
+                    }
                 } else {
                     htmlEl.classList.remove('dark');
                     icon.textContent = '🌙'; // Moon icon for dark mode
                     localStorage.setItem('passengerDarkMode', 'false');
+                    if (modalDarkModeToggle) {
+                        modalDarkModeToggle.classList.remove('bg-indigo-600');
+                        modalDarkModeToggle.classList.add('bg-gray-200');
+                        modalDarkModeToggle.querySelector('span:last-child').classList.remove('translate-x-5');
+                    }
+                    if (darkModeStatus) {
+                        darkModeStatus.textContent = '{{ _("light_mode") }}';
+                    }
                 }
             };
 
+            // Settings modal functionality
+            if (settingsToggle) {
+                settingsToggle.addEventListener('click', () => {
+                    settingsModal.classList.remove('hidden');
+                    // Initialize dark mode toggle state when modal opens
+                    setDarkMode(htmlEl.classList.contains('dark'));
+                });
+            }
+
+            if (closeSettings) {
+                closeSettings.addEventListener('click', () => {
+                    settingsModal.classList.add('hidden');
+                });
+            }
+
+            // Close modal when clicking outside
+            settingsModal.addEventListener('click', (e) => {
+                if (e.target === settingsModal) {
+                    settingsModal.classList.add('hidden');
+                }
+            });
+
+            // Modal dark mode toggle
+            if (modalDarkModeToggle) {
+                modalDarkModeToggle.addEventListener('click', () => {
+                    setDarkMode(!htmlEl.classList.contains('dark'));
+                });
+            }
+
+            // Main dark mode toggle
             toggleButton.addEventListener('click', () => {
                 setDarkMode(!htmlEl.classList.contains('dark'));
             });
@@ -106,8 +279,48 @@
             // Set initial icon state based on current mode
             setDarkMode(htmlEl.classList.contains('dark'));
         });
+
+        // Language change function
+        function changeLanguage(lang) {
+            // Store language preference in localStorage
+            localStorage.setItem('passengerLanguage', lang);
+            
+            // Also set cookie for server-side persistence
+            document.cookie = `language_preference=${lang}; max-age=${365*24*60*60}; path=/`;
+            
+            // Use API to set language for immediate effect
+            fetch('/api/set_language', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ language: lang })
+            }).then(() => {
+                // Redirect to change language endpoint for full page reload
+                window.location.href = `/change_language/${lang}`;
+            }).catch(() => {
+                // Fallback to direct redirect
+                window.location.href = `/change_language/${lang}`;
+            });
+        }
+
+        // Load saved language preference on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedLang = localStorage.getItem('passengerLanguage');
+            const currentLang = '{{ session.get("language", "en") }}';
+            
+            if (savedLang && savedLang !== currentLang) {
+                // If saved language differs from current, update it
+                changeLanguage(savedLang);
+            } else if (savedLang) {
+                // Sync localStorage with server state
+                localStorage.setItem('passengerLanguage', currentLang);
+            } else {
+                // First time user, save current language
+                localStorage.setItem('passengerLanguage', currentLang);
+            }
+        });
     </script>
 </body>
 
 </html>
-
