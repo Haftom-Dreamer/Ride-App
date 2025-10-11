@@ -204,122 +204,86 @@
     </div>
     
     <script>
+        // Combined DOMContentLoaded event listener
         document.addEventListener('DOMContentLoaded', () => {
+            // --- Dark Mode Elements and Logic ---
             const toggleButton = document.getElementById('dark-mode-toggle');
             const icon = document.getElementById('dark-mode-icon');
             const htmlEl = document.documentElement;
-            const settingsModal = document.getElementById('settings-modal');
-            const settingsToggle = document.getElementById('settings-toggle');
-            const closeSettings = document.getElementById('close-settings');
             const modalDarkModeToggle = document.getElementById('modal-dark-mode-toggle');
             const darkModeStatus = document.getElementById('dark-mode-status');
 
             const setDarkMode = (isDark) => {
                 if (isDark) {
                     htmlEl.classList.add('dark');
-                    icon.textContent = '☀️'; // Sun icon for light mode
+                    icon.textContent = '☀️'; // Sun icon
                     localStorage.setItem('passengerDarkMode', 'true');
                     if (modalDarkModeToggle) {
                         modalDarkModeToggle.classList.remove('bg-gray-200');
                         modalDarkModeToggle.classList.add('bg-indigo-600');
                         modalDarkModeToggle.querySelector('span:last-child').classList.add('translate-x-5');
                     }
-                    if (darkModeStatus) {
-                        darkModeStatus.textContent = '{{ _("dark_mode") }}';
-                    }
+                    if (darkModeStatus) darkModeStatus.textContent = '{{ _("dark_mode") }}';
                 } else {
                     htmlEl.classList.remove('dark');
-                    icon.textContent = '🌙'; // Moon icon for dark mode
+                    icon.textContent = '🌙'; // Moon icon
                     localStorage.setItem('passengerDarkMode', 'false');
                     if (modalDarkModeToggle) {
                         modalDarkModeToggle.classList.remove('bg-indigo-600');
                         modalDarkModeToggle.classList.add('bg-gray-200');
                         modalDarkModeToggle.querySelector('span:last-child').classList.remove('translate-x-5');
                     }
-                    if (darkModeStatus) {
-                        darkModeStatus.textContent = '{{ _("light_mode") }}';
-                    }
+                    if (darkModeStatus) darkModeStatus.textContent = '{{ _("light_mode") }}';
                 }
             };
 
-            // Settings modal functionality
+            // --- Settings Modal Logic ---
+            const settingsModal = document.getElementById('settings-modal');
+            const settingsToggle = document.getElementById('settings-toggle');
+            const closeSettings = document.getElementById('close-settings');
+
             if (settingsToggle) {
                 settingsToggle.addEventListener('click', () => {
                     settingsModal.classList.remove('hidden');
-                    // Initialize dark mode toggle state when modal opens
-                    setDarkMode(htmlEl.classList.contains('dark'));
+                    setDarkMode(htmlEl.classList.contains('dark')); // Sync modal toggle
                 });
             }
-
             if (closeSettings) {
-                closeSettings.addEventListener('click', () => {
-                    settingsModal.classList.add('hidden');
-                });
+                closeSettings.addEventListener('click', () => settingsModal.classList.add('hidden'));
             }
-
-            // Close modal when clicking outside
             settingsModal.addEventListener('click', (e) => {
-                if (e.target === settingsModal) {
-                    settingsModal.classList.add('hidden');
-                }
+                if (e.target === settingsModal) settingsModal.classList.add('hidden');
             });
 
-            // Modal dark mode toggle
-            if (modalDarkModeToggle) {
-                modalDarkModeToggle.addEventListener('click', () => {
-                    setDarkMode(!htmlEl.classList.contains('dark'));
-                });
-            }
+            // --- Event Listeners ---
+            if (toggleButton) toggleButton.addEventListener('click', () => setDarkMode(!htmlEl.classList.contains('dark')));
+            if (modalDarkModeToggle) modalDarkModeToggle.addEventListener('click', () => setDarkMode(!htmlEl.classList.contains('dark')));
 
-            // Main dark mode toggle
-            toggleButton.addEventListener('click', () => {
-                setDarkMode(!htmlEl.classList.contains('dark'));
-            });
-            
-            // Set initial icon state based on current mode
+            // --- Initial State Setup ---
             setDarkMode(htmlEl.classList.contains('dark'));
-        });
 
-        // Language change function
-        function changeLanguage(lang) {
-            // Store language preference in localStorage
-            localStorage.setItem('passengerLanguage', lang);
-            
-            // Also set cookie for server-side persistence
-            document.cookie = `language_preference=${lang}; max-age=${365*24*60*60}; path=/`;
-            
-            // Use API to set language for immediate effect
-            fetch('/api/set_language', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ language: lang })
-            }).then(() => {
-                // Redirect to change language endpoint for full page reload
-                window.location.href = `/change_language/${lang}`;
-            }).catch(() => {
-                // Fallback to direct redirect
-                window.location.href = `/change_language/${lang}`;
-            });
-        }
-
-        // Load saved language preference on page load
-        document.addEventListener('DOMContentLoaded', () => {
+            // --- Language Synchronization Logic ---
             const savedLang = localStorage.getItem('passengerLanguage');
             const currentLang = '{{ session.get("language", "en") }}';
-            
+
+            // If language in localStorage is different from the server's, it means it was changed in another tab.
+            // We redirect to the change_language endpoint to unify the session.
             if (savedLang && savedLang !== currentLang) {
-                // If saved language differs from current, update it
-                changeLanguage(savedLang);
-            } else if (savedLang) {
-                // Sync localStorage with server state
-                localStorage.setItem('passengerLanguage', currentLang);
+                window.location.href = `/change_language/${savedLang}`;
             } else {
-                // First time user, save current language
+                // Otherwise, we ensure localStorage is synced with the server's language.
                 localStorage.setItem('passengerLanguage', currentLang);
             }
         });
+
+        // --- Global Functions ---
+        function changeLanguage(lang) {
+            // This function is called by the language buttons.
+            // It sets the preference in localStorage for other tabs and then redirects.
+            // The backend handles setting the session and cookie.
+            localStorage.setItem('passengerLanguage', lang);
+            window.location.href = `/change_language/${lang}`;
+        }
     </script>
 </body>
 

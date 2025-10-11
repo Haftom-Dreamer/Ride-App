@@ -9,6 +9,8 @@ from datetime import datetime, timedelta, timezone
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from flask_migrate import Migrate
+from flask_marshmallow import Marshmallow
 from functools import wraps
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
@@ -30,7 +32,9 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = os.path.join(base_dir, 'static/uploads')
 
 db = SQLAlchemy(app)
+migrate = Migrate(app, db)
 login_manager = LoginManager(app)
+ma = Marshmallow(app)
 
 # --- Language Translations ---
 translations = {}
@@ -194,11 +198,39 @@ class Feedback(db.Model):
     is_resolved = db.Column(db.Boolean, default=False)
     submitted_at = db.Column(db.DateTime, server_default=db.func.now(timezone.utc))
 
-
 class Setting(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    key = db.Column(db.String(50), unique=True, nullable=False)
-    value = db.Column(db.String(100), nullable=False)
+    key = db.Column(db.String(100), unique=True, nullable=False)
+    value = db.Column(db.String(255), nullable=False)
+
+# --- Marshmallow Schemas ---
+class PassengerSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = Passenger
+        fields = ("username", "phone_number") # Only expose what's needed
+
+class DriverSchema(ma.SQLAlchemyAutoSchema):
+    avg_rating = ma.Float()
+    class Meta:
+        model = Driver
+
+class RideSchema(ma.SQLAlchemyAutoSchema):
+    passenger = ma.Nested(PassengerSchema)
+    request_time = ma.Function(lambda obj: to_eat(obj.request_time).strftime('%I:%M %p'))
+    # Rename for clarity
+    user_name = ma.String(attribute="passenger.username")
+    user_phone = ma.String(attribute="passenger.phone_number")
+
+    class Meta:
+        model = Ride
+        # Explicitly list fields to match original output
+        fields = ("id", "user_name", "user_phone", "pickup_address", "pickup_lat",
+                  "pickup_lon", "dest_address", "dest_lat", "dest_lon", "fare",
+                  "vehicle_type", "note", "request_time")
+
+# Schemas for multiple items
+rides_schema = RideSchema(many=True)
+drivers_schema = DriverSchema(many=True)
 
 
 def get_setting(key, default=None):
@@ -626,24 +658,7 @@ def resolve_feedback(feedback_id):
 @admin_required
 def get_pending_rides():
     rides = Ride.query.filter_by(status='Requested').order_by(Ride.request_time.desc()).all()
-    return jsonify([
-        {
-            'id': r.id,
-            'user_name': r.passenger.username,
-            'user_phone': r.passenger.phone_number,
-            'pickup_address': r.pickup_address,
-            'pickup_lat': r.pickup_lat,
-            'pickup_lon': r.pickup_lon,
-            'dest_address': r.dest_address,
-            'dest_lat': r.dest_lat,
-            'dest_lon': r.dest_lon,
-            'fare': r.fare,
-            'vehicle_type': r.vehicle_type,
-            'note': r.note,
-            'request_time': to_eat(r.request_time).strftime('%I:%M %p'),
-        }
-        for r in rides
-    ])
+    return jsonify(rides_schema.dump(rides))
 
 @app.route('/api/active-rides')
 @admin_required
@@ -670,8 +685,9 @@ def get_all_drivers():
     drivers_data = []
     for d in drivers:
         avg_rating = db.session.query(func.avg(Feedback.rating)).join(Ride).filter(Ride.driver_id == d.id, Feedback.rating.isnot(None)).scalar() or 0
-        drivers_data.append({ "id": d.id, "driver_uid": d.driver_uid, "name": d.name, "phone_number": d.phone_number, "vehicle_type": d.vehicle_type, "vehicle_details": d.vehicle_details, "status": d.status, "join_date": d.join_date.strftime('%Y-%m-%d'), "profile_picture": d.profile_picture, "lat": d.current_lat, "lon": d.current_lon, "avg_rating": avg_rating })
-    return jsonify(drivers_data)
+        d.avg_rating = avg_rating # Add the calculated field to the object
+        drivers_data.append(d)
+    return jsonify(drivers_schema.dump(drivers_data))
 
 
 @app.route('/api/driver/<int:driver_id>')
@@ -887,7 +903,8 @@ def fare_estimate():
     base_fare = float(get_setting('base_fare', 25))
     per_km_rates = { "Bajaj": float(get_setting('per_km_bajaj', 8)), "Car": float(get_setting('per_km_car', 12)) }
     per_km_rate = per_km_rates.get(data.get('vehicle_type', 'Bajaj'))
-    osrm_url = (f"http://router.project-osrm.org/route/v1/driving/" f"{data['pickup_lon']},{data['pickup_lat']};{data['dest_lon']},{data['dest_lat']}?overview=false")
+    osrm_url = (f"http://router.project-osrm.org/route/v1/driving/"
+                f"{data['pickup_lon']},{data['pickup_lat']};{data['dest_lon']},{data['dest_lat']}?overview=false")
     try:
         response = requests.get(osrm_url)
         response.raise_for_status()
@@ -1160,14 +1177,34 @@ def update_profile():
         current_user.profile_picture = _handle_file_upload(profile_picture, current_user.profile_picture)
 
     db.session.commit()
-    return jsonify({'message': 'Profile updated successfully', 'profile_picture': current_user.profile_picture})
 
 
 # --- Main Execution ---
 if __name__ == '__main__':
     with app.app_context():
         os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-        db.create_all()
+        
+        if not Admin.query.first():
+            print("WARNING: No admin user found. Please create one using the create_admin.py script.")
+
+        if Driver.query.filter(Driver.driver_uid == None).first():
+            for driver in Driver.query.filter(Driver.driver_uid == None).all(): driver.driver_uid = f"DRV-{driver.id:04d}"
+            db.session.commit()
+        if Passenger.query.filter(Passenger.passenger_uid == None).first():
+            for p in Passenger.query.filter(Passenger.passenger_uid == None).all():
+                p.passenger_uid = f"PAX-{p.id:05d}"
+            db.session.commit()
+        if not Setting.query.first():
+            db.session.add(Setting(key='base_fare', value='25')); db.session.add(Setting(key='per_km_bajaj', value='8')); db.session.add(Setting(key='per_km_car', value='12')); db.session.commit()
+    app.run(debug=True)
+
+    db.session.commit()
+
+
+# --- Main Execution ---
+if __name__ == '__main__':
+    with app.app_context():
+        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
         
         if not Admin.query.first():
             print("WARNING: No admin user found. Please create one using the create_admin.py script.")
