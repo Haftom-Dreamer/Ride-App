@@ -1,0 +1,291 @@
+warning: in the working copy of 'main.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'requirements.txt', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/README.md b/README.md[m
+[1mindex 8c22b60..4cabee9 100644[m
+[1m--- a/README.md[m
+[1m+++ b/README.md[m
+[36m@@ -1,5 +1,19 @@[m
+ Ride - A Dispatcher-Based Hailing App[m
+[31m-📝 What is this Project?[m
+[32m+[m
+[32m+[m[32m## 🚀 Recent Updates (2024)[m
+[32m+[m
+[32m+[m[32mThis application has been significantly improved with:[m
+[32m+[m[32m- ✅ **Enhanced Security**: Environment-based configuration, CSRF protection, rate limiting[m
+[32m+[m[32m- ✅ **Better Performance**: Database indexes, optimized queries[m
+[32m+[m[32m- ✅ **Production Ready**: Proper error handling, input validation, file upload security[m
+[32m+[m[32m- ✅ **Money Precision**: Using Decimal types instead of Float for fare calculations[m
+[32m+[m[32m- ✅ **Configuration Management**: Clean separation of config from code[m
+[32m+[m
+[32m+[m[32m**👉 See [SETUP_GUIDE.md](SETUP_GUIDE.md) for detailed setup instructions and migration guide.**[m
+[32m+[m
+[32m+[m[32m---[m
+[32m+[m
+[32m+[m[32m## 📝 What is this Project?[m
+ This project is a simple and modern ride-hailing app, designed from the ground up for towns like Adigrat, Ethiopia. It's built around a dispatcher model, which is perfect for a local community. Passengers use a clean, mobile-friendly website to request a ride, and a central dispatcher manages everything from a live dashboard, assigning the best driver for the job.[m
+ [m
+ The whole system is built using free, open-source tools, so there are no running costs.[m
+[1mdiff --git a/app.db b/app.db[m
+[1mdeleted file mode 100644[m
+[1mindex 3c6e6ae..0000000[m
+Binary files a/app.db and /dev/null differ
+[1mdiff --git a/main.py b/main.py[m
+[1mindex 3f5fc4b..e2f7a3a 100644[m
+[1m--- a/main.py[m
+[1m+++ b/main.py[m
+[36m@@ -1,16 +1,20 @@[m
+ from flask import Flask, render_template, request, jsonify, send_from_directory, redirect, url_for, flash, session[m
+ from flask_sqlalchemy import SQLAlchemy[m
+ from flask_cors import CORS[m
+[32m+[m[32mfrom flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user[m
+[32m+[m[32mfrom flask_migrate import Migrate[m
+[32m+[m[32mfrom flask_marshmallow import Marshmallow[m
+[32m+[m[32mfrom flask_limiter import Limiter[m
+[32m+[m[32mfrom flask_limiter.util import get_remote_address[m
+[32m+[m[32mfrom flask_wtf.csrf import CSRFProtect[m
+ import os[m
+ import json[m
+ import requests[m
+ from sqlalchemy import func, case[m
+[32m+[m[32mfrom decimal import Decimal, ROUND_HALF_UP[m
+ from datetime import datetime, timedelta, timezone[m
+ from werkzeug.utils import secure_filename[m
+ from werkzeug.security import generate_password_hash, check_password_hash[m
+[31m-from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user[m
+[31m-from flask_migrate import Migrate[m
+[31m-from flask_marshmallow import Marshmallow[m
+ from functools import wraps[m
+ from reportlab.lib.pagesizes import letter, landscape[m
+ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer[m
+[36m@@ -20,21 +24,67 @@[m [mimport io[m
+ import openpyxl[m
+ from openpyxl.styles import Font, Alignment, PatternFill[m
+ from openpyxl.utils import get_column_letter[m
+[32m+[m[32mfrom config import config[m
+ [m
+ # --- App and Database Setup ---[m
+ base_dir = os.path.abspath(os.path.dirname(__file__))[m
+[32m+[m
+[32m+[m[32m# Create Flask app[m
+ app = Flask(__name__)[m
+[31m-CORS(app)[m
+ [m
+[31m-app.config['SECRET_KEY'] = 'a-very-secret-key-that-should-be-changed'[m
+[31m-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(base_dir, 'app.db')[m
+[31m-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False[m
+[31m-app.config['UPLOAD_FOLDER'] = os.path.join(base_dir, 'static/uploads')[m
+[32m+[m[32m# Load configuration[m
+[32m+[m[32menv = os.environ.get('FLASK_ENV', 'development')[m
+[32m+[m[32mapp.config.from_object(config[env])[m
+ [m
+[32m+[m[32m# Initialize extensions[m
+ db = SQLAlchemy(app)[m
+ migrate = Migrate(app, db)[m
+[31m-login_manager = LoginManager(app)[m
+ ma = Marshmallow(app)[m
+[32m+[m[32mcsrf = CSRFProtect(app)[m
+[32m+[m[32mlogin_manager = LoginManager(app)[m
+[32m+[m[32mlogin_manager.login_view = 'login'[m
+[32m+[m
+[32m+[m[32m# Configure CORS with specific origins[m
+[32m+[m[32mcors_origins = app.config.get('CORS_ORIGINS', ['*'])[m
+[32m+[m[32mCORS(app, resources={r"/api/*": {"origins": cors_origins}}, supports_credentials=True)[m
+[32m+[m
+[32m+[m[32m# Rate limiting[m
+[32m+[m[32mlimiter = Limiter([m
+[32m+[m[32m    app=app,[m
+[32m+[m[32m    key_func=get_remote_address,[m
+[32m+[m[32m    storage_uri=app.config.get('RATELIMIT_STORAGE_URL', 'memory://'),[m
+[32m+[m[32m    default_limits=["200 per day", "50 per hour"],[m
+[32m+[m[32m    enabled=app.config.get('RATELIMIT_ENABLED', True)[m
+[32m+[m[32m)[m
+[32m+[m
+[32m+[m[32m# Exempt API routes from CSRF (they use authentication instead)[m
+[32m+[m[32m@csrf.exempt[m
+[32m+[m[32m@app.before_request[m
+[32m+[m[32mdef csrf_protect_forms_only():[m
+[32m+[m[32m    if request.path.startswith('/api/'):[m
+[32m+[m[32m        csrf._exempt_views.add(request.endpoint)[m
+[32m+[m[41m    [m
+[32m+[m[32m# Error Handlers[m
+[32m+[m[32m@app.errorhandler(404)[m
+[32m+[m[32mdef not_found(e):[m
+[32m+[m[32m    if request.path.startswith('/api/'):[m
+[32m+[m[32m        return jsonify({'error': 'Resource not found'}), 404[m
+[32m+[m[32m    return render_template('base.html'), 404[m
+[32m+[m
+[32m+[m[32m@app.errorhandler(500)[m
+[32m+[m[32mdef internal_error(e):[m
+[32m+[m[32m    db.session.rollback()[m
+[32m+[m[32m    if request.path.startswith('/api/'):[m
+[32m+[m[32m        return jsonify({'error': 'Internal server error'}), 500[m
+[32m+[m[32m    flash('An unexpected error occurred. Please try again.', 'danger')[m
+[32m+[m[32m    return redirect(url_for('dispatcher_dashboard'))[m
+[32m+[m
+[32m+[m[32m@app.errorhandler(429)[m
+[32m+[m[32mdef ratelimit_handler(e):[m
+[32m+[m[32m    if request.path.startswith('/api/'):[m
+[32m+[m[32m        return jsonify({'error': 'Rate limit exceeded. Please try again later.'}), 429[m
+[32m+[m[32m    flash('Too many requests. Please slow down.', 'warning')[m
+[32m+[m[32m    return redirect(request.referrer or url_for('dispatcher_dashboard'))[m
+ [m
+ # --- Language Translations ---[m
+ translations = {}[m
+[36m@@ -132,9 +182,9 @@[m [mclass Admin(UserMixin, db.Model):[m
+ class Passenger(UserMixin, db.Model):[m
+     __tablename__ = 'passenger'[m
+     id = db.Column(db.Integer, primary_key=True)[m
+[31m-    passenger_uid = db.Column(db.String(20), unique=True, nullable=True)[m
+[32m+[m[32m    passenger_uid = db.Column(db.String(20), unique=True, nullable=True, index=True)[m
+     username = db.Column(db.String(80), nullable=False)[m
+[31m-    phone_number = db.Column(db.String(20), unique=True, nullable=False)[m
+[32m+[m[32m    phone_number = db.Column(db.String(20), unique=True, nullable=False, index=True)[m
+     password_hash = db.Column(db.String(200), nullable=False)[m
+     profile_picture = db.Column(db.String(255), nullable=True, default='static/img/default_user.svg')[m
+     join_date = db.Column(db.DateTime, server_default=db.func.now())[m
+[36m@@ -148,14 +198,14 @@[m [mclass Passenger(UserMixin, db.Model):[m
+ [m
+ class Driver(db.Model):[m
+     id = db.Column(db.Integer, primary_key=True)[m
+[31m-    driver_uid = db.Column(db.String(20), unique=True, nullable=True) # User-friendly ID[m
+[32m+[m[32m    driver_uid = db.Column(db.String(20), unique=True, nullable=True, index=True)  # User-friendly ID[m
+     name = db.Column(db.String(100), nullable=False)[m
+[31m-    phone_number = db.Column(db.String(20), nullable=False)[m
+[31m-    vehicle_type = db.Column(db.String(50), nullable=False, default='Bajaj')[m
+[32m+[m[32m    phone_number = db.Column(db.String(20), nullable=False, index=True)[m
+[32m+[m[32m    vehicle_type = db.Column(db.String(50), nullable=False, default='Bajaj', index=True)[m
+     vehicle_details = db.Column(db.String(150), nullable=False)[m
+     vehicle_plate_number = db.Column(db.String(50), nullable=True)[m
+     license_info = db.Column(db.String(100), nullable=True)[m
+[31m-    status = db.Column(db.String(20), default='Offline', nullable=False)[m
+[32m+[m[32m    status = db.Column(db.String(20), default='Offline', nullable=False, index=True)[m
+     profile_picture = db.Column(db.String(255), nullable=True, default='static/img/default_user.svg')[m
+     license_document = db.Column(db.String(255), nullable=True)[m
+     vehicle_document = db.Column(db.String(255), nullable=True)[m
+[36m@@ -166,19 +216,19 @@[m [mclass Driver(db.Model):[m
+ [m
+ class Ride(db.Model):[m
+     id = db.Column(db.Integer, primary_key=True)[m
+[31m-    passenger_id = db.Column(db.Integer, db.ForeignKey('passenger.id'), nullable=False)[m
+[31m-    driver_id = db.Column(db.Integer, db.ForeignKey('driver.id'), nullable=True)[m
+[32m+[m[32m    passenger_id = db.Column(db.Integer, db.ForeignKey('passenger.id'), nullable=False, index=True)[m
+[32m+[m[32m    driver_id = db.Column(db.Integer, db.ForeignKey('driver.id'), nullable=True, index=True)[m
+     pickup_address = db.Column(db.String(255), nullable=True)[m
+     pickup_lat = db.Column(db.Float, nullable=False)[m
+     pickup_lon = db.Column(db.Float, nullable=False)[m
+     dest_address = db.Column(db.String(255), nullable=False)[m
+     dest_lat = db.Column(db.Float, nullable=True)[m
+     dest_lon = db.Column(db.Float, nullable=True)[m
+[31m-    distance_km = db.Column(db.Float, nullable=False)[m
+[31m-    fare = db.Column(db.Float, nullable=False)[m
+[31m-    vehicle_type = db.Column(db.String(50), nullable=False, default='Bajaj')[m
+[31m-    status = db.Column(db.String(20), default='Requested', nullable=False)[m
+[31m-    request_time = db.Column(db.DateTime, server_default=db.func.now(timezone.utc))[m
+[32m+[m[32m    distance_km = db.Column(db.Numeric(10, 2), nullable=False)[m
+[32m+[m[32m    fare = db.Column(db.Numeric(10, 2), nullable=False)  # Changed from Float to Numeric for money[m
+[32m+[m[32m    vehicle_type = db.Column(db.String(50), nullable=False, default='Bajaj', index=True)[m
+[32m+[m[32m    status = db.Column(db.String(20), default='Requested', nullable=False, index=True)[m
+[32m+[m[32m    request_time = db.Column(db.DateTime, server_default=db.func.now(), index=True)[m
+     assigned_time = db.Column(db.DateTime, nullable=True)[m
+     note = db.Column(db.String(255), nullable=True)[m
+     payment_method = db.Column(db.String(20), nullable=False, default='Cash')[m
+[36m@@ -238,18 +288,42 @@[m [mdef get_setting(key, default=None):[m
+     return setting.value if setting else default[m
+ [m
+ def _handle_file_upload(file_storage, existing_path=None):[m
+[31m-    if not file_storage:[m
+[32m+[m[32m    """Handle file upload with security checks"""[m
+[32m+[m[32m    if not file_storage or not file_storage.filename:[m
+         return existing_path[m
+[31m-    filename = secure_filename(file_storage.filename or '')[m
+[32m+[m[41m    [m
+[32m+[m[32m    filename = secure_filename(file_storage.filename)[m
+     if not filename:[m
+         return existing_path[m
+[31m-    os.makedirs(app.config.get('UPLOAD_FOLDER', os.path.join(base_dir, 'static', 'uploads')), exist_ok=True)[m
+[31m-    save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)[m
+[32m+[m[41m    [m
+[32m+[m[32m    # Check file extension[m
+[32m+[m[32m    if not app.config['allowed_file'](filename):[m
+[32m+[m[32m        raise ValueError(f"File type not allowed. Allowed types: {app.config['ALLOWED_EXTENSIONS']}")[m
+[32m+[m[41m    [m
+[32m+[m[32m    # Create upload directory if it doesn't exist[m
+[32m+[m[32m    upload_folder = app.config.get('UPLOAD_FOLDER', os.path.join(base_dir, 'static', 'uploads'))[m
+[32m+[m[32m    os.makedirs(upload_folder, exist_ok=True)[m
+[32m+[m[41m    [m
+[32m+[m[32m    # Generate unique filename if file already exists[m
+[32m+[m[32m    name, ext = os.path.splitext(filename)[m
+[32m+[m[32m    save_path = os.path.join(upload_folder, filename)[m
+     if os.path.exists(save_path):[m
+[31m-        name, ext = os.path.splitext(filename)[m
+[31m-        filename = f"{name}_{int(datetime.utcnow().timestamp())}{ext}"[m
+[31m-        save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)[m
+[32m+[m[32m        timestamp = int(datetime.now(timezone.utc).timestamp())[m
+[32m+[m[32m        filename = f"{name}_{timestamp}{ext}"[m
+[32m+[m[32m        save_path = os.path.join(upload_folder, filename)[m
+[32m+[m[41m    [m
+[32m+[m[32m    # Save file[m
+     file_storage.save(save_path)[m
+[32m+[m[41m    [m
+[32m+[m[32m    # Delete old file if it exists and is not the default[m
+[32m+[m[32m    if existing_path and 'default_' not in existing_path:[m
+[32m+[m[32m        old_file_path = os.path.join(base_dir, existing_path)[m
+[32m+[m[32m        if os.path.exists(old_file_path):[m
+[32m+[m[32m            try:[m
+[32m+[m[32m                os.remove(old_file_path)[m
+[32m+[m[32m            except OSError:[m
+[32m+[m[32m                pass  # Ignore errors if file can't be deleted[m
+[32m+[m[41m    [m
+     rel_path = os.path.join('static', 'uploads', filename).replace('\\', '/')[m
+     return rel_path[m
+ [m
+[36m@@ -265,12 +339,18 @@[m [mdef load_user(user_id):[m
+ [m
+ # -- Admin Auth ---[m
+ @app.route('/login', methods=['GET', 'POST'])[m
+[32m+[m[32m@limiter.limit("5 per minute")[m
+ def login():[m
+     if current_user.is_authenticated and session.get('user_type') == 'admin':[m
+         return redirect(url_for('dispatcher_dashboard'))[m
+     if request.method == 'POST':[m
+[31m-        username = request.form.get('username')[m
+[31m-        password = request.form.get('password')[m
+[32m+[m[32m        username = request.form.get('username', '').strip()[m
+[32m+[m[32m        password = request.form.get('password', '')[m
+[32m+[m[41m        [m
+[32m+[m[32m        if not username or not password:[m
+[32m+[m[32m            flash('Username and password are required', 'danger')[m
+[32m+[m[32m            return render_template('login.html')[m
+[32m+[m[41m        [m
+         admin = Admin.query.filter_by(username=username).first()[m
+         if admin and admin.check_password(password):[m
+             login_user(admin)[m
+[36m@@ -282,13 +362,29 @@[m [mdef login():[m
+ [m
+ # -- Passenger Auth ---[m
+ @app.route('/passenger/signup', methods=['GET', 'POST'])[m
+[32m+[m[32m@limiter.limit("3 per hour")[m
+ def passenger_signup():[m
+     if current_user.is_authenticated and session.get('user_type') == 'passenger':[m
+         return redirect(url_for('passenger_app'))[m
+     if request.method == 'POST':[m
+[31m-        username = request.form.get('username')[m
+[31m-        phone_number = "+251" + request.form.get('phone_number')[m
+[31m-        password = request.form.get('password')[m
+[32m+[m[32m        username = request.form.get('username', '').strip()[m
+[32m+[m[32m        phone_number_input = request.form.get('phone_number', '').strip()[m
+[32m+[m[32m        password = request.form.get('password', '')[m
+[32m+[m[41m        [m
+[32m+[m[32m        # Validation[m
+[32m+[m[32m        if not username or not phone_number_input or not password:[m
+[32m+[m[32m            flash('All fields are required.', 'danger')[m
+[32m+[m[32m            return render_template('passenger_signup.html')[m
+[32m+[m[41m        [m
+[32m+[m[32m        if len(password) < 6:[m
+[32m+[m[32m            flash('Password must be at least 6 characters long.', 'danger')[m
+[32m+[m[32m            return render_template('passenger_signup.html')[m
+[32m+[m[41m        [m
+[32m+[m[32m        # Sanitize phone number[m
+[32m+[m[32m        phone_number = "+251" + phone_number_input[m
+[32m+[m[32m        if not phone_number_input.isdigit() or len(phone_number_input) != 9:[m
+[32m+[m[32m            flash('Invalid phone number format. Please enter 9 digits.', 'danger')

@@ -1,16 +1,20 @@
 from flask import Flask, render_template, request, jsonify, send_from_directory, redirect, url_for, flash, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
+from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from flask_migrate import Migrate
+from flask_marshmallow import Marshmallow
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_wtf.csrf import CSRFProtect
 import os
 import json
 import requests
 from sqlalchemy import func, case
+from decimal import Decimal, ROUND_HALF_UP
 from datetime import datetime, timedelta, timezone
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
-from flask_migrate import Migrate
-from flask_marshmallow import Marshmallow
 from functools import wraps
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
@@ -20,21 +24,67 @@ import io
 import openpyxl
 from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.utils import get_column_letter
+from config import config
 
 # --- App and Database Setup ---
 base_dir = os.path.abspath(os.path.dirname(__file__))
+
+# Create Flask app
 app = Flask(__name__)
-CORS(app)
 
-app.config['SECRET_KEY'] = 'a-very-secret-key-that-should-be-changed'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(base_dir, 'app.db')
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['UPLOAD_FOLDER'] = os.path.join(base_dir, 'static/uploads')
+# Load configuration
+env = os.environ.get('FLASK_ENV', 'development')
+app.config.from_object(config[env])
 
+# Initialize extensions
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
-login_manager = LoginManager(app)
 ma = Marshmallow(app)
+csrf = CSRFProtect(app)
+login_manager = LoginManager(app)
+login_manager.login_view = 'login'
+
+# Configure CORS with specific origins
+cors_origins = app.config.get('CORS_ORIGINS', ['*'])
+CORS(app, resources={r"/api/*": {"origins": cors_origins}}, supports_credentials=True)
+
+# Rate limiting
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    storage_uri=app.config.get('RATELIMIT_STORAGE_URL', 'memory://'),
+    default_limits=["200 per day", "50 per hour"],
+    enabled=app.config.get('RATELIMIT_ENABLED', True)
+)
+
+# Exempt API routes from CSRF (they use authentication instead)
+@csrf.exempt
+@app.before_request
+def csrf_protect_forms_only():
+    if request.path.startswith('/api/'):
+        csrf._exempt_views.add(request.endpoint)
+    
+# Error Handlers
+@app.errorhandler(404)
+def not_found(e):
+    if request.path.startswith('/api/'):
+        return jsonify({'error': 'Resource not found'}), 404
+    return render_template('base.html'), 404
+
+@app.errorhandler(500)
+def internal_error(e):
+    db.session.rollback()
+    if request.path.startswith('/api/'):
+        return jsonify({'error': 'Internal server error'}), 500
+    flash('An unexpected error occurred. Please try again.', 'danger')
+    return redirect(url_for('dispatcher_dashboard'))
+
+@app.errorhandler(429)
+def ratelimit_handler(e):
+    if request.path.startswith('/api/'):
+        return jsonify({'error': 'Rate limit exceeded. Please try again later.'}), 429
+    flash('Too many requests. Please slow down.', 'warning')
+    return redirect(request.referrer or url_for('dispatcher_dashboard'))
 
 # --- Language Translations ---
 translations = {}
@@ -132,9 +182,9 @@ class Admin(UserMixin, db.Model):
 class Passenger(UserMixin, db.Model):
     __tablename__ = 'passenger'
     id = db.Column(db.Integer, primary_key=True)
-    passenger_uid = db.Column(db.String(20), unique=True, nullable=True)
+    passenger_uid = db.Column(db.String(20), unique=True, nullable=True, index=True)
     username = db.Column(db.String(80), nullable=False)
-    phone_number = db.Column(db.String(20), unique=True, nullable=False)
+    phone_number = db.Column(db.String(20), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(200), nullable=False)
     profile_picture = db.Column(db.String(255), nullable=True, default='static/img/default_user.svg')
     join_date = db.Column(db.DateTime, server_default=db.func.now())
@@ -148,14 +198,14 @@ class Passenger(UserMixin, db.Model):
 
 class Driver(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    driver_uid = db.Column(db.String(20), unique=True, nullable=True) # User-friendly ID
+    driver_uid = db.Column(db.String(20), unique=True, nullable=True, index=True)  # User-friendly ID
     name = db.Column(db.String(100), nullable=False)
-    phone_number = db.Column(db.String(20), nullable=False)
-    vehicle_type = db.Column(db.String(50), nullable=False, default='Bajaj')
+    phone_number = db.Column(db.String(20), nullable=False, index=True)
+    vehicle_type = db.Column(db.String(50), nullable=False, default='Bajaj', index=True)
     vehicle_details = db.Column(db.String(150), nullable=False)
     vehicle_plate_number = db.Column(db.String(50), nullable=True)
     license_info = db.Column(db.String(100), nullable=True)
-    status = db.Column(db.String(20), default='Offline', nullable=False)
+    status = db.Column(db.String(20), default='Offline', nullable=False, index=True)
     profile_picture = db.Column(db.String(255), nullable=True, default='static/img/default_user.svg')
     license_document = db.Column(db.String(255), nullable=True)
     vehicle_document = db.Column(db.String(255), nullable=True)
@@ -166,19 +216,19 @@ class Driver(db.Model):
 
 class Ride(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    passenger_id = db.Column(db.Integer, db.ForeignKey('passenger.id'), nullable=False)
-    driver_id = db.Column(db.Integer, db.ForeignKey('driver.id'), nullable=True)
+    passenger_id = db.Column(db.Integer, db.ForeignKey('passenger.id'), nullable=False, index=True)
+    driver_id = db.Column(db.Integer, db.ForeignKey('driver.id'), nullable=True, index=True)
     pickup_address = db.Column(db.String(255), nullable=True)
     pickup_lat = db.Column(db.Float, nullable=False)
     pickup_lon = db.Column(db.Float, nullable=False)
     dest_address = db.Column(db.String(255), nullable=False)
     dest_lat = db.Column(db.Float, nullable=True)
     dest_lon = db.Column(db.Float, nullable=True)
-    distance_km = db.Column(db.Float, nullable=False)
-    fare = db.Column(db.Float, nullable=False)
-    vehicle_type = db.Column(db.String(50), nullable=False, default='Bajaj')
-    status = db.Column(db.String(20), default='Requested', nullable=False)
-    request_time = db.Column(db.DateTime, server_default=db.func.now(timezone.utc))
+    distance_km = db.Column(db.Numeric(10, 2), nullable=False)
+    fare = db.Column(db.Numeric(10, 2), nullable=False)  # Changed from Float to Numeric for money
+    vehicle_type = db.Column(db.String(50), nullable=False, default='Bajaj', index=True)
+    status = db.Column(db.String(20), default='Requested', nullable=False, index=True)
+    request_time = db.Column(db.DateTime, server_default=db.func.now(), index=True)
     assigned_time = db.Column(db.DateTime, nullable=True)
     note = db.Column(db.String(255), nullable=True)
     payment_method = db.Column(db.String(20), nullable=False, default='Cash')
@@ -238,18 +288,42 @@ def get_setting(key, default=None):
     return setting.value if setting else default
 
 def _handle_file_upload(file_storage, existing_path=None):
-    if not file_storage:
+    """Handle file upload with security checks"""
+    if not file_storage or not file_storage.filename:
         return existing_path
-    filename = secure_filename(file_storage.filename or '')
+    
+    filename = secure_filename(file_storage.filename)
     if not filename:
         return existing_path
-    os.makedirs(app.config.get('UPLOAD_FOLDER', os.path.join(base_dir, 'static', 'uploads')), exist_ok=True)
-    save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    
+    # Check file extension
+    if not app.config['allowed_file'](filename):
+        raise ValueError(f"File type not allowed. Allowed types: {app.config['ALLOWED_EXTENSIONS']}")
+    
+    # Create upload directory if it doesn't exist
+    upload_folder = app.config.get('UPLOAD_FOLDER', os.path.join(base_dir, 'static', 'uploads'))
+    os.makedirs(upload_folder, exist_ok=True)
+    
+    # Generate unique filename if file already exists
+    name, ext = os.path.splitext(filename)
+    save_path = os.path.join(upload_folder, filename)
     if os.path.exists(save_path):
-        name, ext = os.path.splitext(filename)
-        filename = f"{name}_{int(datetime.utcnow().timestamp())}{ext}"
-        save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        timestamp = int(datetime.now(timezone.utc).timestamp())
+        filename = f"{name}_{timestamp}{ext}"
+        save_path = os.path.join(upload_folder, filename)
+    
+    # Save file
     file_storage.save(save_path)
+    
+    # Delete old file if it exists and is not the default
+    if existing_path and 'default_' not in existing_path:
+        old_file_path = os.path.join(base_dir, existing_path)
+        if os.path.exists(old_file_path):
+            try:
+                os.remove(old_file_path)
+            except OSError:
+                pass  # Ignore errors if file can't be deleted
+    
     rel_path = os.path.join('static', 'uploads', filename).replace('\\', '/')
     return rel_path
 
@@ -265,12 +339,18 @@ def load_user(user_id):
 
 # -- Admin Auth ---
 @app.route('/login', methods=['GET', 'POST'])
+@limiter.limit("5 per minute")
 def login():
     if current_user.is_authenticated and session.get('user_type') == 'admin':
         return redirect(url_for('dispatcher_dashboard'))
     if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+        
+        if not username or not password:
+            flash('Username and password are required', 'danger')
+            return render_template('login.html')
+        
         admin = Admin.query.filter_by(username=username).first()
         if admin and admin.check_password(password):
             login_user(admin)
@@ -282,13 +362,29 @@ def login():
 
 # -- Passenger Auth ---
 @app.route('/passenger/signup', methods=['GET', 'POST'])
+@limiter.limit("3 per hour")
 def passenger_signup():
     if current_user.is_authenticated and session.get('user_type') == 'passenger':
         return redirect(url_for('passenger_app'))
     if request.method == 'POST':
-        username = request.form.get('username')
-        phone_number = "+251" + request.form.get('phone_number')
-        password = request.form.get('password')
+        username = request.form.get('username', '').strip()
+        phone_number_input = request.form.get('phone_number', '').strip()
+        password = request.form.get('password', '')
+        
+        # Validation
+        if not username or not phone_number_input or not password:
+            flash('All fields are required.', 'danger')
+            return render_template('passenger_signup.html')
+        
+        if len(password) < 6:
+            flash('Password must be at least 6 characters long.', 'danger')
+            return render_template('passenger_signup.html')
+        
+        # Sanitize phone number
+        phone_number = "+251" + phone_number_input
+        if not phone_number_input.isdigit() or len(phone_number_input) != 9:
+            flash('Invalid phone number format. Please enter 9 digits.', 'danger')
+            return render_template('passenger_signup.html')
         
         existing_passenger = Passenger.query.filter_by(phone_number=phone_number).first()
         if existing_passenger:
@@ -298,8 +394,6 @@ def passenger_signup():
         new_passenger = Passenger(username=username, phone_number=phone_number)
         new_passenger.set_password(password)
         db.session.add(new_passenger)
-        db.session.commit()
-
         db.session.flush()
         new_passenger.passenger_uid = f"PAX-{new_passenger.id:05d}"
         db.session.commit()
@@ -310,12 +404,19 @@ def passenger_signup():
 
 
 @app.route('/passenger/login', methods=['GET', 'POST'])
+@limiter.limit("5 per minute")
 def passenger_login():
     if current_user.is_authenticated and session.get('user_type') == 'passenger':
         return redirect(url_for('passenger_app'))
     if request.method == 'POST':
-        phone_number = "+251" + request.form.get('phone_number')
-        password = request.form.get('password')
+        phone_number_input = request.form.get('phone_number', '').strip()
+        password = request.form.get('password', '')
+        
+        if not phone_number_input or not password:
+            flash('Phone number and password are required.', 'danger')
+            return render_template('passenger_login.html')
+        
+        phone_number = "+251" + phone_number_input
         passenger = Passenger.query.filter_by(phone_number=phone_number).first()
         
         if passenger and passenger.check_password(password):
@@ -399,22 +500,72 @@ def uploaded_file(filename):
 # --- API Routes ---
 @app.route('/api/ride-request', methods=['POST'])
 @passenger_required
+@limiter.limit("10 per hour")
 def request_ride():
     data = request.json
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    
+    # Validate required fields
+    required_fields = ['pickup_lat', 'pickup_lon', 'dest_address', 'dest_lat', 'dest_lon', 'distance_km', 'fare']
+    for field in required_fields:
+        if field not in data or data[field] is None:
+            return jsonify({'error': f'Missing required field: {field}'}), 400
+    
+    # Validate coordinates
+    try:
+        pickup_lat = float(data['pickup_lat'])
+        pickup_lon = float(data['pickup_lon'])
+        dest_lat = float(data['dest_lat'])
+        dest_lon = float(data['dest_lon'])
+        
+        if not (-90 <= pickup_lat <= 90) or not (-180 <= pickup_lon <= 180):
+            return jsonify({'error': 'Invalid pickup coordinates'}), 400
+        if not (-90 <= dest_lat <= 90) or not (-180 <= dest_lon <= 180):
+            return jsonify({'error': 'Invalid destination coordinates'}), 400
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Invalid coordinate format'}), 400
+    
+    # Validate distance and fare
+    try:
+        distance_km = Decimal(str(data['distance_km']))
+        fare = Decimal(str(data['fare']))
+        
+        if distance_km <= 0 or distance_km > 1000:
+            return jsonify({'error': 'Invalid distance'}), 400
+        if fare <= 0 or fare > 100000:
+            return jsonify({'error': 'Invalid fare amount'}), 400
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Invalid distance or fare format'}), 400
+    
+    # Validate vehicle type
+    vehicle_type = data.get('vehicle_type', 'Bajaj')
+    if vehicle_type not in ['Bajaj', 'Car']:
+        vehicle_type = 'Bajaj'
+    
+    # Validate payment method
+    payment_method = data.get('payment_method', 'Cash')
+    if payment_method not in ['Cash', 'Mobile Money', 'Card']:
+        payment_method = 'Cash'
+    
+    # Sanitize optional fields
+    pickup_address = data.get('pickup_address', '')[:255] if data.get('pickup_address') else None
+    dest_address = data.get('dest_address', '')[:255]
+    note = data.get('note', '')[:255] if data.get('note') else None
     
     new_ride = Ride(
         passenger_id=current_user.id,
-        pickup_address=data.get('pickup_address'),
-        pickup_lat=data.get('pickup_lat'),
-        pickup_lon=data.get('pickup_lon'),
-        dest_address=data.get('dest_address'),
-        dest_lat=data.get('dest_lat'),
-        dest_lon=data.get('dest_lon'),
-        distance_km=data.get('distance_km'),
-        fare=data.get('fare'),
-        vehicle_type=data.get('vehicle_type', 'Bajaj'),
-        note=data.get('note'),
-        payment_method=data.get('payment_method', 'Cash'),
+        pickup_address=pickup_address,
+        pickup_lat=pickup_lat,
+        pickup_lon=pickup_lon,
+        dest_address=dest_address,
+        dest_lat=dest_lat,
+        dest_lon=dest_lon,
+        distance_km=distance_km,
+        fare=fare,
+        vehicle_type=vehicle_type,
+        note=note,
+        payment_method=payment_method,
         request_time=datetime.now(timezone.utc)
     )
     db.session.add(new_ride)
@@ -588,30 +739,28 @@ def submit_support_ticket():
         if not ride:
             return jsonify({'error': 'Invalid ride ID.'}), 404
         
-        # For ride-specific issues, a new feedback entry is created
+        # Check if feedback already exists for this ride
         # Note: The current DB schema has a UNIQUE constraint on ride_id in Feedback.
-        # This means one ride can only have one feedback entry. If they rated and also file a complaint,
-        # we need to decide how to handle it. For now, we'll assume a new entry is fine if no rating exists.
-        # A better long-term solution might be to remove the unique constraint.
-        # Let's try to update if exists, or create if not.
+        # This means one ride can only have one feedback entry.
         feedback = Feedback.query.filter_by(ride_id=ride_id).first()
         if feedback:
-             # If a rating already exists, we can't create a new one. Let's just add the details.
-             # This is a limitation of the current UNIQUE constraint.
-            feedback.feedback_type = f"{feedback.feedback_type}/{feedback_type}" # Append type
-            feedback.details = f"Complaint: {details}\n\nOriginal Comment: {feedback.comment or ''}"
+            # If feedback already exists, update it by appending the new information
+            feedback.feedback_type = f"{feedback.feedback_type}/{feedback_type}"
+            feedback.details = f"Support Ticket: {details}\n\nOriginal Feedback: {feedback.details or feedback.comment or ''}"
+            feedback.is_resolved = False  # Mark as unresolved if it's a new complaint
         else:
+            # Create new feedback entry
             feedback = Feedback(
                 ride_id=ride_id,
                 feedback_type=feedback_type,
-                details=details
+                details=details,
+                is_resolved=False
             )
             db.session.add(feedback)
-    else: # General feedback not linked to a ride - needs a dummy ride_id or schema change
+    else:
+        # General feedback not linked to a ride - needs a dummy ride_id or schema change
         # This part is tricky with the current schema (ride_id is NOT NULL and FOREIGN KEY).
-        # As a workaround, we can't store feedback without a ride.
-        # The frontend seems to only show ride selector for some cases, but not for 'General Feedback'.
-        # Let's return an error for now and suggest they select a recent ride if possible.
+        # For general feedback without a ride, we cannot store it due to schema constraints.
         return jsonify({'error': 'For general feedback, please select your most recent ride if applicable or contact support directly.'}), 400
 
     db.session.commit()
@@ -898,20 +1047,40 @@ def api_passenger_history():
 
 
 @app.route('/api/fare-estimate', methods=['POST'])
+@limiter.exempt  # Allow frequent fare estimates
 def fare_estimate():
     data = request.json
-    base_fare = float(get_setting('base_fare', 25))
-    per_km_rates = { "Bajaj": float(get_setting('per_km_bajaj', 8)), "Car": float(get_setting('per_km_car', 12)) }
-    per_km_rate = per_km_rates.get(data.get('vehicle_type', 'Bajaj'))
-    osrm_url = (f"http://router.project-osrm.org/route/v1/driving/"
-                f"{data['pickup_lon']},{data['pickup_lat']};{data['dest_lon']},{data['dest_lat']}?overview=false")
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    
+    # Validate required fields
+    required_fields = ['pickup_lat', 'pickup_lon', 'dest_lat', 'dest_lon']
+    for field in required_fields:
+        if field not in data:
+            return jsonify({'error': f'Missing required field: {field}'}), 400
+    
     try:
-        response = requests.get(osrm_url)
+        base_fare = Decimal(get_setting('base_fare', '25'))
+        per_km_rates = {
+            "Bajaj": Decimal(get_setting('per_km_bajaj', '8')),
+            "Car": Decimal(get_setting('per_km_car', '12'))
+        }
+        vehicle_type = data.get('vehicle_type', 'Bajaj')
+        per_km_rate = per_km_rates.get(vehicle_type, per_km_rates['Bajaj'])
+        
+        osrm_url = (f"http://router.project-osrm.org/route/v1/driving/"
+                    f"{data['pickup_lon']},{data['pickup_lat']};{data['dest_lon']},{data['dest_lat']}?overview=false")
+        
+        response = requests.get(osrm_url, timeout=10)
         response.raise_for_status()
-        distance_km = response.json()['routes'][0]['distance'] / 1000.0
-        fare = round(base_fare + (distance_km * per_km_rate))
-        return jsonify({'distance_km': round(distance_km, 2), 'estimated_fare': fare})
-    except (requests.exceptions.RequestException, KeyError, IndexError):
+        distance_km = Decimal(str(response.json()['routes'][0]['distance'] / 1000.0))
+        fare = (base_fare + (distance_km * per_km_rate)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        
+        return jsonify({
+            'distance_km': float(distance_km.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)),
+            'estimated_fare': float(fare)
+        })
+    except (requests.exceptions.RequestException, KeyError, IndexError, ValueError) as e:
         return jsonify({'error': 'Could not calculate route.'}), 500
 
 
@@ -1188,34 +1357,19 @@ if __name__ == '__main__':
             print("WARNING: No admin user found. Please create one using the create_admin.py script.")
 
         if Driver.query.filter(Driver.driver_uid == None).first():
-            for driver in Driver.query.filter(Driver.driver_uid == None).all(): driver.driver_uid = f"DRV-{driver.id:04d}"
+            for driver in Driver.query.filter(Driver.driver_uid == None).all():
+                driver.driver_uid = f"DRV-{driver.id:04d}"
             db.session.commit()
+            
         if Passenger.query.filter(Passenger.passenger_uid == None).first():
             for p in Passenger.query.filter(Passenger.passenger_uid == None).all():
                 p.passenger_uid = f"PAX-{p.id:05d}"
             db.session.commit()
+            
         if not Setting.query.first():
-            db.session.add(Setting(key='base_fare', value='25')); db.session.add(Setting(key='per_km_bajaj', value='8')); db.session.add(Setting(key='per_km_car', value='12')); db.session.commit()
-    app.run(debug=True)
-
-    db.session.commit()
-
-
-# --- Main Execution ---
-if __name__ == '__main__':
-    with app.app_context():
-        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-        
-        if not Admin.query.first():
-            print("WARNING: No admin user found. Please create one using the create_admin.py script.")
-
-        if Driver.query.filter(Driver.driver_uid == None).first():
-            for driver in Driver.query.filter(Driver.driver_uid == None).all(): driver.driver_uid = f"DRV-{driver.id:04d}"
+            db.session.add(Setting(key='base_fare', value='25'))
+            db.session.add(Setting(key='per_km_bajaj', value='8'))
+            db.session.add(Setting(key='per_km_car', value='12'))
             db.session.commit()
-        if Passenger.query.filter(Passenger.passenger_uid == None).first():
-            for p in Passenger.query.filter(Passenger.passenger_uid == None).all():
-                p.passenger_uid = f"PAX-{p.id:05d}"
-            db.session.commit()
-        if not Setting.query.first():
-            db.session.add(Setting(key='base_fare', value='25')); db.session.add(Setting(key='per_km_bajaj', value='8')); db.session.add(Setting(key='per_km_car', value='12')); db.session.commit()
+            
     app.run(debug=True)

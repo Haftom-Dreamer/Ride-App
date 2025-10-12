@@ -1,5 +1,19 @@
 Ride - A Dispatcher-Based Hailing App
-📝 What is this Project?
+
+## 🚀 Recent Updates (2024)
+
+This application has been significantly improved with:
+- ✅ **Enhanced Security**: Environment-based configuration, CSRF protection, rate limiting
+- ✅ **Better Performance**: Database indexes, optimized queries
+- ✅ **Production Ready**: Proper error handling, input validation, file upload security
+- ✅ **Money Precision**: Using Decimal types instead of Float for fare calculations
+- ✅ **Configuration Management**: Clean separation of config from code
+
+**👉 See [SETUP_GUIDE.md](SETUP_GUIDE.md) for detailed setup instructions and migration guide.**
+
+---
+
+## 📝 What is this Project?
 This project is a simple and modern ride-hailing app, designed from the ground up for towns like Adigrat, Ethiopia. It's built around a dispatcher model, which is perfect for a local community. Passengers use a clean, mobile-friendly website to request a ride, and a central dispatcher manages everything from a live dashboard, assigning the best driver for the job.
 
 The whole system is built using free, open-source tools, so there are no running costs.

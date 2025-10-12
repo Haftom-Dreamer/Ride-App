@@ -1,0 +1,33 @@
+# Copy this file to .env and update with your values
+# Flask Configuration
+FLASK_ENV=development
+FLASK_DEBUG=True
+SECRET_KEY=your-secret-key-here-change-this
+
+# Database
+DATABASE_URL=sqlite:///app.db
+# For production, use PostgreSQL:
+# DATABASE_URL=postgresql://user:password@localhost/dbname
+
+# File Upload Settings
+MAX_UPLOAD_SIZE=16777216
+# Size in bytes (default: 16MB = 16 * 1024 * 1024)
+
+# CORS Settings
+CORS_ORIGINS=http://localhost:3000,http://localhost:5000
+# Comma-separated list of allowed origins. Use * for all (not recommended in production)
+
+# Rate Limiting
+RATELIMIT_ENABLED=True
+RATELIMIT_STORAGE_URL=memory://
+# For production with multiple workers, use Redis:
+# RATELIMIT_STORAGE_URL=redis://localhost:6379
+
+# Timezone
+TIMEZONE_OFFSET_HOURS=3
+# East Africa Time (EAT) = UTC+3
+
+# Production Settings
+# Set FORCE_SQLITE=true only if you really want to use SQLite in production
+FORCE_SQLITE=false
+
