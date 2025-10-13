@@ -90,3 +90,35 @@ class Setting(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     key = db.Column(db.String(100), unique=True, nullable=False)
     value = db.Column(db.String(255), nullable=False)
+
+class SupportTicket(db.Model):
+    """Support tickets for passenger inquiries and issues"""
+    __tablename__ = 'support_ticket'
+    id = db.Column(db.Integer, primary_key=True)
+    passenger_id = db.Column(db.Integer, db.ForeignKey('passenger.id'), nullable=False, index=True)
+    ride_id = db.Column(db.Integer, db.ForeignKey('ride.id'), nullable=True, index=True)
+    feedback_type = db.Column(db.String(50), nullable=False, index=True)  # Lost Item, Ride Complaint, etc.
+    details = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(20), default='Open', nullable=False, index=True)  # Open, In Progress, Resolved, Closed
+    admin_response = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, server_default=db.func.now(), index=True)
+    updated_at = db.Column(db.DateTime, onupdate=db.func.now())
+    
+    passenger = db.relationship('Passenger', backref=db.backref('support_tickets', lazy=True))
+    ride = db.relationship('Ride', backref=db.backref('support_tickets', lazy=True))
+
+class SavedPlace(db.Model):
+    """Saved locations for quick ride booking"""
+    __tablename__ = 'saved_place'
+    id = db.Column(db.Integer, primary_key=True)
+    passenger_id = db.Column(db.Integer, db.ForeignKey('passenger.id'), nullable=False, index=True)
+    label = db.Column(db.String(50), nullable=False)  # Home, Work, Gym, etc.
+    address = db.Column(db.String(255), nullable=False)
+    latitude = db.Column(db.Float, nullable=False)
+    longitude = db.Column(db.Float, nullable=False)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+    
+    passenger = db.relationship('Passenger', backref=db.backref('saved_places', lazy=True))
+    
+    # Ensure unique labels per passenger
+    __table_args__ = (db.UniqueConstraint('passenger_id', 'label', name='_passenger_label_uc'),)

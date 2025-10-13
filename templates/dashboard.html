@@ -376,6 +376,20 @@
             </div>
 
             <div id="reports-pane" class="pane">
+                <!-- Support Tickets Section -->
+                <div class="card p-6 rounded-lg shadow mb-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-semibold text-primary">Support Tickets</h3>
+                        <button onclick="refreshSupportTickets()" class="px-3 py-1 bg-indigo-600 text-white rounded text-sm hover:bg-indigo-700">
+                            Refresh
+                        </button>
+                    </div>
+                    <div id="support-tickets-list" class="space-y-3">
+                        <p class="text-gray-500">Loading support tickets...</p>
+                    </div>
+                </div>
+
+                <!-- Analytics Report Export -->
                 <div class="card p-6 rounded-lg shadow max-w-2xl mx-auto">
                     <h3 class="text-xl font-semibold mb-2 text-primary">Generate Analytics Report</h3><p class="text-secondary mb-4">Export a detailed report of rides, revenue, and performance metrics for a specific date range.</p>
                     <div class="p-4 rounded-lg bg-[--main-bg] border border-[--border-color]">
@@ -643,6 +657,7 @@
             if (paneId === 'dashboard' && !dashboardMap) initDashboardMap(); 
             if (paneId === 'analytics') updateAnalytics(); 
             if (paneId === 'inbox') refreshFeedback(); 
+            if (paneId === 'reports') refreshSupportTickets(); 
             if(paneId === 'settings') refreshAdminUsers(); 
             if (dashboardMap) setTimeout(() => dashboardMap.invalidateSize(), 310); 
         };
@@ -768,6 +783,48 @@
         const updateRideHistoryTable = () => { const tbody = document.getElementById('rides-history-table-body'); tbody.innerHTML = ''; if (!allRidesHistory?.length) { tbody.innerHTML = '<tr><td colspan="8" class="text-center p-4">No ride history.</td></tr>'; return; } const search = document.getElementById('ride-history-search').value.toLowerCase(); const filtered = allRidesHistory.filter(r => r.user_name.toLowerCase().includes(search) || r.driver_name?.toLowerCase().includes(search)); const pageInfo = document.getElementById('ride-history-page-info'); const totalPages = Math.ceil(filtered.length / RIDES_PER_PAGE); rideHistoryPage = Math.min(rideHistoryPage, totalPages) || 1; pageInfo.textContent = `Page ${rideHistoryPage} of ${totalPages}`; const paginated = filtered.slice((rideHistoryPage - 1) * RIDES_PER_PAGE, rideHistoryPage * RIDES_PER_PAGE); paginated.forEach(r => { const row = tbody.insertRow(); row.innerHTML = `<td class="p-2">${r.id}</td><td>${r.user_name}</td><td>${r.driver_name}</td><td>${r.fare} ETB</td><td><span class="status-badge status-${r.status}">${r.status}</span></td><td>${r.rating ? '★'.repeat(r.rating) : 'N/A'}</td><td>${r.request_time}</td><td><button class="action-btn view view-ride-btn" data-ride-id="${r.id}">👁️</button></td>`; }); };
         const refreshFeedback = async () => { allFeedback = await fetchData('all-feedback') || []; const list = document.getElementById('feedback-list'); list.innerHTML = ''; if(!allFeedback.length) { list.innerHTML = '<p class="text-secondary text-center">No feedback yet.</p>'; return; } allFeedback.forEach(f => { const item = document.createElement('div'); item.className = `border-b pb-3 ${f.is_resolved ? 'opacity-50' : ''}`; item.innerHTML = `<div class="flex justify-between items-center"><p class="font-semibold">Ride #${f.ride_id} - ${f.passenger_name}</p><span class="text-xs text-secondary">${f.date}</span></div><div class="flex items-center mt-1"><span class="text-yellow-500">${f.rating ? '★'.repeat(f.rating) : ''}</span><p class="ml-2 text-sm italic">"${f.comment || 'No comment'}"</p></div><div class="flex justify-between items-center mt-1"><p class="text-xs text-secondary">Driver: ${f.driver_name}</p>${!f.is_resolved ? `<button data-id="${f.id}" class="resolve-feedback-btn px-2 py-1 text-xs bg-green-500 text-white rounded">Mark as Resolved</button>`: '<span class="text-xs text-green-600 font-semibold">Resolved</span>'}</div>`; list.appendChild(item); }); };
         
+        const refreshSupportTickets = async () => { 
+            const tickets = await fetchData('support-tickets') || []; 
+            const list = document.getElementById('support-tickets-list'); 
+            list.innerHTML = ''; 
+            
+            if(!tickets.length) { 
+                list.innerHTML = '<p class="text-gray-500 text-center">No support tickets yet.</p>'; 
+                return; 
+            } 
+            
+            tickets.forEach(ticket => { 
+                const item = document.createElement('div'); 
+                const statusColors = {
+                    'Open': 'bg-red-100 text-red-800',
+                    'In Progress': 'bg-yellow-100 text-yellow-800',
+                    'Resolved': 'bg-green-100 text-green-800',
+                    'Closed': 'bg-gray-100 text-gray-800'
+                };
+                item.className = `border border-gray-200 dark:border-gray-700 rounded-lg p-4 ${ticket.status === 'Resolved' ? 'opacity-60' : ''}`;
+                item.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <p class="font-semibold text-gray-900 dark:text-white">${ticket.passenger_name}</p>
+                            <p class="text-xs text-gray-500">${ticket.passenger_phone}</p>
+                        </div>
+                        <span class="px-2 py-1 text-xs rounded-full ${statusColors[ticket.status] || 'bg-gray-100'}">${ticket.status}</span>
+                    </div>
+                    <div class="mb-2">
+                        <span class="text-xs font-medium text-indigo-600">${ticket.feedback_type}</span>
+                        ${ticket.ride_id ? `<span class="text-xs text-gray-500 ml-2">Ride #${ticket.ride_id}</span>` : ''}
+                    </div>
+                    <p class="text-sm text-gray-700 dark:text-gray-300 mb-2">${ticket.details}</p>
+                    <div class="flex justify-between items-center text-xs text-gray-500">
+                        <span>${ticket.created_at}</span>
+                        ${ticket.status !== 'Resolved' ? `<button class="resolve-ticket-btn px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700" data-ticket-id="${ticket.id}">Resolve</button>` : ''}
+                    </div>
+                    ${ticket.admin_response ? `<div class="mt-2 pt-2 border-t border-gray-200"><p class="text-xs text-gray-600"><strong>Response:</strong> ${ticket.admin_response}</p></div>` : ''}
+                `; 
+                list.appendChild(item); 
+            }); 
+        };
+        
         const renderNotifications = () => {
             const dropdown = document.getElementById('notification-dropdown');
             dropdown.innerHTML = '';
@@ -794,6 +851,7 @@
         document.getElementById('drivers-table-body').addEventListener('click', async e => { const btn = e.target.closest('.action-btn'); if (!btn) return; const id = btn.dataset.driverId; if (btn.classList.contains('view')) { const data = await fetchData(`driver-details/${id}`); if(data) showDriverDetails(data); } else if (btn.classList.contains('edit')) { const driver = await fetchData(`driver/${id}`); if (driver) { const form = document.getElementById('edit-driver-form'); form.reset(); form.elements.id.value = driver.id; form.elements.name.value = driver.name; form.elements.phone_number.value = driver.phone_number; form.elements.vehicle_type.value = driver.vehicle_type; form.elements.vehicle_details.value = driver.vehicle_details; form.elements.vehicle_plate_number.value = driver.vehicle_plate_number; form.elements.license_info.value = driver.license_info; showModal('edit-driver-modal'); } } else if (btn.classList.contains('delete')) { document.getElementById('confirm-delete-btn').dataset.driverId = id; showModal('delete-driver-modal'); } });
         document.getElementById('active-rides-table-body').addEventListener('click', async e => { const id = e.target.dataset.rideId; if (!id) return; if (e.target.classList.contains('complete-ride-btn')) await postData('complete-ride', { ride_id: id }); else if (e.target.classList.contains('reassign-ride-btn')) await postData('cancel-ride', { ride_id: id }); refreshAllData(); });
         document.getElementById('feedback-list').addEventListener('click', async e => { if (e.target.classList.contains('resolve-feedback-btn')) { await postData(`feedback/resolve/${e.target.dataset.id}`, {}); refreshFeedback(); refreshUnreadCount(); } });
+        document.getElementById('support-tickets-list').addEventListener('click', async e => { if (e.target.classList.contains('resolve-ticket-btn')) { const ticketId = e.target.dataset.ticketId; const response = prompt('Enter admin response (optional):'); await postData(`support-tickets/${ticketId}/resolve`, { response: response || '' }); refreshSupportTickets(); } });
         document.getElementById('settings-form').addEventListener('submit', async e => { e.preventDefault(); await postData('settings', Object.fromEntries(new FormData(e.target))); alert('Settings Saved!'); });
         document.getElementById('driver-search-input').addEventListener('input', updateDriversTable);
         document.getElementById('passenger-search-input').addEventListener('input', updatePassengersTable);

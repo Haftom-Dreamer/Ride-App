@@ -170,7 +170,7 @@ def create_app(config_name=None):
     
     # Import API blueprint and all its routes BEFORE registering
     from app.api import api
-    from app.api import rides, drivers, data  # Import all API modules
+    from app.api import rides, drivers, data, passenger_api  # Import all API modules
     
     # Initialize limiter for blueprints
     from app.auth import init_limiter as auth_init_limiter
@@ -192,10 +192,16 @@ def create_app(config_name=None):
     def index():
         from flask_login import current_user
         if current_user.is_authenticated:
-            if session.get('user_type') == 'admin':
+            user_type = session.get('user_type')
+            if user_type == 'admin':
                 return redirect(url_for('admin.dashboard'))
-            elif session.get('user_type') == 'passenger':
+            elif user_type == 'passenger':
                 return redirect(url_for('passenger.app'))
+            else:
+                # If authenticated but no user_type in session, log out and redirect
+                from flask_login import logout_user
+                logout_user()
+                session.clear()
         return redirect(url_for('auth.login'))
     
     # Initialize database and default data

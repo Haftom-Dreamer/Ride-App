@@ -41,26 +41,43 @@ def profile():
     passenger_user = current_user
     
     if request.method == 'POST':
-        current_password = request.form.get('current_password')
-        if not passenger_user.check_password(current_password):
-            flash('Your current password is not correct.', 'danger')
-            return redirect(url_for('passenger.profile'))
+        # Check if this is just a profile picture update
+        current_password = request.form.get('current_password', '').strip()
+        new_username = request.form.get('username', '').strip()
+        new_password = request.form.get('new_password', '').strip()
         
-        passenger_user.username = request.form.get('username', passenger_user.username)
+        # Password required only if changing username or password
+        password_required = new_username != passenger_user.username or new_password
         
-        new_password = request.form.get('new_password')
-        if new_password:
-            passenger_user.set_password(new_password)
-        
-        if 'profile_picture' in request.files:
-            try:
-                passenger_user.profile_picture = handle_file_upload(
-                    request.files['profile_picture'], 
-                    passenger_user.profile_picture
-                )
-            except ValueError as e:
-                flash(str(e), 'danger')
+        if password_required:
+            if not current_password:
+                flash('Please enter your current password to make changes.', 'warning')
                 return redirect(url_for('passenger.profile'))
+            
+            if not passenger_user.check_password(current_password):
+                flash('Your current password is not correct.', 'danger')
+                return redirect(url_for('passenger.profile'))
+            
+            # Update username if changed
+            if new_username and new_username != passenger_user.username:
+                passenger_user.username = new_username
+            
+            # Update password if provided
+            if new_password:
+                passenger_user.set_password(new_password)
+        
+        # Profile picture can be updated without password
+        if 'profile_picture' in request.files:
+            file = request.files['profile_picture']
+            if file and file.filename:
+                try:
+                    passenger_user.profile_picture = handle_file_upload(
+                        file, 
+                        passenger_user.profile_picture
+                    )
+                except ValueError as e:
+                    flash(str(e), 'danger')
+                    return redirect(url_for('passenger.profile'))
 
         db.session.commit()
         flash('Profile updated successfully!', 'success')

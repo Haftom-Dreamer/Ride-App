@@ -122,9 +122,204 @@
             <p id="form-feedback" class="text-sm mt-2"></p>
         </form>
     </div>
+
+    <!-- FAQ Section -->
+    <div id="faq-container" class="hidden mt-8">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-gray-800 dark:text-white">Frequently Asked Questions</h3>
+            <button onclick="document.getElementById('faq-container').classList.add('hidden')" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        
+        <div class="space-y-4">
+            <!-- FAQ Item 1 -->
+            <div class="border-b border-gray-200 dark:border-gray-700 pb-4">
+                <button class="faq-question w-full text-left font-medium text-gray-900 dark:text-white flex justify-between items-center" onclick="toggleFAQ(this)">
+                    <span>How do I request a ride?</span>
+                    <svg class="h-5 w-5 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </button>
+                <div class="faq-answer hidden mt-2 text-gray-600 dark:text-gray-400">
+                    <p>To request a ride, go to the main app page, enter your pickup location and destination, select your preferred vehicle type (Bajaj or Car), and click "Request Ride". A dispatcher will assign a driver to you shortly.</p>
+                </div>
+            </div>
+
+            <!-- FAQ Item 2 -->
+            <div class="border-b border-gray-200 dark:border-gray-700 pb-4">
+                <button class="faq-question w-full text-left font-medium text-gray-900 dark:text-white flex justify-between items-center" onclick="toggleFAQ(this)">
+                    <span>How is the fare calculated?</span>
+                    <svg class="h-5 w-5 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </button>
+                <div class="faq-answer hidden mt-2 text-gray-600 dark:text-gray-400">
+                    <p>The fare is calculated based on distance and vehicle type. There's a base fare plus a per-kilometer rate. Bajaj rides are generally cheaper than car rides. You can see the estimated fare before requesting a ride.</p>
+                </div>
+            </div>
+
+            <!-- FAQ Item 3 -->
+            <div class="border-b border-gray-200 dark:border-gray-700 pb-4">
+                <button class="faq-question w-full text-left font-medium text-gray-900 dark:text-white flex justify-between items-center" onclick="toggleFAQ(this)">
+                    <span>What payment methods are accepted?</span>
+                    <svg class="h-5 w-5 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </button>
+                <div class="faq-answer hidden mt-2 text-gray-600 dark:text-gray-400">
+                    <p>Currently, we accept cash payments. Digital payment options including Telebirr are coming soon!</p>
+                </div>
+            </div>
+
+            <!-- FAQ Item 4 -->
+            <div class="border-b border-gray-200 dark:border-gray-700 pb-4">
+                <button class="faq-question w-full text-left font-medium text-gray-900 dark:text-white flex justify-between items-center" onclick="toggleFAQ(this)">
+                    <span>Can I cancel a ride?</span>
+                    <svg class="h-5 w-5 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </button>
+                <div class="faq-answer hidden mt-2 text-gray-600 dark:text-gray-400">
+                    <p>Yes, you can cancel a ride before it starts. However, frequent cancellations may affect your account standing. Please only request rides you intend to take.</p>
+                </div>
+            </div>
+
+            <!-- FAQ Item 5 -->
+            <div class="border-b border-gray-200 dark:border-gray-700 pb-4">
+                <button class="faq-question w-full text-left font-medium text-gray-900 dark:text-white flex justify-between items-center" onclick="toggleFAQ(this)">
+                    <span>How do I save frequently visited places?</span>
+                    <svg class="h-5 w-5 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </button>
+                <div class="faq-answer hidden mt-2 text-gray-600 dark:text-gray-400">
+                    <p>You can save places like Home, Work, or other frequent destinations in your profile. This makes it faster to request rides to these locations. Look for the "Save Place" option when selecting a destination.</p>
+                </div>
+            </div>
+
+            <!-- FAQ Item 6 -->
+            <div class="border-b border-gray-200 dark:border-gray-700 pb-4">
+                <button class="faq-question w-full text-left font-medium text-gray-900 dark:text-white flex justify-between items-center" onclick="toggleFAQ(this)">
+                    <span>What should I do in case of an emergency?</span>
+                    <svg class="h-5 w-5 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </button>
+                <div class="faq-answer hidden mt-2 text-gray-600 dark:text-gray-400">
+                    <p>If you're in an emergency during a ride, use the SOS button in the app. This will immediately alert our support team and share your location. You can also call emergency services at 911.</p>
+                </div>
+            </div>
+
+            <!-- FAQ Item 7 -->
+            <div class="border-b border-gray-200 dark:border-gray-700 pb-4">
+                <button class="faq-question w-full text-left font-medium text-gray-900 dark:text-white flex justify-between items-center" onclick="toggleFAQ(this)">
+                    <span>How can I change my phone number?</span>
+                    <svg class="h-5 w-5 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </button>
+                <div class="faq-answer hidden mt-2 text-gray-600 dark:text-gray-400">
+                    <p>Go to your Profile page and click on "Edit Phone Number". For security, you'll need to verify your identity with your current password before changing your phone number.</p>
+                </div>
+            </div>
+
+            <!-- FAQ Item 8 -->
+            <div class="border-b border-gray-200 dark:border-gray-700 pb-4">
+                <button class="faq-question w-full text-left font-medium text-gray-900 dark:text-white flex justify-between items-center" onclick="toggleFAQ(this)">
+                    <span>What if I lost something in the vehicle?</span>
+                    <svg class="h-5 w-5 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </button>
+                <div class="faq-answer hidden mt-2 text-gray-600 dark:text-gray-400">
+                    <p>Report lost items through the "Lost Item" option in the support center. Select the specific ride and provide details about what you lost. Our team will contact the driver and help you recover your item.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contact Information Section -->
+    <div id="contact-container" class="hidden mt-8">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-gray-800 dark:text-white">Contact Support</h3>
+            <button onclick="document.getElementById('contact-container').classList.add('hidden')" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        
+        <div class="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-gray-700 dark:to-gray-800 p-6 rounded-lg">
+            <div class="space-y-4">
+                <div class="flex items-start">
+                    <svg class="h-6 w-6 text-indigo-600 dark:text-indigo-400 mr-3 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path>
+                    </svg>
+                    <div>
+                        <h4 class="font-medium text-gray-900 dark:text-white">Phone Support</h4>
+                        <p class="text-gray-600 dark:text-gray-300">+251-123-456-789</p>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Available 24/7</p>
+                    </div>
+                </div>
+
+                <div class="flex items-start">
+                    <svg class="h-6 w-6 text-indigo-600 dark:text-indigo-400 mr-3 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                    </svg>
+                    <div>
+                        <h4 class="font-medium text-gray-900 dark:text-white">Email Support</h4>
+                        <p class="text-gray-600 dark:text-gray-300">support@rideapp.com</p>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Response within 24 hours</p>
+                    </div>
+                </div>
+
+                <div class="flex items-start">
+                    <svg class="h-6 w-6 text-red-600 dark:text-red-400 mr-3 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                    </svg>
+                    <div>
+                        <h4 class="font-medium text-gray-900 dark:text-white">Emergency</h4>
+                        <p class="text-gray-600 dark:text-gray-300">911 or use the SOS button in the app</p>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">For immediate assistance</p>
+                    </div>
+                </div>
+
+                <div class="flex items-start">
+                    <svg class="h-6 w-6 text-indigo-600 dark:text-indigo-400 mr-3 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    <div>
+                        <h4 class="font-medium text-gray-900 dark:text-white">Office Address</h4>
+                        <p class="text-gray-600 dark:text-gray-300">Addis Ababa, Ethiopia</p>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Mon-Fri 9:00 AM - 6:00 PM</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 pt-6 border-t border-indigo-200 dark:border-gray-600">
+                <p class="text-sm text-gray-600 dark:text-gray-400 text-center">
+                    Our support team is here to help you with any questions or concerns.
+                </p>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
+// Toggle FAQ answers
+function toggleFAQ(button) {
+    const answer = button.nextElementSibling;
+    const icon = button.querySelector('svg');
+    
+    answer.classList.toggle('hidden');
+    icon.classList.toggle('rotate-180');
+}
+
+
 document.addEventListener('DOMContentLoaded', () => {
     const typeSelect = document.getElementById('feedback-type');
     const rideContainer = document.getElementById('ride-selector-container');
@@ -215,11 +410,29 @@ function showSupportForm(type) {
 }
 
 function showFAQ() {
-    alert('FAQ section coming soon! We are working on adding frequently asked questions.');
+    const formContainer = document.getElementById('support-form-container');
+    const faqContainer = document.getElementById('faq-container');
+    
+    // Hide form, show FAQ
+    formContainer.classList.add('hidden');
+    faqContainer.classList.remove('hidden');
+    
+    // Scroll to FAQ
+    faqContainer.scrollIntoView({ behavior: 'smooth' });
 }
 
 function contactSupport() {
-    alert('For immediate support, please call: +251-XXX-XXXX-XXX\nOr email us at: support@rideapp.com');
+    const formContainer = document.getElementById('support-form-container');
+    const faqContainer = document.getElementById('faq-container');
+    const contactContainer = document.getElementById('contact-container');
+    
+    // Hide others, show contact
+    formContainer.classList.add('hidden');
+    faqContainer.classList.add('hidden');
+    contactContainer.classList.remove('hidden');
+    
+    // Scroll to contact
+    contactContainer.scrollIntoView({ behavior: 'smooth' });
 }
 </script>
 {% endblock %}
