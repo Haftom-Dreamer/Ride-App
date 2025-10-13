@@ -131,14 +131,19 @@
     .lang-dropdown-content.show { display: block; }
     
     /* Fix placeholder text visibility in dark mode */
-    input::placeholder {
+    input::placeholder, select::placeholder, textarea::placeholder {
         color: #6b7280;
     }
-    .dark input::placeholder {
+    .dark input::placeholder, .dark select::placeholder, .dark textarea::placeholder {
         color: #9ca3af;
     }
-    .dark input {
+    .dark input, .dark select, .dark textarea {
         color: #f3f4f6;
+        background-color: #374151;
+        border-color: #4b5563;
+    }
+    .dark label {
+        color: #e5e7eb;
     }
 </style>
 {% endblock %}
@@ -339,7 +344,7 @@
             <div id="analytics-pane" class="pane">
                 <div class="card p-4 rounded-lg shadow mb-6">
                     <div id="analytics-filters" class="flex flex-wrap items-center gap-x-6 gap-y-2">
-                        <h3 class="text-lg font-semibold text-primary">Filter by Date</h3>
+                        <h3 class="text-lg font-semibold text-primary">{{ _('filter_by_date') }}</h3>
                         <div class="flex items-center gap-2" id="analytics-period-btns">
                             <button data-period="today" class="analytics-filter-btn px-3 py-1.5 text-sm font-semibold rounded-md bg-gray-200 dark:bg-gray-700">{{ _('today') }}</button>
                             <button data-period="week" class="analytics-filter-btn px-3 py-1.5 text-sm font-semibold rounded-md bg-gray-200 dark:bg-gray-700">{{ _('this_week') }}</button>
@@ -377,12 +382,12 @@
                         <div class="flex flex-wrap items-center gap-x-6 gap-y-2">
                             <h3 class="text-md font-semibold text-primary">1. Select Date Range</h3>
                             <div class="flex items-center gap-2" id="report-period-btns">
-                                <button data-period="today" class="analytics-filter-btn px-3 py-1.5 text-sm font-semibold rounded-md bg-gray-200 dark:bg-gray-700">Today</button>
-                                <button data-period="week" class="analytics-filter-btn px-3 py-1.5 text-sm font-semibold rounded-md bg-gray-200 dark:bg-gray-700">This Week</button>
-                                <button data-period="month" class="analytics-filter-btn px-3 py-1.5 text-sm font-semibold rounded-md bg-gray-200 dark:bg-gray-700">This Month</button>
-                                <button data-period="all" class="analytics-filter-btn px-3 py-1.5 text-sm font-semibold rounded-md bg-gray-200 dark:bg-gray-700 active-filter">All Time</button>
+                                <button data-period="today" class="analytics-filter-btn px-3 py-1.5 text-sm font-semibold rounded-md bg-gray-200 dark:bg-gray-700">{{ _('today') }}</button>
+                                <button data-period="week" class="analytics-filter-btn px-3 py-1.5 text-sm font-semibold rounded-md bg-gray-200 dark:bg-gray-700">{{ _('this_week') }}</button>
+                                <button data-period="month" class="analytics-filter-btn px-3 py-1.5 text-sm font-semibold rounded-md bg-gray-200 dark:bg-gray-700">{{ _('this_month') }}</button>
+                                <button data-period="all" class="analytics-filter-btn px-3 py-1.5 text-sm font-semibold rounded-md bg-gray-200 dark:bg-gray-700 active-filter">{{ _('all_time') }}</button>
                             </div>
-                            <div class="flex items-center gap-2"><input type="date" id="report-start-date" class="border p-1.5 rounded-md text-sm"><span class="text-gray-500">to</span><input type="date" id="report-end-date" class="border p-1.5 rounded-md text-sm"><button id="report-custom-range-btn" class="px-3 py-1.5 text-sm font-semibold rounded-md bg-indigo-600 text-white">Apply</button></div>
+                            <div class="flex items-center gap-2"><input type="date" id="report-start-date" class="border p-1.5 rounded-md text-sm"><span class="text-gray-500">{{ _('to') }}</span><input type="date" id="report-end-date" class="border p-1.5 rounded-md text-sm"><button id="report-custom-range-btn" class="px-3 py-1.5 text-sm font-semibold rounded-md bg-indigo-600 text-white">{{ _('apply') }}</button></div>
                         </div>
                         <div class="mt-6">
                             <h3 class="text-md font-semibold text-primary mb-2">2. Choose Format & Download</h3>
@@ -572,7 +577,12 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/moment@2.29.1/moment.js"></script>
 <script>
-    const updateFilenameLabel = (inputId, labelId) => { const input = document.getElementById(inputId); const label = document.getElementById(labelId); label.textContent = input.files.length > 0 ? input.files[0].name : 'No file chosen'; };
+    // Translation function for dynamic content
+    const LANG = "{{ session.get('language', 'en') }}";
+    const TRANSLATIONS = {{ translations|tojson|safe }};
+    const t = (key) => TRANSLATIONS[LANG]?.[key] || key;
+    
+    const updateFilenameLabel = (inputId, labelId) => { const input = document.getElementById(inputId); const label = document.getElementById(labelId); label.textContent = input.files.length > 0 ? input.files[0].name : t('no_file_chosen'); };
 
     document.addEventListener('DOMContentLoaded', () => {
         // --- STATE & CONFIG ---
@@ -591,9 +601,32 @@
         const destIcon = L.icon({ iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png', shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png', iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41] });
 
         // --- HELPER FUNCTIONS ---
-        const fetchData = async (endpoint, params = '') => { try { const r = await fetch(`${API_BASE_URL}/${endpoint}?${params}`, { cache: "no-store" }); if (!r.ok) throw new Error(`HTTP error ${r.status}`); return await r.json(); } catch (e) { console.error(`Fetch error for ${endpoint}:`, e); if (e instanceof TypeError) {} else if (r.status === 401) { window.location.href = '/login'; } return null; } };
-        const postData = async (endpoint, data, method = 'POST') => { try { const r = await fetch(`${API_BASE_URL}/${endpoint}`, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); const result = await r.json(); if (!r.ok) throw new Error(result.error || `HTTP error ${r.status}`); return result; } catch (e) { console.error(`Post error for ${endpoint}:`, e); if (e instanceof TypeError) {} else if (r.status === 401) { window.location.href = '/login'; } return {error: e.message}; } };
-        const postFormData = async (endpoint, formData) => { try { const r = await fetch(`${API_BASE_URL}/${endpoint}`, { method: 'POST', body: formData }); if (!r.ok) { const err = await r.json(); throw new Error(err.error || `HTTP error ${r.status}`); } return await r.json(); } catch (e) { console.error(`Post Form error for ${endpoint}:`, e); if (e instanceof TypeError) {} else if (r.status === 401) { window.location.href = '/login'; } return {error: e.message}; } };
+        const fetchData = async (endpoint, params = '') => { let r; try { r = await fetch(`${API_BASE_URL}/${endpoint}?${params}`, { cache: "no-store", credentials: 'include' }); if (!r.ok) throw new Error(`HTTP error ${r.status}`); return await r.json(); } catch (e) { console.error(`Fetch error for ${endpoint}:`, e); if (r && r.status === 401) { window.location.href = '/login'; } return null; } };
+        const postData = async (endpoint, data, method = 'POST') => { let r; try { r = await fetch(`${API_BASE_URL}/${endpoint}`, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data), credentials: 'include' }); const result = await r.json(); if (!r.ok) throw new Error(result.error || `HTTP error ${r.status}`); return result; } catch (e) { console.error(`Post error for ${endpoint}:`, e); if (r && r.status === 401) { window.location.href = '/login'; } return {error: e.message}; } };
+        const postFormData = async (endpoint, formData) => { 
+            try { 
+                const r = await fetch(`${API_BASE_URL}/${endpoint}`, { method: 'POST', body: formData, credentials: 'include' }); 
+                if (!r.ok) { 
+                    let err;
+                    const contentType = r.headers.get('content-type');
+                    if (contentType && contentType.includes('application/json')) {
+                        err = await r.json();
+                    } else {
+                        // Server returned HTML instead of JSON (likely an error page)
+                        err = { error: `Server error (${r.status}). Please check your session and try again.` };
+                    }
+                    throw new Error(err.error || `HTTP error ${r.status}`); 
+                } 
+                return await r.json(); 
+            } catch (e) { 
+                console.error(`Post Form error for ${endpoint}:`, e); 
+                alert(`Error: ${e.message || 'Failed to save. Please try again.'}`); 
+                if (e.message && (e.message.includes('401') || e.message.includes('Session'))) { 
+                    window.location.href = '/login'; 
+                } 
+                return {error: e.message}; 
+            } 
+        };
         const showModal = (id) => { hideModals(); document.getElementById(id).classList.remove('hidden'); document.getElementById(id).classList.add('flex'); };
         const hideModals = () => document.querySelectorAll('.modal').forEach(m => { m.classList.add('hidden'); m.classList.remove('flex'); });
 
@@ -1098,20 +1131,21 @@
         setInterval(refreshDashboardData, 10000);
         setInterval(refreshUnreadCount, 30000);
 
-        // Language persistence for admin dashboard
+        // Language persistence for admin dashboard - fixed to prevent infinite redirects
         const savedLang = localStorage.getItem('adminLanguage');
         const currentLang = '{{ session.get("language", "en") }}';
         
-        if (savedLang && savedLang !== currentLang) {
-            // If saved language differs from current, update it
-            localStorage.setItem('adminLanguage', currentLang);
+        // Only redirect if there's a saved preference different from current AND
+        // we haven't just changed the language (check for redirect flag)
+        const justChanged = sessionStorage.getItem('languageJustChanged');
+        if (savedLang && savedLang !== currentLang && !justChanged) {
+            // Set flag to prevent immediate redirect after language change
+            sessionStorage.setItem('languageJustChanged', 'true');
             document.cookie = `language_preference=${savedLang}; max-age=${365*24*60*60}; path=/`;
             window.location.href = `/change_language/${savedLang}`;
-        } else if (savedLang) {
-            // Sync localStorage with server state
-            localStorage.setItem('adminLanguage', currentLang);
         } else {
-            // First time user, save current language
+            // Clear the flag if it exists and save current language
+            sessionStorage.removeItem('languageJustChanged');
             localStorage.setItem('adminLanguage', currentLang);
         }
 

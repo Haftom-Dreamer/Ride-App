@@ -17,7 +17,7 @@
         overflow-y: auto;
         position: absolute;
         background: #ffffff;
-        z-index: 1000;
+        z-index: 30;
         width: 100%;
         border-radius: 0 0 0.5rem 0.5rem;
         box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
@@ -211,7 +211,7 @@
         <h1 class="text-3xl font-bold text-center text-gray-900">Where to?</h1>
         <p class="text-center text-gray-500 mt-2 mb-6">Request a ride in just a few clicks.</p>
 
-        <div id="map" class="w-full h-64 bg-gray-200 rounded-lg border my-4 shadow-inner"></div>
+        <div id="map" class="w-full h-64 bg-gray-200 rounded-lg border my-4 shadow-inner relative z-10"></div>
         <p id="map-instruction" class="text-center text-sm text-indigo-600 font-medium mb-4"></p>
 
         <div class="space-y-4">
@@ -482,7 +482,7 @@
             requestRideBtn.disabled = true;
             requestRideBtn.textContent = 'Requesting...';
 
-            fetch(`${API_BASE_URL}/ride-request`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(rideData) })
+            fetch(`${API_BASE_URL}/ride-request`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(rideData), credentials: 'include' })
                 .then(res => res.json())
                 .then(result => {
                     if (!result.ride_id) throw new Error(result.error || 'Failed to get ride ID.');
@@ -498,13 +498,48 @@
             fareDisplay.textContent = "...";
             distanceDisplay.textContent = "...";
             try {
-                const response = await fetch(`${API_BASE_URL}/fare-estimate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pickup_lat: userPickup.lat, pickup_lon: userPickup.lon, dest_lat: userDestination.lat, dest_lon: userDestination.lon, vehicle_type: selectedVehicle }) });
+                const response = await fetch(`${API_BASE_URL}/fare-estimate`, { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ 
+                        pickup_lat: userPickup.lat, 
+                        pickup_lon: userPickup.lon, 
+                        dest_lat: userDestination.lat, 
+                        dest_lon: userDestination.lon, 
+                        vehicle_type: selectedVehicle 
+                    }), 
+                    credentials: 'include' 
+                });
+                
+                if (!response.ok) {
+                    let errorMsg = `HTTP error ${response.status}`;
+                    const contentType = response.headers.get('content-type');
+                    
+                    if (contentType && contentType.includes('application/json')) {
+                        const errorData = await response.json();
+                        errorMsg = errorData.error || errorMsg;
+                    } else {
+                        // Server returned HTML instead of JSON (likely an error page)
+                        if (response.status === 401) {
+                            errorMsg = 'Please log in to continue';
+                            setTimeout(() => window.location.href = '/passenger/login', 2000);
+                        } else {
+                            errorMsg = 'Service temporarily unavailable. Please try again.';
+                        }
+                    }
+                    throw new Error(errorMsg);
+                }
+                
                 const data = await response.json();
-                if (!response.ok) throw new Error(data.error || 'Could not calculate fare.');
                 rideDetails = data;
                 fareDisplay.textContent = rideDetails.estimated_fare;
                 distanceDisplay.textContent = rideDetails.distance_km;
-            } catch (error) { setStatus(error.message, 'red'); }
+            } catch (error) { 
+                console.error('Fare calculation error:', error);
+                setStatus(error.message, 'red'); 
+                fareDisplay.textContent = "Error";
+                distanceDisplay.textContent = "Error";
+            }
         };
 
         const startPolling = (rideId) => {
@@ -513,7 +548,7 @@
         };
 
         const checkRideStatus = (rideId) => {
-            fetch(`${API_BASE_URL}/ride-status/${rideId}`)
+            fetch(`${API_BASE_URL}/ride-status/${rideId}`, { credentials: 'include' })
                 .then(res => {
                     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
                     return res.json();
@@ -558,6 +593,7 @@
             try {
                 await fetch(`${API_BASE_URL}/rate-ride`, {
                     method: 'POST',
+                    credentials: 'include',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ ride_id: currentRideId, rating: parseInt(rating), comment: comment })
                 });
@@ -579,7 +615,7 @@
             }
         };
 
-        function handleCancelRequest() { if (!currentRideId) return; fetch(`${API_BASE_URL}/cancel-ride`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ride_id: currentRideId }) }); }
+        function handleCancelRequest() { if (!currentRideId) return; fetch(`${API_BASE_URL}/cancel-ride`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ride_id: currentRideId }), credentials: 'include' }); }
         function handleMapClick(e) { const { lat, lng } = e.latlng; const isSettingPickup = !userPickup || (userPickup && userDestination); const targetInput = isSettingPickup ? pickupInput : destinationInput; setStatus('Fetching address...', 'blue'); fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`).then(res => res.json()).then(data => { if (!data || !data.display_name) throw new Error('Could not find address.'); const location = { lat: lat, lon: lng, address: data.display_name }; targetInput.value = location.address; if (isSettingPickup) { userPickup = location; userDestination = null; destinationInput.value = ''; } else { userDestination = location; } setStatus(isSettingPickup ? 'Pickup set!' : 'Destination set!', 'green'); updateMapAndFare(); }).catch(err => setStatus(err.message, 'red')); }
         function setupAutocomplete(inputEl, suggestionsEl, callback) { suggestionsEl.addEventListener('click', (e) => { if (e.target && e.target.classList.contains('autocomplete-suggestion')) { const placeData = JSON.parse(e.target.dataset.place); inputEl.value = placeData.display_name; suggestionsEl.innerHTML = ''; callback(placeData); } }); inputEl.addEventListener('input', () => { clearTimeout(searchTimeout); const query = inputEl.value.toLowerCase(); suggestionsEl.innerHTML = ''; if (query.length < 1) return; const localResults = commonLandmarks.filter(place => place.name.toLowerCase().includes(query)); localResults.forEach(place => renderSuggestion(place, suggestionsEl)); const searchingMsg = document.createElement('div'); searchingMsg.className = 'autocomplete-searching'; searchingMsg.textContent = 'Searching for more...'; suggestionsEl.appendChild(searchingMsg); searchTimeout = setTimeout(async () => { const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&viewbox=39.40,13.45,39.55,14.35&bounded=1&countrycodes=et`; try { const response = await fetch(url); const apiResults = await response.json(); searchingMsg.remove(); apiResults.slice(0, 5).forEach(place => { if (!localResults.some(local => local.name === place.name)) { renderSuggestion(place, suggestionsEl); } }); } catch (error) { console.error("Autocomplete API error:", error); searchingMsg.textContent = 'Search error.'; } }, 300); }); document.addEventListener('click', e => { if (e.target !== inputEl) suggestionsEl.innerHTML = ''; }); }
         function renderSuggestion(place, suggestionsEl) { const div = document.createElement('div'); div.innerHTML = place.display_name; div.className = 'autocomplete-suggestion'; div.dataset.place = JSON.stringify({ lat: place.lat, lon: place.lon, display_name: place.display_name }); suggestionsEl.appendChild(div); }

@@ -6,7 +6,8 @@ from flask_migrate import Migrate
 from flask_marshmallow import Marshmallow
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from flask_wtf.csrf import CSRFProtect
+from flask_wtf.csrf import generate_csrf
+from flask_wtf import CSRFProtect
 import os
 import json
 import requests
@@ -53,16 +54,31 @@ limiter = Limiter(
     app=app,
     key_func=get_remote_address,
     storage_uri=app.config.get('RATELIMIT_STORAGE_URL', 'memory://'),
-    default_limits=["200 per day", "50 per hour"],
+    default_limits=["1000 per day", "200 per hour"],  # More generous defaults
     enabled=app.config.get('RATELIMIT_ENABLED', True)
 )
 
 # Exempt API routes from CSRF (they use authentication instead)
-@csrf.exempt
 @app.before_request
-def csrf_protect_forms_only():
+def exempt_api_csrf():
+    # Exempt JSON/API endpoints from CSRF checks (they use other auth).
     if request.path.startswith('/api/'):
-        csrf._exempt_views.add(request.endpoint)
+        try:
+            # More reliable way to exempt API endpoints
+            csrf._exempt_views.add(request.endpoint)
+            # Also set a flag that can be checked by CSRF protection
+            setattr(request, 'csrf_exempt', True)
+            app.logger.debug(f"CSRF exempted API endpoint: {request.endpoint}")
+        except Exception as e:
+            # If the private attribute access fails, log it but continue
+            app.logger.debug(f"CSRF exemption failed: {e}")
+            pass
+    else:
+        # Log non-API requests for debugging
+        if request.method == 'POST' and request.path == '/login':
+            app.logger.info(f"Login request - Path: {request.path}, Method: {request.method}")
+            app.logger.info(f"Request headers: {dict(request.headers)}")
+            app.logger.info(f"Form keys: {list(request.form.keys()) if request.form else 'No form data'}")
     
 # Error Handlers
 @app.errorhandler(404)
@@ -96,7 +112,7 @@ def inject_gettext():
     def _(key):
         lang = get_locale()
         return translations.get(lang, translations['en']).get(key, key)
-    return dict(_=_)
+    return dict(_=_, translations=translations)
 
 def get_locale():
     # First check session, then cookie for persistence
@@ -127,7 +143,100 @@ def get_language():
     lang = get_locale()
     return jsonify({'language': lang})
 
+@app.route('/api/debug/status')
+def debug_status():
+    """Debug endpoint to check system status"""
+    try:
+        # Check database connection
+        db_status = "OK"
+        try:
+            db.session.execute(db.text("SELECT 1")).fetchone()
+        except Exception as e:
+            db_status = f"Error: {str(e)}"
+        
+        # Check tables exist
+        tables = {}
+        try:
+            tables['admin_count'] = Admin.query.count()
+            tables['setting_count'] = Setting.query.count()
+            tables['driver_count'] = Driver.query.count()
+            tables['passenger_count'] = Passenger.query.count()
+        except Exception as e:
+            tables['error'] = str(e)
+        
+        return jsonify({
+            'status': 'running',
+            'database': db_status,
+            'tables': tables,
+            'config': {
+                'debug': app.config.get('DEBUG'),
+                'upload_folder': app.config.get('UPLOAD_FOLDER')
+            }
+        })
+    except Exception as e:
+        return jsonify({'error': str(e), 'status': 'error'}), 500
+
+@app.route('/api/debug/test-post', methods=['POST'])
+@csrf.exempt
+def test_post():
+    """Simple POST test endpoint to debug request handling"""
+    try:
+        data = {
+            'method': request.method,
+            'content_type': request.content_type,
+            'headers': dict(request.headers),
+            'json_data': request.get_json(silent=True),
+            'form_data': dict(request.form),
+            'raw_data': request.get_data(as_text=True)[:200]  # First 200 chars
+        }
+        return jsonify({'success': True, 'request_info': data})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/debug/admin-users')
+def debug_admin_users():
+    """Debug endpoint to check admin users"""
+    try:
+        admins = Admin.query.all()
+        admin_info = [{
+            'id': admin.id,
+            'username': admin.username,
+            'has_password': bool(admin.password_hash)
+        } for admin in admins]
+        
+        return jsonify({
+            'total_admins': len(admins),
+            'admins': admin_info
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/debug/create-test-admin', methods=['POST'])
+@csrf.exempt
+def create_test_admin():
+    """Debug endpoint to create a test admin user"""
+    try:
+        # Check if test admin already exists
+        existing = Admin.query.filter_by(username='admin').first()
+        if existing:
+            return jsonify({'message': 'Test admin already exists', 'username': 'admin'})
+        
+        # Create test admin
+        test_admin = Admin(username='admin')
+        test_admin.set_password('admin123')
+        db.session.add(test_admin)
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Test admin created successfully',
+            'username': 'admin',
+            'password': 'admin123'
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/set_language', methods=['POST'])
+@csrf.exempt
 def set_language():
     """API endpoint to set language preference"""
     data = request.get_json()
@@ -152,6 +261,9 @@ def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated or session.get('user_type') != 'admin':
+            # Return JSON for API requests, HTML redirect for page requests
+            if request.path.startswith('/api/'):
+                return jsonify({'error': 'Authentication required. Please log in as a dispatcher.'}), 401
             flash('You must be logged in as a dispatcher to view this page.', 'danger')
             return redirect(url_for('login'))
         return f(*args, **kwargs)
@@ -161,6 +273,9 @@ def passenger_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated or session.get('user_type') != 'passenger':
+            # Return JSON for API requests, HTML redirect for page requests
+            if request.path.startswith('/api/'):
+                return jsonify({'error': 'Authentication required. Please log in as a passenger.'}), 401
             flash('Please log in to access this page.', 'warning')
             return redirect(url_for('passenger_login'))
         return f(*args, **kwargs)
@@ -282,10 +397,26 @@ class RideSchema(ma.SQLAlchemyAutoSchema):
 rides_schema = RideSchema(many=True)
 drivers_schema = DriverSchema(many=True)
 
+# --- Service Layer Initialization ---
+# Import services after models are defined
+from services import (
+    PassengerService, DriverService, RideService, 
+    FeedbackService, SettingService, AdminService, AnalyticsService
+)
+
+# Initialize service instances
+passenger_service = PassengerService(db, Passenger)
+driver_service = DriverService(db, Driver)
+ride_service = RideService(db, Ride)
+feedback_service = FeedbackService(db, Feedback)
+setting_service = SettingService(db, Setting)
+admin_service = AdminService(db, Admin)
+analytics_service = AnalyticsService(db, Ride, Driver, Passenger, Feedback)
+
 
 def get_setting(key, default=None):
-    setting = Setting.query.filter_by(key=key).first()
-    return setting.value if setting else default
+    """Wrapper for backward compatibility - uses setting_service"""
+    return setting_service.get_setting(key, default)
 
 def _handle_file_upload(file_storage, existing_path=None):
     """Handle file upload with security checks"""
@@ -296,8 +427,9 @@ def _handle_file_upload(file_storage, existing_path=None):
     if not filename:
         return existing_path
     
-    # Check file extension
-    if not app.config['allowed_file'](filename):
+    # Check file extension using Config class method
+    from config import Config
+    if not Config.allowed_file(filename):
         raise ValueError(f"File type not allowed. Allowed types: {app.config['ALLOWED_EXTENSIONS']}")
     
     # Create upload directory if it doesn't exist
@@ -344,20 +476,38 @@ def login():
     if current_user.is_authenticated and session.get('user_type') == 'admin':
         return redirect(url_for('dispatcher_dashboard'))
     if request.method == 'POST':
-        username = request.form.get('username', '').strip()
-        password = request.form.get('password', '')
-        
-        if not username or not password:
-            flash('Username and password are required', 'danger')
-            return render_template('login.html')
-        
-        admin = Admin.query.filter_by(username=username).first()
-        if admin and admin.check_password(password):
-            login_user(admin)
-            session['user_type'] = 'admin'
-            return redirect(url_for('dispatcher_dashboard'))
-        else:
-            flash('Invalid username or password', 'danger')
+        try:
+            # Debug logging for login attempts
+            app.logger.info(f"Login POST request received")
+            app.logger.info(f"Content-Type: {request.content_type}")
+            app.logger.info(f"Form data keys: {list(request.form.keys())}")
+            app.logger.info(f"Has CSRF token: {'csrf_token' in request.form}")
+            
+            username = request.form.get('username', '').strip()
+            password = request.form.get('password', '')
+            
+            app.logger.info(f"Username provided: {bool(username)}")
+            app.logger.info(f"Password provided: {bool(password)}")
+            
+            if not username or not password:
+                app.logger.warning("Missing username or password")
+                flash('Username and password are required', 'danger')
+                return render_template('login.html')
+            
+            admin = Admin.query.filter_by(username=username).first()
+            if admin and admin.check_password(password):
+                app.logger.info(f"Login successful for user: {username}")
+                login_user(admin)
+                session['user_type'] = 'admin'
+                return redirect(url_for('dispatcher_dashboard'))
+            else:
+                app.logger.warning(f"Login failed for user: {username}")
+                flash('Invalid username or password', 'danger')
+                return render_template('login.html')
+        except Exception as e:
+            app.logger.error(f"Login error: {str(e)}")
+            flash('Login error occurred', 'danger')
+            return render_template('login.html'), 500
     return render_template('login.html')
 
 # -- Passenger Auth ---
@@ -386,17 +536,21 @@ def passenger_signup():
             flash('Invalid phone number format. Please enter 9 digits.', 'danger')
             return render_template('passenger_signup.html')
         
-        existing_passenger = Passenger.query.filter_by(phone_number=phone_number).first()
+        # Use service layer to check if passenger exists
+        existing_passenger = passenger_service.get_by_phone(phone_number)
         if existing_passenger:
             flash('Phone number already registered.', 'danger')
             return redirect(url_for('passenger_signup'))
         
-        new_passenger = Passenger(username=username, phone_number=phone_number)
+        # Use service layer to create new passenger
+        new_passenger = passenger_service.create(
+            username=username,
+            phone_number=phone_number
+        )
         new_passenger.set_password(password)
-        db.session.add(new_passenger)
         db.session.flush()
         new_passenger.passenger_uid = f"PAX-{new_passenger.id:05d}"
-        db.session.commit()
+        passenger_service.commit()
         
         flash('Account created successfully! Please log in.', 'success')
         return redirect(url_for('passenger_login'))
@@ -499,6 +653,7 @@ def uploaded_file(filename):
 
 # --- API Routes ---
 @app.route('/api/ride-request', methods=['POST'])
+@csrf.exempt
 @passenger_required
 @limiter.limit("10 per hour")
 def request_ride():
@@ -553,7 +708,8 @@ def request_ride():
     dest_address = data.get('dest_address', '')[:255]
     note = data.get('note', '')[:255] if data.get('note') else None
     
-    new_ride = Ride(
+    # Use service layer to create ride
+    new_ride = ride_service.create_ride(
         passenger_id=current_user.id,
         pickup_address=pickup_address,
         pickup_lat=pickup_lat,
@@ -564,12 +720,10 @@ def request_ride():
         distance_km=distance_km,
         fare=fare,
         vehicle_type=vehicle_type,
-        note=note,
         payment_method=payment_method,
-        request_time=datetime.now(timezone.utc)
+        note=note
     )
-    db.session.add(new_ride)
-    db.session.commit()
+    ride_service.commit()
 
     return jsonify({'message': 'Ride requested successfully', 'ride_id': new_ride.id}), 201
 
@@ -578,18 +732,15 @@ def request_ride():
 @admin_required
 def assign_ride():
     data = request.json
-    ride = Ride.query.get(data.get('ride_id'))
-    driver = Driver.query.get(data.get('driver_id'))
+    ride = ride_service.get_by_id(data.get('ride_id'))
+    driver = driver_service.get_by_id(data.get('driver_id'))
     if not ride or not driver:
         return jsonify({'error': 'Ride or Driver not found'}), 404
 
-    ride.driver_id = driver.id
-    ride.status = 'Assigned'
-    ride.assigned_time = datetime.now(timezone.utc)
-    driver.status = 'On Trip'
-    driver.current_lat = ride.pickup_lat
-    driver.current_lon = ride.pickup_lon
-    db.session.commit()
+    # Use service layer to assign driver
+    ride_service.assign_driver(ride, driver.id)
+    driver_service.update(driver, status='On Trip', current_lat=ride.pickup_lat, current_lon=ride.pickup_lon)
+    ride_service.commit()
     return jsonify({'message': 'Ride assigned successfully'})
 
 
@@ -636,25 +787,57 @@ def cancel_ride():
 
 
 @app.route('/api/add-driver', methods=['POST'])
+@csrf.exempt
 @admin_required
 def add_driver():
-    new_driver = Driver(
-        name=request.form.get('name'),
-        phone_number=request.form.get('phone_number'),
-        vehicle_type=request.form.get('vehicle_type'),
-        vehicle_details=request.form.get('vehicle_details'),
-        vehicle_plate_number=request.form.get('vehicle_plate_number'),
-        license_info=request.form.get('license_info'),
-        status='Offline',
-        profile_picture=_handle_file_upload(request.files.get('profile_picture'), 'static/img/default_user.svg'),
-        license_document=_handle_file_upload(request.files.get('license_document')),
-        vehicle_document=_handle_file_upload(request.files.get('vehicle_document'))
-    )
-    db.session.add(new_driver)
-    db.session.flush()
-    new_driver.driver_uid = f"DRV-{new_driver.id:04d}"
-    db.session.commit()
-    return jsonify({'message': 'Driver added successfully'}), 201
+    try:
+        # Validate required fields (matching HTML form requirements)
+        required_fields = ['name', 'phone_number', 'vehicle_type', 'vehicle_details', 'vehicle_plate_number', 'license_info']
+        for field in required_fields:
+            if not request.form.get(field, '').strip():
+                return jsonify({'error': f'Missing required field: {field}'}), 400
+        
+        # Validate phone number format
+        phone = request.form.get('phone_number', '').strip()
+        if not phone or len(phone) < 10:
+            return jsonify({'error': 'Invalid phone number format'}), 400
+        
+        # Check for duplicate phone number
+        existing_driver = Driver.query.filter_by(phone_number=phone).first()
+        if existing_driver:
+            return jsonify({'error': 'Phone number already registered to another driver'}), 409
+        
+        # Handle file uploads with error checking
+        try:
+            profile_picture = _handle_file_upload(request.files.get('profile_picture'), 'static/img/default_user.svg')
+            license_document = _handle_file_upload(request.files.get('license_document'))
+            vehicle_document = _handle_file_upload(request.files.get('vehicle_document'))
+        except ValueError as e:
+            return jsonify({'error': str(e)}), 400
+        
+        new_driver = Driver(
+            name=request.form.get('name').strip(),
+            phone_number=phone,
+            vehicle_type=request.form.get('vehicle_type'),
+            vehicle_details=request.form.get('vehicle_details').strip(),
+            vehicle_plate_number=request.form.get('vehicle_plate_number').strip(),
+            license_info=request.form.get('license_info').strip(),
+            status='Offline',
+            profile_picture=profile_picture,
+            license_document=license_document,
+            vehicle_document=vehicle_document
+        )
+        
+        db.session.add(new_driver)
+        db.session.flush()
+        new_driver.driver_uid = f"DRV-{new_driver.id:04d}"
+        db.session.commit()
+        return jsonify({'message': 'Driver added successfully', 'driver_id': new_driver.id}), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error adding driver: {str(e)}")
+        return jsonify({'error': 'Failed to add driver. Please check your input and try again.'}), 500
 
 @app.route('/api/update-driver/<int:driver_id>', methods=['POST'])
 @admin_required
@@ -703,7 +886,8 @@ def update_driver_status():
 @passenger_required
 def rate_ride():
     data = request.json
-    ride = Ride.query.get(data.get('ride_id'))
+    # Use service layer to get ride
+    ride = ride_service.get_by_id(data.get('ride_id'))
     if not ride:
         return jsonify({'error': 'Ride not found'}), 404
     if ride.passenger_id != current_user.id:
@@ -711,16 +895,16 @@ def rate_ride():
     if ride.status != 'Completed':
         return jsonify({'error': 'Only completed rides can be rated'}), 400
     
-    feedback = Feedback.query.filter_by(ride_id=ride.id).first()
-    if not feedback:
-        feedback = Feedback(ride_id=ride.id)
-        db.session.add(feedback)
-
-    feedback.rating = data.get('rating')
-    feedback.comment = data.get('comment')
-    feedback.feedback_type = 'Rating'
-
-    db.session.commit()
+    # Use service layer to create or update feedback
+    rating = data.get('rating')
+    comment = data.get('comment')
+    feedback_service.create_or_update_feedback(
+        ride_id=ride.id,
+        feedback_type='Rating',
+        rating=rating,
+        comment=comment
+    )
+    feedback_service.commit()
     return jsonify({'message': 'Thank you for your feedback!'})
 
 @app.route('/api/submit-support-ticket', methods=['POST'])
@@ -735,35 +919,39 @@ def submit_support_ticket():
         return jsonify({'error': 'Type and details are required.'}), 400
     
     if ride_id:
-        ride = Ride.query.filter_by(id=ride_id, passenger_id=current_user.id).first()
+        # Use service layer to validate ride
+        ride = ride_service.get_passenger_rides(current_user.id)
+        ride = next((r for r in ride if r.id == ride_id), None)
         if not ride:
             return jsonify({'error': 'Invalid ride ID.'}), 404
         
-        # Check if feedback already exists for this ride
+        # Use service layer to create or update feedback
         # Note: The current DB schema has a UNIQUE constraint on ride_id in Feedback.
         # This means one ride can only have one feedback entry.
-        feedback = Feedback.query.filter_by(ride_id=ride_id).first()
+        feedback = feedback_service.get_by_ride_id(ride_id)
         if feedback:
             # If feedback already exists, update it by appending the new information
-            feedback.feedback_type = f"{feedback.feedback_type}/{feedback_type}"
-            feedback.details = f"Support Ticket: {details}\n\nOriginal Feedback: {feedback.details or feedback.comment or ''}"
-            feedback.is_resolved = False  # Mark as unresolved if it's a new complaint
+            feedback_service.update(
+                feedback,
+                feedback_type=f"{feedback.feedback_type}/{feedback_type}",
+                details=f"Support Ticket: {details}\n\nOriginal Feedback: {feedback.details or feedback.comment or ''}",
+                is_resolved=False
+            )
         else:
-            # Create new feedback entry
-            feedback = Feedback(
+            # Create new feedback entry using service layer
+            feedback_service.create(
                 ride_id=ride_id,
                 feedback_type=feedback_type,
                 details=details,
                 is_resolved=False
             )
-            db.session.add(feedback)
+        feedback_service.commit()
     else:
         # General feedback not linked to a ride - needs a dummy ride_id or schema change
         # This part is tricky with the current schema (ride_id is NOT NULL and FOREIGN KEY).
         # For general feedback without a ride, we cannot store it due to schema constraints.
         return jsonify({'error': 'For general feedback, please select your most recent ride if applicable or contact support directly.'}), 400
 
-    db.session.commit()
     return jsonify({'message': 'Support ticket submitted successfully.'}), 201
 
 
@@ -806,13 +994,15 @@ def resolve_feedback(feedback_id):
 @app.route('/api/pending-rides')
 @admin_required
 def get_pending_rides():
-    rides = Ride.query.filter_by(status='Requested').order_by(Ride.request_time.desc()).all()
+    # Use service layer to get pending rides
+    rides = ride_service.get_pending_rides()
     return jsonify(rides_schema.dump(rides))
 
 @app.route('/api/active-rides')
 @admin_required
 def get_active_rides():
-    rides = Ride.query.filter(Ride.status.in_(['Assigned', 'On Trip'])).order_by(Ride.request_time.asc()).all()
+    # Use service layer to get active rides
+    rides = ride_service.get_active_rides()
     return jsonify([ { 
         'id': r.id, 
         'user_name': r.passenger.username, 
@@ -850,11 +1040,8 @@ def get_driver(driver_id):
 @admin_required
 def get_available_drivers():
     vehicle_type = request.args.get('vehicle_type')
-    query = Driver.query.filter_by(status='Available')
-    if vehicle_type:
-        query = query.filter_by(vehicle_type=vehicle_type)
-    
-    drivers = query.all()
+    # Use service layer to get available drivers
+    drivers = driver_service.get_available_drivers(vehicle_type)
     
     drivers_data = [
         {'id': d.id, 'name': d.name, 'vehicle_type': d.vehicle_type, 'status': d.status}
@@ -1047,19 +1234,43 @@ def api_passenger_history():
 
 
 @app.route('/api/fare-estimate', methods=['POST'])
+@csrf.exempt
 @limiter.exempt  # Allow frequent fare estimates
 def fare_estimate():
-    data = request.json
-    if not data:
-        return jsonify({'error': 'No data provided'}), 400
-    
-    # Validate required fields
-    required_fields = ['pickup_lat', 'pickup_lon', 'dest_lat', 'dest_lon']
-    for field in required_fields:
-        if field not in data:
-            return jsonify({'error': f'Missing required field: {field}'}), 400
-    
     try:
+        # Debug logging
+        app.logger.info(f"Fare estimate request - Content-Type: {request.content_type}")
+        app.logger.info(f"Fare estimate request - Raw data: {request.get_data()}")
+        
+        data = request.json
+        app.logger.info(f"Parsed JSON data: {data}")
+        
+        if not data:
+            app.logger.error("No JSON data provided")
+            return jsonify({'error': 'No data provided'}), 400
+        
+        # Validate required fields
+        required_fields = ['pickup_lat', 'pickup_lon', 'dest_lat', 'dest_lon']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'error': f'Missing required field: {field}'}), 400
+    
+        # Validate coordinate values
+        try:
+            pickup_lat = float(data['pickup_lat'])
+            pickup_lon = float(data['pickup_lon'])
+            dest_lat = float(data['dest_lat'])
+            dest_lon = float(data['dest_lon'])
+            
+            # Basic coordinate validation
+            if not (-90 <= pickup_lat <= 90) or not (-180 <= pickup_lon <= 180):
+                return jsonify({'error': 'Invalid pickup coordinates'}), 400
+            if not (-90 <= dest_lat <= 90) or not (-180 <= dest_lon <= 180):
+                return jsonify({'error': 'Invalid destination coordinates'}), 400
+        except (ValueError, TypeError):
+            return jsonify({'error': 'Invalid coordinate format'}), 400
+        
+        # Get pricing settings
         base_fare = Decimal(get_setting('base_fare', '25'))
         per_km_rates = {
             "Bajaj": Decimal(get_setting('per_km_bajaj', '8')),
@@ -1068,20 +1279,43 @@ def fare_estimate():
         vehicle_type = data.get('vehicle_type', 'Bajaj')
         per_km_rate = per_km_rates.get(vehicle_type, per_km_rates['Bajaj'])
         
+        # Call OSRM routing service
         osrm_url = (f"http://router.project-osrm.org/route/v1/driving/"
-                    f"{data['pickup_lon']},{data['pickup_lat']};{data['dest_lon']},{data['dest_lat']}?overview=false")
+                    f"{pickup_lon},{pickup_lat};{dest_lon},{dest_lat}?overview=false")
         
-        response = requests.get(osrm_url, timeout=10)
-        response.raise_for_status()
-        distance_km = Decimal(str(response.json()['routes'][0]['distance'] / 1000.0))
+        try:
+            response = requests.get(osrm_url, timeout=15)
+            response.raise_for_status()
+            
+            route_data = response.json()
+            if 'routes' not in route_data or not route_data['routes']:
+                return jsonify({'error': 'No route found between the locations'}), 400
+            
+            distance_meters = route_data['routes'][0]['distance']
+            distance_km = Decimal(str(distance_meters / 1000.0))
+            
+        except requests.exceptions.Timeout:
+            return jsonify({'error': 'Route calculation timed out. Please try again.'}), 503
+        except requests.exceptions.ConnectionError:
+            return jsonify({'error': 'Unable to connect to routing service. Please try again later.'}), 503
+        except requests.exceptions.RequestException as e:
+            app.logger.error(f"OSRM request failed: {str(e)}")
+            return jsonify({'error': 'Route service temporarily unavailable'}), 503
+        except (KeyError, IndexError, TypeError) as e:
+            app.logger.error(f"OSRM response parsing failed: {str(e)}")
+            return jsonify({'error': 'Invalid route response'}), 500
+        
+        # Calculate fare
         fare = (base_fare + (distance_km * per_km_rate)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
         
         return jsonify({
             'distance_km': float(distance_km.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)),
             'estimated_fare': float(fare)
         })
-    except (requests.exceptions.RequestException, KeyError, IndexError, ValueError) as e:
-        return jsonify({'error': 'Could not calculate route.'}), 500
+        
+    except Exception as e:
+        app.logger.error(f"Fare estimation error: {str(e)}")
+        return jsonify({'error': 'Unable to calculate fare. Please try again.'}), 500
 
 
 @app.route('/api/dashboard-stats')
@@ -1174,7 +1408,14 @@ def get_analytics_data():
 
     return jsonify({
         'kpis': { 'rides_completed': completed_rides_in_period, 'rides_canceled': base_query.filter(Ride.status == 'Canceled').count(), 'total_revenue': round(revenue_in_period, 2), 'avg_fare': round(db.session.query(func.avg(completed_rides_sq.c.fare)).scalar() or 0, 2), 'active_rides_now': Ride.query.filter(Ride.status.in_(['Assigned', 'On Trip'])).count(), 'trends': { 'revenue': _calculate_trend(revenue_in_period, prev_revenue), 'rides': _calculate_trend(completed_rides_in_period, prev_completed_rides) } },
-        'charts': { 'revenue_over_time': { 'labels': [i[0] for i in db.session.query(func.date(completed_rides_sq.c.request_time).label('d'), func.sum(completed_rides_sq.c.fare)).group_by('d').order_by('d').all()], 'data': [float(i[1] or 0) for i in db.session.query(func.date(completed_rides_sq.c.request_time).label('d'), func.sum(completed_rides_sq.c.fare)).group_by('d').order_by('d').all()] }, 'vehicle_distribution': dict(base_query.with_entities(Ride.vehicle_type, func.count(Ride.id)).group_by(Ride.vehicle_type).all()), 'payment_method_distribution': dict(base_query.with_entities(Ride.payment_method, func.count(Ride.id)).group_by(Ride.payment_method).all()), },
+        'charts': { 
+            'revenue_over_time': { 
+                'labels': [i[0].strftime('%Y-%m-%d') if i[0] else '' for i in db.session.query(func.date(completed_rides_sq.c.request_time).label('d'), func.sum(completed_rides_sq.c.fare)).group_by('d').order_by('d').all()], 
+                'data': [float(i[1] or 0) for i in db.session.query(func.date(completed_rides_sq.c.request_time).label('d'), func.sum(completed_rides_sq.c.fare)).group_by('d').order_by('d').all()] 
+            }, 
+            'vehicle_distribution': dict(base_query.with_entities(Ride.vehicle_type, func.count(Ride.id)).group_by(Ride.vehicle_type).all()), 
+            'payment_method_distribution': dict(base_query.with_entities(Ride.payment_method, func.count(Ride.id)).group_by(Ride.payment_method).all())
+        },
         'performance': { 'top_drivers': [{'name': d.name, 'avatar': d.profile_picture, 'completed_rides': d.completed_rides, 'avg_rating': round(d.avg_rating or 0, 2)} for d in top_drivers_query] }
     })
 
