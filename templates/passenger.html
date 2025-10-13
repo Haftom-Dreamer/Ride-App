@@ -427,7 +427,7 @@
             requestRideBtn.addEventListener('click', handleRideRequest);
             cancelRequestBtn.addEventListener('click', handleCancelRequest);
             newRideBtn.addEventListener('click', () => window.location.reload());
-            doneBtn.addEventListener('click', () => { window.location.href = "{{ url_for('passenger_history') }}"});
+            doneBtn.addEventListener('click', () => { window.location.href = "{{ url_for('passenger.history') }}"});
 
             setupAutocomplete(pickupInput, pickupSuggestions, (place) => {
                 userPickup = { lat: parseFloat(place.lat), lon: parseFloat(place.lon), address: place.display_name };

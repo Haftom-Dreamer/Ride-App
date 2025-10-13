@@ -1,59 +1,181 @@
-Ride - A Dispatcher-Based Hailing App
+# 🚖 RIDE - Ride Sharing Dispatch System
 
-## 🚀 Recent Updates (2024)
+A comprehensive Flask-based ride-sharing dispatch application with real-time ride management, driver tracking, and multi-language support.
 
-This application has been significantly improved with:
-- ✅ **Enhanced Security**: Environment-based configuration, CSRF protection, rate limiting
-- ✅ **Better Performance**: Database indexes, optimized queries
-- ✅ **Production Ready**: Proper error handling, input validation, file upload security
-- ✅ **Money Precision**: Using Decimal types instead of Float for fare calculations
-- ✅ **Configuration Management**: Clean separation of config from code
+## ✨ Features
 
-**👉 See [SETUP_GUIDE.md](SETUP_GUIDE.md) for detailed setup instructions and migration guide.**
+- 🚗 Real-time ride dispatching
+- 👥 Driver and passenger management
+- 📊 Analytics dashboard
+- 🗺️ Route planning with OSRM
+- 🌍 Multi-language support (English, Amharic, Tigrinya)
+- 💰 Dynamic fare calculation
+- 📱 Responsive web interface
+- 🔐 Secure authentication
+- 📈 Performance analytics
+
+## 🚀 Quick Start
+
+### 1. Install Dependencies
+```bash
+pip install -r requirements.txt
+```
+
+### 2. Create Admin User
+```bash
+python scripts/create_admin.py
+```
+
+### 3. Run the Application
+```bash
+python main.py
+# OR
+python run.py
+```
+
+### 4. Access the Dashboard
+- **Admin Dashboard**: http://127.0.0.1:5000/login
+- **Passenger App**: http://127.0.0.1:5000/passenger/login
+
+## 📂 Project Structure
+
+```
+RIDE/
+├── main.py                  # Main Flask application
+├── config.py                # Configuration settings
+├── requirements.txt         # Python dependencies
+├── run.py                   # Application entry point
+├── translations.json        # Multi-language support
+├── ride_app.db             # SQLite database
+├── templates/               # HTML templates
+├── static/                  # CSS, JavaScript, images
+├── docs/                    # 📚 All documentation
+├── scripts/                 # 🔧 Utility scripts
+└── archive/                 # 📦 Backups & future features
+```
+
+## 📚 Documentation
+
+All documentation is organized in the `docs/` folder:
+
+- **[Documentation Index](docs/INDEX.md)** - Complete documentation directory
+- **[Quick Start Guide](docs/QUICK_START.md)** - Get running in 5 minutes
+- **[Setup Guide](docs/SETUP_GUIDE.md)** - Detailed installation instructions
+- **[Quick Reference](docs/QUICK_REFERENCE.md)** - Common commands and operations
+
+## 🔧 Utility Scripts
+
+All utility scripts are in the `scripts/` folder:
+
+```bash
+# Create or reset admin user
+python scripts/create_admin.py
+
+# Check installation
+python scripts/check_installation.py
+
+# Initialize database
+python scripts/init_database.py
+
+# Generate secret key
+python scripts/generate_secret_key.py
+
+# Migrate database
+python scripts/migrate_database.py
+```
+
+## 🛠️ Tech Stack
+
+- **Backend**: Flask (Python)
+- **Database**: SQLite (development) / PostgreSQL (production)
+- **Frontend**: HTML, CSS, JavaScript
+- **Maps**: Leaflet.js, OpenStreetMap
+- **Routing**: OSRM
+- **Authentication**: Flask-Login
+- **Forms**: Flask-WTF
+
+## 🌍 Multi-Language Support
+
+The application supports three languages:
+- English (en)
+- Amharic (am)
+- Tigrinya (ti)
+
+Language can be switched from the dashboard interface.
+
+## 🔐 Default Credentials
+
+After running `python scripts/create_admin.py`:
+- **Username**: admin
+- **Password**: admin123
+
+**⚠️ Change these credentials in production!**
+
+## 📊 Key Features
+
+### Admin Dashboard
+- Real-time ride monitoring
+- Driver management (add, edit, delete)
+- Passenger tracking
+- Analytics and reports
+- Feedback management
+
+### Passenger Features
+- Request rides
+- Track driver location
+- View ride history
+- Rate drivers
+- Multi-language interface
+
+### Driver Management
+- Online/offline status
+- Ride assignment
+- Performance tracking
+- Earnings reports
+
+## 🔄 Recent Updates
+
+The project has been reorganized for better maintainability:
+- ✅ Documentation moved to `docs/` folder
+- ✅ Utility scripts moved to `scripts/` folder
+- ✅ Blueprint architecture available in `archive/`
+- ✅ Cleaner root directory structure
+
+See `docs/IMPROVEMENTS_COMPLETED.md` for detailed changelog.
+
+## 📖 API Documentation
+
+For API usage and service layer documentation, see:
+- **[Service Layer Usage Guide](docs/SERVICE_LAYER_USAGE_GUIDE.md)**
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
+
+## 📝 License
+
+This project is proprietary software.
+
+## 🆘 Support
+
+For issues or questions:
+1. Check the **[Quick Reference](docs/QUICK_REFERENCE.md)**
+2. Review **[Bug Fixes Summary](docs/BUG_FIXES_SUMMARY.md)**
+3. See **[Documentation Index](docs/INDEX.md)**
+
+## 🔮 Future Enhancements
+
+- Blueprint modular architecture (available in `archive/blueprint_structure/`)
+- Real-time WebSocket notifications
+- Mobile app integration
+- Advanced analytics dashboard
+- Payment gateway integration
 
 ---
 
-## 📝 What is this Project?
-This project is a simple and modern ride-hailing app, designed from the ground up for towns like Adigrat, Ethiopia. It's built around a dispatcher model, which is perfect for a local community. Passengers use a clean, mobile-friendly website to request a ride, and a central dispatcher manages everything from a live dashboard, assigning the best driver for the job.
-
-The whole system is built using free, open-source tools, so there are no running costs.
-
-🎯 The Blueprint for a Mobile App
-Think of this project as a complete, working blueprint. We've built this web application first to design, test, and perfect all the core logic—from calculating fares with real-time distance to tracking the status of a ride.
-
-The ultimate goal is to take this proven system and use it as the foundation to build a fast, reliable, and professional cross-platform mobile app using Flutter. All the backend work (the server 'brain') will be 100% reused for the final mobile app.
-
-✨ How It Works
-For Passengers...
-Request a ride from an interactive, real-time map of the town.
-
-Get instant suggestions for well-known local landmarks as you type.
-
-Choose your vehicle type (like a Bajaj).
-
-See the real, calculated price before you book.
-
-Track your request status, from "Finding a driver..." to seeing your assigned driver's details.
-
-A "Call Driver" button for easy communication.
-
-For the Dispatcher...
-See all incoming ride requests on a live dashboard that refreshes automatically.
-
-Manage your full list of drivers: add new drivers, see their details, and set their status (Available, Offline, etc.).
-
-Assign any pending ride to an available driver with a simple click.
-
-Mark rides as "Completed" or "Canceled" to keep the system up-to-date.
-
-🛠️ The Technology
-This app is built with a simple, powerful, and free open-source stack, primarily:
-
-Python (Flask) for the backend server.
-
-JavaScript for the interactive frontend experience.
-
-OpenStreetMap and other free tools for maps, search, and directions.
-
-SQLite for a simple, file-based database.
-
+**Version**: 2.0  
+**Last Updated**: October 13, 2025  
+**Status**: Production Ready ✅

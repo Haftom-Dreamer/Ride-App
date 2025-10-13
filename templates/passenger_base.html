@@ -78,22 +78,22 @@
         <div class="max-w-4xl mx-auto px-4">
             <div class="flex justify-between items-center h-16">
                 <div class="flex-shrink-0">
-                    <a href="{{ url_for('passenger_app') if current_user.is_authenticated else url_for('passenger_home') }}">
+                    <a href="{{ url_for('passenger.app') if current_user.is_authenticated else url_for('passenger.home') }}">
                         <img src="/static/img/Selamawi-logo 2 png.png" alt="Logo" class="h-10 w-auto">
                     </a>
                 </div>
                 
                 {% if current_user.is_authenticated and session.get('user_type') == 'passenger' %}
                 <div class="hidden md:flex items-center space-x-2">
-                    <a href="{{ url_for('passenger_app') }}"
+                    <a href="{{ url_for('passenger.app') }}"
                         class="px-3 py-2 rounded-md text-sm font-medium {{ 'text-indigo-600 dark:text-indigo-400' if 'request' in request.path else 'text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400' }}">{{ _('request_ride') }}</a>
-                    <a href="{{ url_for('passenger_history') }}"
+                    <a href="{{ url_for('passenger.history') }}"
                         class="px-3 py-2 rounded-md text-sm font-medium {{ 'text-indigo-600 dark:text-indigo-400' if 'history' in request.path else 'text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400' }}">{{ _('my_rides') }}</a>
-                    <a href="{{ url_for('passenger_support') }}"
+                    <a href="{{ url_for('passenger.support') }}"
                         class="px-3 py-2 rounded-md text-sm font-medium {{ 'text-indigo-600 dark:text-indigo-400' if 'support' in request.path else 'text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400' }}">{{ _('support') }}</a>
-                    <a href="{{ url_for('passenger_profile') }}"
+                    <a href="{{ url_for('passenger.profile') }}"
                         class="px-3 py-2 rounded-md text-sm font-medium {{ 'text-indigo-600 dark:text-indigo-400' if 'profile' in request.path else 'text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400' }}">{{ _('profile') }}</a>
-                    <a href="{{ url_for('logout') }}"
+                    <a href="{{ url_for('auth.logout') }}"
                         class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400">{{ _('logout') }}</a>
                 </div>
                 {% endif %}
