@@ -16,7 +16,7 @@ logger = logging.getLogger('alembic.env')
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-from main import db
+from app.models import db
 target_metadata = db.metadata
 
 

@@ -25,18 +25,45 @@ from flask_login import current_user
 @admin_required
 def get_dashboard_stats():
     """Get dashboard statistics"""
+    # Calculate total revenue from completed rides
     total_revenue = db.session.query(func.sum(Ride.fare)).filter(Ride.status == 'Completed').scalar() or 0
+    
+    # Count all rides
     total_rides = Ride.query.count()
+    
+    # Count drivers by status
     drivers_online = Driver.query.filter(Driver.status == 'Available').count()
+    total_drivers = Driver.query.count()
+    
+    # Count passengers
+    total_passengers = Passenger.query.count()
+    
+    # Count rides by status
     pending_requests = Ride.query.filter(Ride.status == 'Requested').count()
     active_rides = Ride.query.filter(Ride.status.in_(['Assigned', 'On Trip'])).count()
+    completed_rides = Ride.query.filter(Ride.status == 'Completed').count()
+    
+    # Calculate today's revenue
+    today = datetime.now(timezone.utc).date()
+    today_start = datetime.combine(today, datetime.min.time()).replace(tzinfo=timezone.utc)
+    today_end = datetime.combine(today, datetime.max.time()).replace(tzinfo=timezone.utc)
+    
+    today_revenue = db.session.query(func.sum(Ride.fare)).filter(
+        Ride.status == 'Completed',
+        Ride.request_time >= today_start,
+        Ride.request_time <= today_end
+    ).scalar() or 0
     
     return jsonify({
         'total_revenue': round(float(total_revenue), 2),
         'total_rides': total_rides,
         'drivers_online': drivers_online,
+        'total_drivers': total_drivers,
+        'total_passengers': total_passengers,
         'pending_requests': pending_requests,
-        'active_rides': active_rides
+        'active_rides': active_rides,
+        'completed_rides': completed_rides,
+        'today_revenue': round(float(today_revenue), 2)
     })
 
 # --- Ride Data ---
@@ -176,11 +203,14 @@ def get_passengers():
     for passenger in passengers:
         passengers_data.append({
             "id": passenger.id,
+            "passenger_uid": passenger.passenger_uid,
             "username": passenger.username,
             "phone_number": passenger.phone_number,
             "profile_picture": passenger.profile_picture,
             "rides_taken": len(passenger.rides),
-            "join_date": passenger.join_date.strftime('%Y-%m-%d') if passenger.join_date else None
+            "join_date": passenger.join_date.strftime('%Y-%m-%d') if passenger.join_date else None,
+            "is_blocked": passenger.is_blocked,
+            "blocked_reason": passenger.blocked_reason if passenger.is_blocked else None
         })
     
     return jsonify(passengers_data)
@@ -215,11 +245,15 @@ def get_passenger_details(passenger_id):
 
     return jsonify({
         'profile': {
+            'id': passenger.id,
             'name': passenger.username,
             'passenger_uid': passenger.passenger_uid,
             'phone_number': passenger.phone_number,
             'avatar': passenger.profile_picture,
-            'join_date': passenger.join_date.strftime('%b %d, %Y') if passenger.join_date else None
+            'join_date': passenger.join_date.strftime('%b %d, %Y') if passenger.join_date else None,
+            'is_blocked': passenger.is_blocked,
+            'blocked_reason': passenger.blocked_reason if passenger.is_blocked else None,
+            'blocked_at': to_eat(passenger.blocked_at).strftime('%b %d, %Y') if passenger.blocked_at else None
         },
         'stats': stats,
         'history': [{
@@ -358,81 +392,131 @@ def get_all_feedback():
 def get_analytics_data():
     """Get analytics data for charts and graphs"""
     try:
-        period = request.args.get('period', 'today')
+        period = request.args.get('period', 'week')
         
         # Calculate date range based on period
         now = datetime.now(timezone.utc)
         
         if period == 'today':
             start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            prev_start = start_date - timedelta(days=1)
+            prev_end = start_date
         elif period == 'week':
             start_date = now - timedelta(days=7)
+            prev_start = start_date - timedelta(days=7)
+            prev_end = start_date
         elif period == 'month':
             start_date = now - timedelta(days=30)
+            prev_start = start_date - timedelta(days=30)
+            prev_end = start_date
         elif period == 'year':
             start_date = now - timedelta(days=365)
+            prev_start = start_date - timedelta(days=365)
+            prev_end = start_date
         else:
             start_date = now - timedelta(days=7)  # Default to week
+            prev_start = start_date - timedelta(days=7)
+            prev_end = start_date
         
-        # Get rides in date range
+        # Get current period rides
         rides = Ride.query.filter(Ride.request_time >= start_date).all()
         
-        # Calculate statistics
-        total_rides = len(rides)
+        # Get previous period rides for trend calculation
+        prev_rides = Ride.query.filter(
+            Ride.request_time >= prev_start,
+            Ride.request_time < prev_end
+        ).all()
+        
+        # Calculate current period statistics
         completed_rides = len([r for r in rides if r.status == 'Completed'])
         canceled_rides = len([r for r in rides if r.status == 'Canceled'])
+        active_rides = len([r for r in rides if r.status in ['Assigned', 'On Trip']])
         total_revenue = sum(float(r.fare) for r in rides if r.status == 'Completed')
+        avg_fare = total_revenue / completed_rides if completed_rides > 0 else 0
         
-        # Rides by vehicle type
-        bajaj_rides = len([r for r in rides if r.vehicle_type == 'Bajaj'])
-        car_rides = len([r for r in rides if r.vehicle_type == 'Car'])
+        # Calculate previous period statistics for trends
+        prev_completed = len([r for r in prev_rides if r.status == 'Completed'])
+        prev_revenue = sum(float(r.fare) for r in prev_rides if r.status == 'Completed')
         
-        # Rides by status
-        requested = len([r for r in rides if r.status == 'Requested'])
-        assigned = len([r for r in rides if r.status == 'Assigned'])
+        # Calculate trends
+        rides_trend = ((completed_rides - prev_completed) / prev_completed * 100) if prev_completed > 0 else 0
+        revenue_trend = ((total_revenue - prev_revenue) / prev_revenue * 100) if prev_revenue > 0 else 0
         
-        # Average rating
-        feedbacks = Feedback.query.join(Ride).filter(
-            Ride.request_time >= start_date,
-            Feedback.rating.isnot(None)
-        ).all()
-        avg_rating = sum(f.rating for f in feedbacks) / len(feedbacks) if feedbacks else 0
+        # Vehicle distribution
+        vehicle_dist = {}
+        for ride in rides:
+            vtype = ride.vehicle_type or 'Unknown'
+            vehicle_dist[vtype] = vehicle_dist.get(vtype, 0) + 1
         
-        # Daily breakdown for charts
+        # Payment method distribution
+        payment_dist = {}
+        for ride in rides:
+            if ride.status == 'Completed':
+                pmethod = ride.payment_method or 'Cash'
+                payment_dist[pmethod] = payment_dist.get(pmethod, 0) + 1
+        
+        # Daily breakdown for revenue chart
         daily_data = {}
         for ride in rides:
-            ride_date = to_eat(ride.request_time).strftime('%Y-%m-%d')
+            ride_date = to_eat(ride.request_time).strftime('%b %d')
             if ride_date not in daily_data:
-                daily_data[ride_date] = {'rides': 0, 'revenue': 0}
-            daily_data[ride_date]['rides'] += 1
+                daily_data[ride_date] = 0
             if ride.status == 'Completed':
-                daily_data[ride_date]['revenue'] += float(ride.fare)
+                daily_data[ride_date] += float(ride.fare)
         
-        # Convert to list for frontend
-        daily_breakdown = [
-            {
-                'date': date,
-                'rides': data['rides'],
-                'revenue': round(data['revenue'], 2)
-            }
-            for date, data in sorted(daily_data.items())
-        ]
+        # Sort by date and prepare chart data
+        sorted_dates = sorted(daily_data.keys())
+        revenue_chart_data = {
+            'labels': sorted_dates[-7:] if len(sorted_dates) > 7 else sorted_dates,  # Last 7 days
+            'data': [round(daily_data[d], 2) for d in (sorted_dates[-7:] if len(sorted_dates) > 7 else sorted_dates)]
+        }
+        
+        # Top performing drivers
+        driver_stats = db.session.query(
+            Driver.id,
+            Driver.name,
+            Driver.profile_picture,
+            func.count(Ride.id).label('completed_rides'),
+            func.avg(Feedback.rating).label('avg_rating')
+        ).join(Ride, Ride.driver_id == Driver.id)\
+         .outerjoin(Feedback, Feedback.ride_id == Ride.id)\
+         .filter(Ride.status == 'Completed')\
+         .filter(Ride.request_time >= start_date)\
+         .group_by(Driver.id)\
+         .order_by(func.count(Ride.id).desc())\
+         .limit(5).all()
+        
+        top_drivers = [{
+            'name': d.name,
+            'avatar': d.profile_picture or 'static/img/default_avatar.png',
+            'completed_rides': d.completed_rides,
+            'avg_rating': round(float(d.avg_rating), 1) if d.avg_rating else 0
+        } for d in driver_stats]
         
         return jsonify({
-            'period': period,
-            'total_rides': total_rides,
-            'completed_rides': completed_rides,
-            'canceled_rides': canceled_rides,
-            'total_revenue': round(total_revenue, 2),
-            'bajaj_rides': bajaj_rides,
-            'car_rides': car_rides,
-            'requested': requested,
-            'assigned': assigned,
-            'average_rating': round(avg_rating, 2),
-            'daily_breakdown': daily_breakdown
+            'kpis': {
+                'rides_completed': completed_rides,
+                'active_rides_now': active_rides,
+                'rides_canceled': canceled_rides,
+                'total_revenue': round(total_revenue, 2),
+                'avg_fare': round(avg_fare, 2),
+                'trends': {
+                    'rides': round(rides_trend, 1),
+                    'revenue': round(revenue_trend, 1)
+                }
+            },
+            'charts': {
+                'revenue_over_time': revenue_chart_data,
+                'vehicle_distribution': vehicle_dist,
+                'payment_method_distribution': payment_dist
+            },
+            'performance': {
+                'top_drivers': top_drivers
+            }
         })
         
     except Exception as e:
+        current_app.logger.error(f"Analytics error: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @api.route('/support-tickets')

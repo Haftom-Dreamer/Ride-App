@@ -170,7 +170,7 @@ def create_app(config_name=None):
     
     # Import API blueprint and all its routes BEFORE registering
     from app.api import api
-    from app.api import rides, drivers, data, passenger_api  # Import all API modules
+    from app.api import rides, drivers, data, passenger_api, admins  # Import all API modules
     
     # Initialize limiter for blueprints
     from app.auth import init_limiter as auth_init_limiter
@@ -218,19 +218,25 @@ def create_app(config_name=None):
                 print("WARNING: No admin user found. Please create one using the create_admin.py script.")
             
             # Update driver UIDs if needed
-            from app.models import Driver
-            drivers_without_uid = Driver.query.filter(Driver.driver_uid == None).all()
-            if drivers_without_uid:
-                for driver in drivers_without_uid:
-                    driver.driver_uid = f"DRV-{driver.id:04d}"
-                db.session.commit()
+            try:
+                from app.models import Driver
+                drivers_without_uid = Driver.query.filter(Driver.driver_uid == None).all()
+                if drivers_without_uid:
+                    for driver in drivers_without_uid:
+                        driver.driver_uid = f"DRV-{driver.id:04d}"
+                    db.session.commit()
+            except Exception as e:
+                app.logger.warning(f"Could not update driver UIDs: {e}")
             
             # Update passenger UIDs if needed  
-            passengers_without_uid = Passenger.query.filter(Passenger.passenger_uid == None).all()
-            if passengers_without_uid:
-                for passenger in passengers_without_uid:
-                    passenger.passenger_uid = f"PAX-{passenger.id:05d}"
-                db.session.commit()
+            try:
+                passengers_without_uid = Passenger.query.filter(Passenger.passenger_uid == None).all()
+                if passengers_without_uid:
+                    for passenger in passengers_without_uid:
+                        passenger.passenger_uid = f"PAX-{passenger.id:05d}"
+                    db.session.commit()
+            except Exception as e:
+                app.logger.warning(f"Could not update passenger UIDs: {e}")
             
             # Create default settings if needed
             from app.models import Setting

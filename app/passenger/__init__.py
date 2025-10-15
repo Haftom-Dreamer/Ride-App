@@ -13,10 +13,10 @@ passenger = Blueprint('passenger', __name__)
 def passenger_required(f):
     """Decorator to require passenger authentication"""
     @wraps(f)
-    @login_required  
     def decorated_function(*args, **kwargs):
+        # Check if user is authenticated and is a passenger
         if not current_user.is_authenticated or session.get('user_type') != 'passenger':
-            flash('Please log in to access this page.', 'warning')
+            flash('Please log in as a passenger to access this page.', 'warning')
             return redirect(url_for('auth.passenger_login'))
         return f(*args, **kwargs)
     return decorated_function

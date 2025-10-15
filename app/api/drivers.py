@@ -193,7 +193,9 @@ def get_all_drivers():
                 'license_document': driver.license_document,
                 'vehicle_document': driver.vehicle_document,
                 'join_date': driver.join_date.strftime('%Y-%m-%d') if driver.join_date else None,
-                'avg_rating': round(avg_rating, 2) if avg_rating else 0
+                'avg_rating': round(avg_rating, 2) if avg_rating else 0,
+                'is_blocked': driver.is_blocked,
+                'blocked_reason': driver.blocked_reason if driver.is_blocked else None
             }
             drivers_data.append(driver_info)
         
@@ -286,6 +288,7 @@ def get_driver_details(driver_id):
     
     return jsonify({
         'profile': {
+            'id': driver.id,
             'name': driver.name,
             'driver_uid': driver.driver_uid,
             'status': driver.status,
@@ -296,7 +299,10 @@ def get_driver_details(driver_id):
             'plate_number': driver.vehicle_plate_number,
             'license': driver.license_info,
             'license_document': driver.license_document,
-            'vehicle_document': driver.vehicle_document
+            'vehicle_document': driver.vehicle_document,
+            'is_blocked': driver.is_blocked,
+            'blocked_reason': driver.blocked_reason if driver.is_blocked else None,
+            'blocked_at': to_eat(driver.blocked_at).strftime('%b %d, %Y') if driver.blocked_at else None
         },
         'stats': stats,
         'history': [{

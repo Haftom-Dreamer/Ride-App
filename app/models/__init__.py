@@ -29,6 +29,9 @@ class Passenger(UserMixin, db.Model):
     password_hash = db.Column(db.String(200), nullable=False)
     profile_picture = db.Column(db.String(255), nullable=True, default='static/img/default_user.svg')
     join_date = db.Column(db.DateTime, server_default=db.func.now())
+    is_blocked = db.Column(db.Boolean, default=False, nullable=False, index=True)
+    blocked_reason = db.Column(db.String(255), nullable=True)
+    blocked_at = db.Column(db.DateTime, nullable=True)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -52,6 +55,9 @@ class Driver(db.Model):
     join_date = db.Column(db.DateTime, server_default=db.func.now())
     current_lat = db.Column(db.Float, nullable=True)
     current_lon = db.Column(db.Float, nullable=True)
+    is_blocked = db.Column(db.Boolean, default=False, nullable=False, index=True)
+    blocked_reason = db.Column(db.String(255), nullable=True)
+    blocked_at = db.Column(db.DateTime, nullable=True)
 
 class Ride(db.Model):
     id = db.Column(db.Integer, primary_key=True)

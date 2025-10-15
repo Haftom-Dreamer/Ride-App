@@ -113,6 +113,55 @@
     .file-input-filename { margin-left: 0.75rem; font-style: italic; font-size: 0.875rem; color: var(--text-secondary); }
     .sidebar-summary summary { list-style: none; }
     .sidebar-summary summary::-webkit-details-marker { display: none; }
+    
+    /* Animations */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    @keyframes slideIn {
+        from { transform: translateX(-20px); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+    
+    .animate-fade-in {
+        animation: fadeInUp 0.6s ease-out forwards;
+        opacity: 0;
+    }
+    
+    .animate-slide-in {
+        animation: slideIn 0.5s ease-out forwards;
+        opacity: 0;
+    }
+    
+    .stat-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+    
+    .chart-container {
+        transition: opacity 0.3s ease;
+    }
+    
+    .chart-container.loading {
+        opacity: 0.5;
+    }
     .sidebar-summary .group-arrow { transition: transform 0.2s; }
     .sidebar-summary[open] > summary .group-arrow { transform: rotate(90deg); }
     .skeleton { animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; background-color: var(--border-color); border-radius: 0.375rem; }
@@ -215,10 +264,10 @@
                 </div>
             </details>
 
-            <!-- Data Group -->
+            <!-- Analytics & Reports Group -->
             <details class="sidebar-summary group">
                 <summary class="flex items-center p-3 rounded-lg cursor-pointer">
-                    <span class="sidebar-link-text group-title font-semibold text-xs uppercase tracking-wider text-gray-400">{{ _('data') }}</span>
+                    <span class="sidebar-link-text group-title font-semibold text-xs uppercase tracking-wider text-gray-400">{{ _('analytics') }}</span>
                     <span class="group-arrow ml-auto sidebar-link-text text-gray-400">&#9660;</span>
                 </summary>
                  <div class="pl-2 space-y-1">
@@ -227,15 +276,31 @@
                         <span class="icon-solid"><svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M2 10a8 8 0 1116 0 8 8 0 01-16 0zm10 2a2 2 0 100-4 2 2 0 000 4z" /><path fill-rule="evenodd" d="M12 2.25a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 0112 2.25zM5.25 12a.75.75 0 01.75-.75h1.5a.75.75 0 010 1.5h-1.5a.75.75 0 01-.75-.75zM12 15.75a.75.75 0 01-.75.75v1.5a.75.75 0 011.5 0v-1.5a.75.75 0 01-.75-.75zM15.75 12a.75.75 0 01.75-.75h1.5a.75.75 0 010 1.5h-1.5a.75.75 0 01-.75-.75z" clip-rule="evenodd" /></svg></span>
                         <span class="sidebar-link-text">{{ _('analytics') }}</span>
                     </a>
-                    <a href="#" class="sidebar-link flex items-center p-3 rounded-lg" data-pane="reports" title="{{ _('reports') }}">
-                        <span class="icon-outline"><svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg></span>
-                        <span class="icon-solid"><svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd" /></svg></span>
-                        <span class="sidebar-link-text">{{ _('reports') }}</span>
+                    <a href="#" class="sidebar-link flex items-center p-3 rounded-lg" data-pane="report-export" title="Export Reports">
+                        <span class="icon-outline"><svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg></span>
+                        <span class="icon-solid"><svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M10.75 2.75a.75.75 0 00-1.5 0v8.614L6.295 8.235a.75.75 0 10-1.09 1.03l4.25 4.5a.75.75 0 001.09 0l4.25-4.5a.75.75 0 00-1.09-1.03l-2.955 3.129V2.75z" /><path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z" /></svg></span>
+                        <span class="sidebar-link-text">Export Reports</span>
                     </a>
                     <a href="#" class="sidebar-link flex items-center p-3 rounded-lg" data-pane="rides" title="{{ _('ride_history') }}">
                         <span class="icon-outline"><svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" /></svg></span>
                         <span class="icon-solid"><svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.555 3.333a2.5 2.5 0 012.222-1.111c1.246 0 2.384.693 2.889 1.75 1.003 2.103 2.222 3.333 2.222 3.333V1.667a.833.833 0 111.667 0v11.666a.833.833 0 11-1.667 0v-1.25a3.333 3.333 0 00-3.333-3.333h-1.667a.833.833 0 010-1.667h1.667a1.667 1.667 0 011.667 1.667v1.25a.833.833 0 11-1.667 0V9.167a1.667 1.667 0 01-1.15-.693.834.834 0 01-.22-.644c0-.333.17-.633.427-.811A13.333 13.333 0 018.333 5a3.333 3.333 0 00-2.778-1.667z" clip-rule="evenodd" /></svg></span>
                         <span class="sidebar-link-text">{{ _('ride_history') }}</span>
+                    </a>
+                </div>
+            </details>
+
+            <!-- Support Group -->
+            <details class="sidebar-summary group">
+                <summary class="flex items-center p-3 rounded-lg cursor-pointer">
+                    <span class="sidebar-link-text group-title font-semibold text-xs uppercase tracking-wider text-gray-400">Support</span>
+                    <span class="group-arrow ml-auto sidebar-link-text text-gray-400">&#9660;</span>
+                </summary>
+                 <div class="pl-2 space-y-1">
+                    <a href="#" class="sidebar-link flex items-center p-3 rounded-lg" data-pane="support-tickets" title="Support Tickets">
+                        <span class="icon-outline"><svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 010 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 010-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375z" /></svg></span>
+                        <span class="icon-solid"><svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M2 3.5A1.5 1.5 0 013.5 2h13A1.5 1.5 0 0118 3.5v2.879a2.25 2.25 0 010 3.242V13.5A1.5 1.5 0 0116.5 15h-13A1.5 1.5 0 012 13.5V9.621a2.25 2.25 0 010-3.242V3.5zm2.75 6.375h10.5a.75.75 0 010 1.5H4.75a.75.75 0 010-1.5z" clip-rule="evenodd" /></svg></span>
+                        <span class="sidebar-link-text">Support Tickets</span>
+                        <span class="sidebar-badge" id="tickets-badge">0</span>
                     </a>
                 </div>
             </details>
@@ -303,21 +368,39 @@
         <div class="flex-grow overflow-y-auto">
             <div id="dashboard-pane" class="pane active">
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    <div class="stat-card">
+                    <div class="stat-card animate-fade-in">
                         <div class="stat-card-icon bg-green-500"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /></svg></div>
-                        <div><p class="text-sm text-secondary">{{ _('total_revenue') }}</p><p id="stat-revenue" class="text-2xl font-bold">0 ETB</p></div>
+                        <div><p class="text-sm text-secondary">Total Revenue</p><p id="stat-revenue" class="text-2xl font-bold">0 ETB</p></div>
                     </div>
-                    <div class="stat-card">
+                    <div class="stat-card animate-fade-in" style="animation-delay: 0.1s">
                         <div class="stat-card-icon bg-blue-500"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 6.75V15m0 0v2.25m0-2.25h1.5m-1.5 0H5.625M17.25 6H10.5m6.75 4.5H10.5" /></svg></div>
-                        <div><p class="text-sm text-secondary">{{ _('total_rides') }}</p><p id="stat-rides" class="text-2xl font-bold">0</p></div>
+                        <div><p class="text-sm text-secondary">Total Rides</p><p id="stat-rides" class="text-2xl font-bold">0</p></div>
                     </div>
-                    <div class="stat-card">
+                    <div class="stat-card animate-fade-in" style="animation-delay: 0.2s">
+                        <div class="stat-card-icon bg-purple-500"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg></div>
+                        <div><p class="text-sm text-secondary">Total Users</p><p id="stat-users" class="text-2xl font-bold">0</p></div>
+                    </div>
+                    <div class="stat-card animate-fade-in" style="animation-delay: 0.3s">
                         <div class="stat-card-icon bg-yellow-500"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg></div>
-                        <div><p class="text-sm text-secondary">{{ _('drivers_online') }}</p><p id="stat-drivers" class="text-2xl font-bold">0</p></div>
+                        <div><p class="text-sm text-secondary">Total Drivers</p><p id="stat-drivers" class="text-2xl font-bold">0</p></div>
                     </div>
-                    <div class="stat-card">
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="stat-card animate-fade-in" style="animation-delay: 0.4s">
+                        <div class="stat-card-icon bg-indigo-500"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
+                        <div><p class="text-sm text-secondary">Completed Rides</p><p id="stat-completed" class="text-2xl font-bold">0</p></div>
+                    </div>
+                    <div class="stat-card animate-fade-in" style="animation-delay: 0.5s">
+                        <div class="stat-card-icon bg-orange-500"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg></div>
+                        <div><p class="text-sm text-secondary">Active Rides</p><p id="stat-active" class="text-2xl font-bold">0</p></div>
+                    </div>
+                    <div class="stat-card animate-fade-in" style="animation-delay: 0.6s">
+                        <div class="stat-card-icon bg-green-600"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
+                        <div><p class="text-sm text-secondary">Today's Revenue</p><p id="stat-today-revenue" class="text-2xl font-bold">0 ETB</p></div>
+                    </div>
+                    <div class="stat-card animate-fade-in" style="animation-delay: 0.7s">
                         <div class="stat-card-icon bg-red-500"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
-                        <div><p class="text-sm text-secondary">{{ _('pending_requests') }}</p><p id="stat-pending" class="text-2xl font-bold">0</p></div>
+                        <div><p class="text-sm text-secondary">Pending Requests</p><p id="stat-pending" class="text-2xl font-bold">0</p></div>
                     </div>
                 </div>
                 <div class="grid grid-cols-1 lg:grid-cols-5 gap-8 mb-8">
@@ -372,12 +455,15 @@
             </div>
 
             <div id="inbox-pane" class="pane">
-                <div class="card p-6 rounded-lg shadow"><p class="text-sm text-secondary mb-4">View all ratings, comments, and reports from passengers here.</p><div id="feedback-list" class="space-y-4"></div></div>
+                <div class="card p-6 rounded-lg shadow">
+                    <h3 class="text-xl font-semibold mb-4 text-primary">Feedback & Ratings</h3>
+                    <p class="text-sm text-secondary mb-4">View all ratings, comments, and reports from passengers here.</p>
+                    <div id="feedback-list" class="space-y-4"></div>
+                </div>
             </div>
 
-            <div id="reports-pane" class="pane">
-                <!-- Support Tickets Section -->
-                <div class="card p-6 rounded-lg shadow mb-6">
+            <div id="support-tickets-pane" class="pane">
+                <div class="card p-6 rounded-lg shadow">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-xl font-semibold text-primary">Support Tickets</h3>
                         <button onclick="refreshSupportTickets()" class="px-3 py-1 bg-indigo-600 text-white rounded text-sm hover:bg-indigo-700">
@@ -387,9 +473,10 @@
                     <div id="support-tickets-list" class="space-y-3">
                         <p class="text-gray-500">Loading support tickets...</p>
                     </div>
+                    </div>
                 </div>
 
-                <!-- Analytics Report Export -->
+            <div id="report-export-pane" class="pane">
                 <div class="card p-6 rounded-lg shadow max-w-2xl mx-auto">
                     <h3 class="text-xl font-semibold mb-2 text-primary">Generate Analytics Report</h3><p class="text-secondary mb-4">Export a detailed report of rides, revenue, and performance metrics for a specific date range.</p>
                     <div class="p-4 rounded-lg bg-[--main-bg] border border-[--border-color]">
@@ -406,8 +493,8 @@
                         <div class="mt-6">
                             <h3 class="text-md font-semibold text-primary mb-2">2. Choose Format & Download</h3>
                             <div class="flex justify-start space-x-4">
-                                <button id="export-pdf-btn" class="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-md bg-red-600 text-white"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm.5 8.106a.5.5 0 01.5-.5h2a.5.5 0 01.5.5v3.563a.5.5 0 01-.5.5h-2a.5.5 0 01-.5-.5V12.106zM7 7.5a.5.5 0 00-.5.5v2.063a.5.5 0 101 0V8a.5.5 0 00-.5-.5H7zm4 0a.5.5 0 00-.5.5v6.063a.5.5 0 101 0V8a.5.5 0 00-.5-.5h-1zm-1.5.5a.5.5 0 01.5-.5h2a.5.5 0 01.5.5v2.063a.5.5 0 11-1 0V8.53a.5.5 0 010-.03V8a.5.5 0 01.5-.5z" clip-rule="evenodd" /></svg>Download PDF</button>
-                                <button id="export-excel-btn" class="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-md bg-green-600 text-white"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm3.5 1a.5.5 0 00-.5.5v1.293l3.5 3.5 3.5-3.5V6.5a.5.5 0 00-1 0v.293L10 9.293 6.5 5.793V6.5a.5.5 0 00-.5-.5h-1z" /></svg>Download Excel</button>
+                                <button id="export-pdf-btn" class="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-md bg-red-600 text-white hover:bg-red-700"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm.5 8.106a.5.5 0 01.5-.5h2a.5.5 0 01.5.5v3.563a.5.5 0 01-.5.5h-2a.5.5 0 01-.5-.5V12.106zM7 7.5a.5.5 0 00-.5.5v2.063a.5.5 0 101 0V8a.5.5 0 00-.5-.5H7zm4 0a.5.5 0 00-.5.5v6.063a.5.5 0 101 0V8a.5.5 0 00-.5-.5h-1zm-1.5.5a.5.5 0 01.5-.5h2a.5.5 0 01.5.5v2.063a.5.5 0 11-1 0V8.53a.5.5 0 010-.03V8a.5.5 0 01.5-.5z" clip-rule="evenodd" /></svg>Download PDF</button>
+                                <button id="export-excel-btn" class="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-md bg-green-600 text-white hover:bg-green-700"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm3.5 1a.5.5 0 00-.5.5v1.293l3.5 3.5 3.5-3.5V6.5a.5.5 0 00-1 0v.293L10 9.293 6.5 5.793V6.5a.5.5 0 00-.5-.5h-1z" /></svg>Download Excel</button>
                             </div>
                         </div>
                     </div>
@@ -436,7 +523,8 @@
                         <table class="w-full text-left">
                             <thead>
                                 <tr class="border-b border-border">
-                                    <th class="p-2">Name</th>
+                                    <th class="p-2">ID</th>
+                                    <th>Name</th>
                                     <th>Contact</th>
                                     <th>Rides Taken</th>
                                     <th>Member Since</th>
@@ -451,7 +539,7 @@
             </div>
             <div id="rides-pane" class="pane">
                 <div class="card p-6 rounded-lg shadow">
-                    <div class="flex justify-between items-center mb-4"><input type="text" id="ride-history-search" placeholder="{{ _('search_by_passenger_driver') }}" class="border p-2 rounded w-1/3"><div><button id="ride-history-prev" class="px-3 py-1 bg-gray-200 rounded-md">&lt; {{ _('prev') }}</button><span id="ride-history-page-info" class="mx-2">{{ _('page') }} 1</span><button id="ride-history-next" class="px-3 py-1 bg-gray-200 rounded-md">{{ _('next') }} &gt;</button></div></div>
+                    <div class="flex justify-between items-center mb-4"><input type="text" id="ride-history-search" placeholder="{{ _('search_by_passenger_driver') }}" class="border p-2 rounded w-1/3"><div><button id="ride-history-prev" class="px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600">&lt; {{ _('prev') }}</button><span id="ride-history-page-info" class="mx-2 text-primary">{{ _('page') }} 1</span><button id="ride-history-next" class="px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600">{{ _('next') }} &gt;</button></div></div>
                     <table class="w-full text-left"><thead><tr class="border-b border-border"><th class="p-2">ID</th><th>Passenger</th><th>Driver</th><th>Fare</th><th>Status</th><th>Rating</th><th>Date</th><th>Actions</th></tr></thead><tbody id="rides-history-table-body"></tbody></table>
                 </div>
             </div>
@@ -466,22 +554,34 @@
                     </div>
                     <div class="py-6">
                         <div id="profile-settings-content" class="settings-content active">
-                            <h3 class="text-xl font-semibold mb-4 text-primary">{{ _('your_account') }}</h3>
+                            <h3 class="text-xl font-semibold mb-6 text-primary">{{ _('your_account') }}</h3>
+                            
+                            <!-- Profile Information Form -->
+                            <div class="mb-8 p-4 bg-[--main-bg] rounded-lg">
+                                <h4 class="text-lg font-semibold mb-4 text-primary">Profile Information</h4>
                             <form id="update-profile-form" class="space-y-4 max-w-md">
                                 <div class="flex items-center space-x-4">
                                     <img id="settings-avatar" src="/{{ current_user.profile_picture or 'static/img/default_avatar.png' }}" class="h-16 w-16 rounded-full object-cover" alt="{{ _('your_avatar') }}">
                                     <div>
-                                        <label for="update-profile-picture" class="file-input-label hover:bg-[--border-color]">{{ _('change_picture') }}</label>
+                                        <label for="update-profile-picture" class="file-input-label hover:bg-[--border-color]">Change Picture</label>
                                         <input type="file" name="profile_picture" id="update-profile-picture" class="hidden" accept="image/*" onchange="updateFilenameLabel(this.id, 'profile-picture-filename')">
-                                        <p id="profile-picture-filename" class="file-input-filename text-xs mt-1">{{ _('no_file_chosen') }}</p>
+                                        <p id="profile-picture-filename" class="file-input-filename text-xs mt-1">No file chosen</p>
                                     </div>
                                 </div>
                                 <div><label for="update-username" class="block text-sm font-medium">Username</label><input type="text" name="username" id="update-username" value="{{ current_user.username }}" required class="border p-2 rounded-md w-full mt-1"></div>
-                                <div><label for="update-new-password" class="block text-sm font-medium">New Password (optional)</label><input type="password" name="new_password" id="update-new-password" class="border p-2 rounded-md w-full mt-1"></div>
-                                <div><label for="update-current-password" class="block text-sm font-medium">Current Password (to confirm changes)</label><input type="password" name="current_password" id="update-current-password" required class="border p-2 rounded-md w-full mt-1"></div>
-                                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">{{ _('save_changes') }}</button>
+                                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">Save Profile</button>
                                 <p id="profile-feedback" class="text-sm mt-2"></p>
                             </form>
+                            </div>
+                            
+                            <!-- Change Password Form -->
+                            <div class="p-4 bg-[--main-bg] rounded-lg">
+                                <h4 class="text-lg font-semibold mb-4 text-primary">Change Password</h4>
+                                <button id="change-password-btn" class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700">
+                                    Change Password
+                                </button>
+                                <p class="text-xs text-secondary mt-2">Update your account password</p>
+                            </div>
                         </div>
                         <div id="fare-settings-content" class="settings-content">
                             <h3 class="text-xl font-semibold mb-4 text-primary">{{ _('fare_configuration') }}</h3>
@@ -587,6 +687,64 @@
     </div>
 </div>
 
+<div id="change-password-modal" class="modal fixed inset-0 z-50 items-center justify-center hidden">
+    <div class="absolute inset-0 bg-black opacity-50"></div>
+    <div class="modal-content p-8 rounded-lg shadow-xl z-10 w-full max-w-md">
+        <h2 class="text-2xl font-bold mb-6">Change Password</h2>
+        <form id="change-password-form" class="space-y-4">
+            <div>
+                <label for="password-current-password" class="block text-sm font-medium mb-1">Current Password</label>
+                <input type="password" id="password-current-password" required class="mt-1 block w-full p-2 border rounded-md">
+            </div>
+            <div>
+                <label for="password-new-password" class="block text-sm font-medium mb-1">New Password</label>
+                <input type="password" id="password-new-password" required class="mt-1 block w-full p-2 border rounded-md">
+            </div>
+            <div>
+                <label for="password-confirm-password" class="block text-sm font-medium mb-1">Confirm New Password</label>
+                <input type="password" id="password-confirm-password" required class="mt-1 block w-full p-2 border rounded-md">
+            </div>
+            <p id="password-feedback" class="text-sm mt-2"></p>
+            <div class="flex justify-end space-x-4 pt-4">
+                <button type="button" class="cancel-modal-btn px-4 py-2 bg-gray-200 text-gray-800 rounded-lg">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-orange-600 text-white rounded-lg">Change Password</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="confirm-modal" class="modal fixed inset-0 z-50 items-center justify-center hidden">
+    <div class="absolute inset-0 bg-black opacity-50"></div>
+    <div class="modal-content p-8 rounded-lg shadow-xl z-10 w-full max-w-sm text-center">
+        <h2 class="text-xl font-bold mb-2" id="confirm-modal-title">Confirm Action</h2>
+        <p class="text-secondary mb-6" id="confirm-modal-message">Are you sure?</p>
+        <div class="flex justify-center space-x-4">
+            <button type="button" class="cancel-modal-btn px-6 py-2 bg-gray-200 text-gray-800 rounded-lg">Cancel</button>
+            <button id="confirm-modal-btn" type="button" class="px-6 py-2 bg-red-600 text-white rounded-lg">Confirm</button>
+        </div>
+    </div>
+</div>
+
+<div id="block-user-modal" class="modal fixed inset-0 z-50 items-center justify-center hidden">
+    <div class="absolute inset-0 bg-black opacity-50"></div>
+    <div class="modal-content p-8 rounded-lg shadow-xl z-10 w-full max-w-md">
+        <h2 class="text-2xl font-bold mb-6">Block User</h2>
+        <form id="block-user-form" class="space-y-4">
+            <input type="hidden" id="block-user-id">
+            <input type="hidden" id="block-user-type">
+            <div>
+                <label for="block-reason" class="block text-sm font-medium mb-1">Reason for blocking</label>
+                <textarea id="block-reason" rows="3" required class="mt-1 block w-full p-2 border rounded-md" placeholder="Enter reason..."></textarea>
+            </div>
+            <p id="block-feedback" class="text-sm mt-2"></p>
+            <div class="flex justify-end space-x-4 pt-4">
+                <button type="button" class="cancel-modal-btn px-4 py-2 bg-gray-200 text-gray-800 rounded-lg">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-lg">Block User</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/moment@2.29.1/moment.js"></script>
@@ -657,7 +815,7 @@
             if (paneId === 'dashboard' && !dashboardMap) initDashboardMap(); 
             if (paneId === 'analytics') updateAnalytics(); 
             if (paneId === 'inbox') refreshFeedback(); 
-            if (paneId === 'reports') refreshSupportTickets(); 
+            if (paneId === 'support-tickets') refreshSupportTickets(); 
             if(paneId === 'settings') refreshAdminUsers(); 
             if (dashboardMap) setTimeout(() => dashboardMap.invalidateSize(), 310); 
         };
@@ -708,8 +866,112 @@
                 inboxBadge.classList.toggle('hidden', unreadCount === 0);
             }
         };
-        const updateDashboardStats = stats => { if (stats) { ['total_revenue', 'total_rides', 'drivers_online', 'pending_requests'].forEach(key => { const el = document.getElementById(`stat-${key.split('_')[0]}`); if(el) el.textContent = `${stats[key]}` + (key === 'total_revenue' ? ' ETB' : ''); }); if(stats.pending_requests > lastPendingCount) { notificationSound.play(); } lastPendingCount = stats.pending_requests; document.getElementById('notification-badge').textContent = lastPendingCount; document.getElementById('notification-badge').classList.toggle('hidden', lastPendingCount === 0); } };
-        const updateAnalytics = async () => { const data = await fetchData('analytics-data', currentAnalyticsParams); if(data) { const {kpis, charts, performance} = data; document.getElementById('kpi-rides-completed').textContent = kpis.rides_completed; document.getElementById('kpi-active-rides-now').textContent = kpis.active_rides_now; document.getElementById('kpi-rides-canceled').textContent = kpis.rides_canceled; document.getElementById('kpi-total-revenue').textContent = kpis.total_revenue; document.getElementById('kpi-avg-fare').textContent = kpis.avg_fare.toFixed(2); const updateTrend = (elId, val) => { const el = document.getElementById(elId); el.textContent = `${val >= 0 ? '↑' : '↓'} ${Math.abs(val)}%`; el.className = `kpi-trend ${val >= 0 ? 'trend-up' : 'trend-down'}`; }; updateTrend('kpi-rides-trend', kpis.trends.rides); updateTrend('kpi-revenue-trend', kpis.trends.revenue); const createChart = (ctxId, chartVar, type, data, options) => { const ctx = document.getElementById(ctxId).getContext('2d'); if(window[chartVar]) window[chartVar].destroy(); window[chartVar] = new Chart(ctx, { type, data, options }); }; const commonOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: chartTextColor() } } } }; createChart('revenue-over-time-chart', 'revenueChart', 'bar', { labels: charts.revenue_over_time.labels, datasets: [{ label: 'Daily Revenue (ETB)', data: charts.revenue_over_time.data, backgroundColor: getCssVar('--chart-purple') }] }, { ...commonOptions, scales: { y: { beginAtZero: true, ticks: { color: chartTextColor() } }, x: { ticks: { color: chartTextColor() } } } }); createChart('vehicle-dist-chart', 'vehicleDistChart', 'doughnut', { labels: Object.keys(charts.vehicle_distribution), datasets: [{ data: Object.values(charts.vehicle_distribution), backgroundColor: [getCssVar('--chart-orange'), getCssVar('--chart-blue'), getCssVar('--chart-yellow')] }] }, commonOptions); createChart('payment-dist-chart', 'paymentDistChart', 'doughnut', { labels: Object.keys(charts.payment_method_distribution), datasets: [{ data: Object.values(charts.payment_method_distribution), backgroundColor: [getCssVar('--chart-green'), getCssVar('--chart-purple'), getCssVar('--chart-red')] }] }, commonOptions); const topDriversList = document.getElementById('top-drivers-list'); topDriversList.innerHTML = ''; performance.top_drivers.forEach(d => { const div = document.createElement('div'); div.className = 'flex items-center justify-between p-2'; div.innerHTML = `<div class="flex items-center"><img src="/${d.avatar}" class="h-10 w-10 rounded-full mr-4 object-cover"><div><p class="font-semibold">${d.name}</p><p class="text-xs text-secondary">${d.avg_rating} ★</p></div></div><p class="font-bold text-lg">${d.completed_rides} rides</p>`; topDriversList.appendChild(div); }); }};
+        const updateDashboardStats = stats => { 
+            if (stats) { 
+                // Update main stats with animation
+                const statMappings = {
+                    'stat-revenue': { value: stats.total_revenue, suffix: ' ETB' },
+                    'stat-rides': { value: stats.total_rides, suffix: '' },
+                    'stat-users': { value: stats.total_passengers, suffix: '' },
+                    'stat-drivers': { value: stats.total_drivers, suffix: '' },
+                    'stat-completed': { value: stats.completed_rides, suffix: '' },
+                    'stat-active': { value: stats.active_rides, suffix: '' },
+                    'stat-today-revenue': { value: stats.today_revenue, suffix: ' ETB' },
+                    'stat-pending': { value: stats.pending_requests, suffix: '' }
+                };
+                
+                Object.entries(statMappings).forEach(([id, config]) => {
+                    const el = document.getElementById(id);
+                    if (el) {
+                        // Animate the number change
+                        animateNumber(el, config.value, config.suffix);
+                    }
+                });
+                
+                if(stats.pending_requests > lastPendingCount) { 
+                    notificationSound.play(); 
+                } 
+                lastPendingCount = stats.pending_requests; 
+                // Update notification badge with unread notification count
+                const unreadCount = recentNotifications.length;
+                const badge = document.getElementById('notification-badge');
+                badge.textContent = unreadCount > 0 ? unreadCount : stats.pending_requests;
+                badge.classList.toggle('hidden', unreadCount === 0 && stats.pending_requests === 0); 
+            } 
+        };
+        
+        // Animate number changes
+        const animateNumber = (element, targetValue, suffix = '') => {
+            const startValue = parseFloat(element.textContent.replace(/[^\d.-]/g, '')) || 0;
+            const duration = 1000; // 1 second
+            const startTime = performance.now();
+            
+            const animate = (currentTime) => {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                // Easing function for smooth animation
+                const easeOutQuart = 1 - Math.pow(1 - progress, 4);
+                const currentValue = startValue + (targetValue - startValue) * easeOutQuart;
+                
+                element.textContent = Math.round(currentValue) + suffix;
+                
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                }
+            };
+            
+            requestAnimationFrame(animate);
+        };
+        const updateAnalytics = async () => { 
+            // Add loading animation
+            const chartContainers = document.querySelectorAll('.chart-container');
+            chartContainers.forEach(container => container.classList.add('loading'));
+            
+            const data = await fetchData('analytics-data', currentAnalyticsParams); 
+            if(data) { 
+                const {kpis, charts, performance} = data; 
+                
+                // Animate KPI updates
+                animateNumber(document.getElementById('kpi-rides-completed'), kpis.rides_completed);
+                animateNumber(document.getElementById('kpi-active-rides-now'), kpis.active_rides_now);
+                animateNumber(document.getElementById('kpi-rides-canceled'), kpis.rides_canceled);
+                animateNumber(document.getElementById('kpi-total-revenue'), kpis.total_revenue, ' ETB');
+                animateNumber(document.getElementById('kpi-avg-fare'), kpis.avg_fare, ' ETB');
+                
+                const updateTrend = (elId, val) => { 
+                    const el = document.getElementById(elId); 
+                    el.textContent = `${val >= 0 ? '↑' : '↓'} ${Math.abs(val)}%`; 
+                    el.className = `kpi-trend ${val >= 0 ? 'trend-up' : 'trend-down'}`; 
+                    el.style.animation = 'fadeIn 0.5s ease-out';
+                }; 
+                updateTrend('kpi-rides-trend', kpis.trends.rides); 
+                updateTrend('kpi-revenue-trend', kpis.trends.revenue); 
+                
+                const createChart = (ctxId, chartVar, type, data, options) => { 
+                    const ctx = document.getElementById(ctxId).getContext('2d'); 
+                    if(window[chartVar]) window[chartVar].destroy(); 
+                    window[chartVar] = new Chart(ctx, { type, data, options }); 
+                }; 
+                const commonOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: chartTextColor() } } } }; 
+                createChart('revenue-over-time-chart', 'revenueChart', 'bar', { labels: charts.revenue_over_time.labels, datasets: [{ label: 'Daily Revenue (ETB)', data: charts.revenue_over_time.data, backgroundColor: getCssVar('--chart-purple') }] }, { ...commonOptions, scales: { y: { beginAtZero: true, ticks: { color: chartTextColor() } }, x: { ticks: { color: chartTextColor() } } } }); 
+                createChart('vehicle-dist-chart', 'vehicleDistChart', 'doughnut', { labels: Object.keys(charts.vehicle_distribution), datasets: [{ data: Object.values(charts.vehicle_distribution), backgroundColor: [getCssVar('--chart-orange'), getCssVar('--chart-blue'), getCssVar('--chart-yellow')] }] }, commonOptions); 
+                createChart('payment-dist-chart', 'paymentDistChart', 'doughnut', { labels: Object.keys(charts.payment_method_distribution), datasets: [{ data: Object.values(charts.payment_method_distribution), backgroundColor: [getCssVar('--chart-green'), getCssVar('--chart-purple'), getCssVar('--chart-red')] }] }, commonOptions); 
+                
+                const topDriversList = document.getElementById('top-drivers-list'); 
+                topDriversList.innerHTML = ''; 
+                performance.top_drivers.forEach((d, index) => { 
+                    const div = document.createElement('div'); 
+                    div.className = 'flex items-center justify-between p-2 animate-slide-in';
+                    div.style.animationDelay = `${index * 0.1}s`;
+                    div.innerHTML = `<div class="flex items-center"><img src="/${d.avatar}" class="h-10 w-10 rounded-full mr-4 object-cover"><div><p class="font-semibold">${d.name}</p><p class="text-xs text-secondary">${d.avg_rating} ★</p></div></div><p class="font-bold text-lg">${d.completed_rides} rides</p>`; 
+                    topDriversList.appendChild(div); 
+                }); 
+                
+                // Remove loading animation
+                chartContainers.forEach(container => container.classList.remove('loading'));
+            }
+        };
         
         const renderPendingRides = (rides, availableDrivers, containerId) => {
             const list = document.getElementById(containerId);
@@ -748,32 +1010,41 @@
             });
         };
 
-        const updateDriversTable = () => { const searchTerm = document.getElementById('driver-search-input').value.toLowerCase(); const statusFilter = document.getElementById('driver-status-filter').value; const filtered = allDrivers.filter(d => (d.name.toLowerCase().includes(searchTerm) || d.phone_number.includes(searchTerm) || (d.driver_uid && d.driver_uid.toLowerCase().includes(searchTerm))) && (statusFilter === 'All' || d.status === statusFilter)); const tbody = document.getElementById('drivers-table-body'); tbody.innerHTML = ''; if (!filtered.length) { tbody.innerHTML = '<tr><td colspan="7" class="text-center p-4">No drivers found.</td></tr>'; return; } filtered.forEach(d => { const row = tbody.insertRow(); row.innerHTML = `<td class="p-2 font-mono text-xs">${d.driver_uid||'N/A'}</td><td class="flex items-center"><img src="/${d.profile_picture}" class="h-8 w-8 rounded-full mr-3 object-cover" onerror="this.src='/static/img/default_avatar.png'">${d.name}</td><td><a href="tel:${d.phone_number}" class="text-blue-500">${d.phone_number}</a></td><td>${d.vehicle_type}</td><td><select class="driver-status-select status-select-${d.status.replace(' ','-')}" data-driver-id="${d.id}">${['Available','On Trip','Offline'].map(s => `<option value="${s}" ${d.status===s?'selected':''}>${s}</option>`).join('')}</select></td><td>${d.avg_rating.toFixed(1)} ★</td><td class="space-x-2"><button class="action-btn view" data-driver-id="${d.id}">👁️</button><button class="action-btn edit" data-driver-id="${d.id}">✏️</button><button class="action-btn delete" data-driver-id="${d.id}">🗑️</button></td>`; }); };
+        const updateDriversTable = () => { const searchTerm = document.getElementById('driver-search-input').value.toLowerCase(); const statusFilter = document.getElementById('driver-status-filter').value; const filtered = allDrivers.filter(d => (d.name.toLowerCase().includes(searchTerm) || d.phone_number.includes(searchTerm) || (d.driver_uid && d.driver_uid.toLowerCase().includes(searchTerm))) && (statusFilter === 'All' || d.status === statusFilter)); const tbody = document.getElementById('drivers-table-body'); tbody.innerHTML = ''; if (!filtered.length) { tbody.innerHTML = '<tr><td colspan="8" class="text-center p-4">No drivers found.</td></tr>'; return; } filtered.forEach(d => { const row = tbody.insertRow(); const blockedBadge = d.is_blocked ? '<span class="ml-2 px-2 py-1 text-xs bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 rounded">BLOCKED</span>' : ''; const blockBtn = d.is_blocked ? `<button class="action-btn text-green-600" onclick="unblockUser(${d.id}, 'driver', '${d.name}')" title="Unblock">🔓</button>` : `<button class="action-btn text-red-600" onclick="blockUser(${d.id}, 'driver', '${d.name}')" title="Block">🔒</button>`; row.innerHTML = `<td class="p-2 font-mono text-xs">${d.driver_uid||'N/A'}</td><td class="flex items-center"><img src="/${d.profile_picture}" class="h-8 w-8 rounded-full mr-3 object-cover" onerror="this.src='/static/img/default_avatar.png'"><span class="cursor-pointer hover:text-blue-600" onclick="showDriverDetails(${d.id})">${d.name}</span>${blockedBadge}</td><td><a href="tel:${d.phone_number}" class="text-blue-500">${d.phone_number}</a></td><td>${d.vehicle_type}</td><td><select class="driver-status-select status-select-${d.status.replace(' ','-')}" data-driver-id="${d.id}">${['Available','On Trip','Offline'].map(s => `<option value="${s}" ${d.status===s?'selected':''}>${s}</option>`).join('')}</select></td><td>${d.avg_rating.toFixed(1)} ★</td><td class="space-x-2"><button class="action-btn view" data-driver-id="${d.id}" title="View Details">👁️</button><button class="action-btn edit" data-driver-id="${d.id}" title="Edit">✏️</button><button class="action-btn delete" data-driver-id="${d.id}" title="Delete">🗑️</button>${blockBtn}</td>`; }); };
         
         const updatePassengersTable = () => {
             const searchTerm = document.getElementById('passenger-search-input').value.toLowerCase();
             const filtered = allPassengers.filter(p =>
                 p.username.toLowerCase().includes(searchTerm) ||
-                p.phone_number.includes(searchTerm)
+                p.phone_number.includes(searchTerm) ||
+                (p.passenger_uid && p.passenger_uid.toLowerCase().includes(searchTerm))
             );
             const tbody = document.getElementById('passengers-table-body');
             tbody.innerHTML = '';
             if (!filtered.length) {
-                tbody.innerHTML = '<tr><td colspan="4" class="text-center p-4">No passengers found.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center p-4">No passengers found.</td></tr>';
                 return;
             }
             filtered.forEach(p => {
                 const row = tbody.insertRow();
+                const blockedBadge = p.is_blocked ? '<span class="ml-2 px-2 py-1 text-xs bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 rounded">BLOCKED</span>' : '';
+                const blockBtn = p.is_blocked 
+                    ? `<button class="action-btn text-green-600" onclick="unblockUser(${p.id}, 'passenger', '${p.username}')" title="Unblock">🔓</button>`
+                    : `<button class="action-btn text-red-600" onclick="blockUser(${p.id}, 'passenger', '${p.username}')" title="Block">🔒</button>`;
+                
                 row.innerHTML = `
+                    <td class="p-2 font-mono text-xs">${p.passenger_uid || 'N/A'}</td>
                     <td class="p-2 flex items-center">
                         <img src="/${p.profile_picture}" class="h-8 w-8 rounded-full mr-3 object-cover" onerror="this.src='/static/img/default_avatar.png'">
-                        ${p.username}
+                        <span class="cursor-pointer hover:text-blue-600" onclick="showPassengerDetails(${p.id})">${p.username}</span>
+                        ${blockedBadge}
                     </td>
                     <td><a href="tel:${p.phone_number}" class="text-blue-500">${p.phone_number}</a></td>
                     <td>${p.rides_taken}</td>
                     <td>${p.join_date}</td>
                     <td class="space-x-2">
-                        <button class="action-btn view view-passenger-btn" data-passenger-id="${p.id}">👁️</button>
+                        <button class="action-btn view view-passenger-btn" data-passenger-id="${p.id}" title="View Details">👁️</button>
+                        ${blockBtn}
                     </td>
                 `;
             });
@@ -832,16 +1103,56 @@
                 dropdown.innerHTML = '<p class="p-4 text-sm text-center text-[--text-secondary]">No new notifications</p>';
                 return;
             }
-            recentNotifications.forEach(notif => {
+            recentNotifications.forEach((notif, index) => {
                 const item = document.createElement('div');
-                item.className = 'notification-item p-3 border-b border-[--border-color] text-sm';
+                item.className = 'notification-item p-3 border-b border-[--border-color] text-sm cursor-pointer hover:bg-[--main-bg]';
                 item.textContent = notif;
+                item.addEventListener('click', () => {
+                    // Mark this notification as read by removing it
+                    recentNotifications.splice(index, 1);
+                    renderNotifications();
+                    // Update badge
+                    const badge = document.getElementById('notification-badge');
+                    badge.textContent = recentNotifications.length;
+                    badge.classList.toggle('hidden', recentNotifications.length === 0);
+                    // Close dropdown if no more notifications
+                    if(recentNotifications.length === 0) {
+                        dropdown.classList.add('hidden');
+                    }
+                });
                 dropdown.appendChild(item);
             });
+            
+            // Add "Clear All" button if there are notifications
+            if(recentNotifications.length > 0) {
+                const clearBtn = document.createElement('button');
+                clearBtn.className = 'w-full p-2 text-xs text-center text-blue-600 hover:bg-[--main-bg] font-semibold border-t border-[--border-color]';
+                clearBtn.textContent = 'Clear All';
+                clearBtn.addEventListener('click', () => {
+                    recentNotifications.length = 0;
+                    renderNotifications();
+                    const badge = document.getElementById('notification-badge');
+                    badge.classList.add('hidden');
+                    dropdown.classList.add('hidden');
+                });
+                dropdown.appendChild(clearBtn);
+            }
         };
 
         // --- EVENT LISTENERS ---
-        document.getElementById('notification-bell').addEventListener('click', (e) => { e.stopPropagation(); const dropdown = document.getElementById('notification-dropdown'); dropdown.classList.toggle('hidden'); if(!dropdown.classList.contains('hidden')) { renderNotifications(); document.getElementById('notification-badge').classList.add('hidden'); } });
+        document.getElementById('notification-bell').addEventListener('click', (e) => { 
+            e.stopPropagation(); 
+            const dropdown = document.getElementById('notification-dropdown'); 
+            const badge = document.getElementById('notification-badge');
+            dropdown.classList.toggle('hidden'); 
+            if(!dropdown.classList.contains('hidden')) { 
+                renderNotifications(); 
+                // Only hide badge if there are actual notifications to show
+                if(recentNotifications.length > 0) {
+                    badge.classList.add('hidden');
+                }
+            } 
+        });
         document.addEventListener('click', (e) => { const dropdown = document.getElementById('notification-dropdown'); const bell = document.getElementById('notification-bell'); if (!dropdown.classList.contains('hidden') && !bell.contains(e.target)) { dropdown.classList.add('hidden'); } });
         const setupAssignmentListeners = (containerId) => { document.getElementById(containerId).addEventListener('click', async (e) => { if (e.target.classList.contains('assign-ride-btn')) { const rideId = e.target.dataset.rideId; const driverId = document.getElementById(`driver-select-${rideId}`).value; if (driverId) { await postData('assign-ride', { ride_id: rideId, driver_id: driverId }); refreshAllData(); } else { alert('Please select a driver.'); } } }); };
         setupAssignmentListeners('pending-rides-summary-list');
@@ -1079,6 +1390,7 @@
             setTimeout(() => el.textContent = '', 4000);
         };
 
+        // Update Profile (separate from password)
         document.getElementById('update-profile-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const form = e.target;
@@ -1088,13 +1400,16 @@
         
             if (result && !result.error) {
                 setFeedbackMessage('profile-feedback', 'Profile updated successfully!');
-                form.elements.new_password.value = '';
-                form.elements.current_password.value = '';
                 form.elements.profile_picture.value = '';
                 document.getElementById('profile-picture-filename').textContent = 'No file chosen';
 
                 const newUsername = form.elements.username.value;
-                document.querySelector('.user-info .font-semibold').textContent = newUsername.charAt(0).toUpperCase() + newUsername.slice(1);
+                const usernameDisplays = document.querySelectorAll('.font-semibold');
+                usernameDisplays.forEach(el => {
+                    if (el.textContent !== 'Logout') {
+                        el.textContent = newUsername.charAt(0).toUpperCase() + newUsername.slice(1);
+                    }
+                });
         
                 if (result.profile_picture) {
                     const newAvatarSrc = `/${result.profile_picture}?v=${new Date().getTime()}`;
@@ -1104,6 +1419,49 @@
             } else {
                 const errorMessage = result ? result.error : 'An unexpected error occurred. Please try again.';
                 setFeedbackMessage('profile-feedback', `Error: ${errorMessage}`, true);
+            }
+        });
+
+        // Change Password Button
+        document.getElementById('change-password-btn').addEventListener('click', () => {
+            showModal('change-password-modal');
+        });
+
+        // Change Password Form
+        document.getElementById('change-password-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const currentPassword = document.getElementById('password-current-password').value;
+            const newPassword = document.getElementById('password-new-password').value;
+            const confirmPassword = document.getElementById('password-confirm-password').value;
+            
+            // Validate passwords match
+            if (newPassword !== confirmPassword) {
+                setFeedbackMessage('password-feedback', 'New passwords do not match', true);
+                return;
+            }
+            
+            // Validate password length
+            if (newPassword.length < 6) {
+                setFeedbackMessage('password-feedback', 'Password must be at least 6 characters', true);
+                return;
+            }
+            
+            const result = await postData('admins/change-password', {
+                current_password: currentPassword,
+                new_password: newPassword,
+                confirm_password: confirmPassword
+            });
+            
+            if (result && !result.error) {
+                setFeedbackMessage('password-feedback', 'Password changed successfully!');
+                setTimeout(() => {
+                    hideModals();
+                    e.target.reset();
+                }, 1500);
+            } else {
+                const errorMessage = result ? result.error : 'Failed to change password';
+                setFeedbackMessage('password-feedback', `Error: ${errorMessage}`, true);
             }
         });
 
@@ -1121,10 +1479,24 @@
             }
         });
 
+        // Helper function to show confirm modal
+        const showConfirmModal = (title, message, onConfirm) => {
+            document.getElementById('confirm-modal-title').textContent = title;
+            document.getElementById('confirm-modal-message').textContent = message;
+            document.getElementById('confirm-modal-btn').onclick = () => {
+                hideModals();
+                onConfirm();
+            };
+            showModal('confirm-modal');
+        };
+
         document.getElementById('admin-users-list').addEventListener('click', async (e) => {
             if (e.target.classList.contains('delete-admin-btn')) {
                 const adminId = e.target.dataset.adminId;
-                if (confirm('Are you sure you want to delete this admin?')) {
+                showConfirmModal(
+                    'Delete Admin',
+                    'Are you sure you want to delete this admin? This action cannot be undone.',
+                    async () => {
                     const result = await postData('admins/delete', { admin_id: parseInt(adminId) });
                     if (result && !result.error) {
                         setFeedbackMessage('admin-feedback', 'Admin deleted.');
@@ -1133,8 +1505,66 @@
                         setFeedbackMessage('admin-feedback', `Error: ${result.error}`, true);
                     }
                 }
+                );
             }
         });
+
+        // Block/Unblock User Functionality
+        document.getElementById('block-user-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const userId = document.getElementById('block-user-id').value;
+            const userType = document.getElementById('block-user-type').value;
+            const reason = document.getElementById('block-reason').value;
+            
+            const result = await postData('users/block', {
+                user_id: parseInt(userId),
+                user_type: userType,
+                reason: reason
+            });
+            
+            if (result && !result.error) {
+                setFeedbackMessage('block-feedback', 'User blocked successfully!');
+                setTimeout(() => {
+                    hideModals();
+                    e.target.reset();
+                    refreshAllData();
+                }, 1500);
+            } else {
+                const errorMessage = result ? result.error : 'Failed to block user';
+                setFeedbackMessage('block-feedback', `Error: ${errorMessage}`, true);
+            }
+        });
+
+        // Helper function to block user - Expose globally for onclick handlers
+        window.blockUser = (userId, userType, userName) => {
+            document.getElementById('block-user-id').value = userId;
+            document.getElementById('block-user-type').value = userType;
+            document.getElementById('block-reason').value = '';
+            showModal('block-user-modal');
+        };
+
+        // Helper function to unblock user - Expose globally for onclick handlers
+        window.unblockUser = async (userId, userType, userName) => {
+            showConfirmModal(
+                'Unblock User',
+                `Are you sure you want to unblock ${userName}?`,
+                async () => {
+                    const result = await postData('users/unblock', {
+                        user_id: parseInt(userId),
+                        user_type: userType
+                    });
+                    
+                    if (result && !result.error) {
+                        alert('User unblocked successfully!');
+                        refreshAllData();
+                    } else {
+                        const errorMessage = result ? result.error : 'Failed to unblock user';
+                        alert(`Error: ${errorMessage}`);
+                    }
+                }
+            );
+        };
 
         document.getElementById('settings-tabs').addEventListener('click', e => {
             if(e.target.classList.contains('settings-tab')) {

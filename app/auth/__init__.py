@@ -29,10 +29,9 @@ def login():
         if session.get('user_type') == 'admin':
             return redirect(url_for('admin.dashboard'))
         else:
-            # Log out passenger if they try to access admin login
-            logout_user()
-            session.pop('user_type', None)
-            flash('Logged out to access dispatcher login.', 'info')
+            # Redirect passenger to their own page instead of logging them out
+            flash('You are already logged in as a passenger. Please logout first to access dispatcher login.', 'warning')
+            return redirect(url_for('passenger.app'))
     
     if request.method == 'POST':
         try:
@@ -77,10 +76,9 @@ def passenger_login():
         if session.get('user_type') == 'passenger':
             return redirect(url_for('passenger.app'))
         else:
-            # Log out admin if they try to access passenger login
-            logout_user()
-            session.pop('user_type', None)
-            flash('Logged out to access passenger login.', 'info')
+            # Redirect admin to their own page instead of logging them out
+            flash('You are already logged in as a dispatcher. Please logout first to access passenger login.', 'warning')
+            return redirect(url_for('admin.dashboard'))
     
     if request.method == 'POST':
         phone_number_input = request.form.get('phone_number', '').strip()
