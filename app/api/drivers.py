@@ -245,6 +245,60 @@ def get_available_drivers():
 
     return jsonify(drivers_data)
 
+@api.route('/drivers/export')
+@admin_required
+def export_drivers():
+    """Export drivers data to CSV"""
+    try:
+        import csv
+        import io
+        from flask import make_response
+        
+        drivers = Driver.query.all()
+        
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        # Write header
+        writer.writerow([
+            'ID', 'Name', 'Phone', 'Email', 'Vehicle Type', 'Vehicle Details', 
+            'License Info', 'Status', 'Rating', 'Total Rides', 'Total Earnings', 'Registration Date'
+        ])
+        
+        # Write data
+        for driver in drivers:
+            total_rides = Ride.query.filter_by(driver_id=driver.id, status='Completed').count()
+            total_earnings = db.session.query(func.sum(Ride.fare)).filter(
+                Ride.driver_id == driver.id, 
+                Ride.status == 'Completed'
+            ).scalar() or 0
+            
+            writer.writerow([
+                driver.id,
+                driver.name,
+                driver.phone_number,
+                driver.email or '',
+                driver.vehicle_type,
+                driver.vehicle_details,
+                driver.license_info,
+                driver.status,
+                driver.rating or 0,
+                total_rides,
+                float(total_earnings),
+                driver.created_at.strftime('%Y-%m-%d %H:%M:%S') if driver.created_at else ''
+            ])
+        
+        output.seek(0)
+        
+        response = make_response(output.getvalue())
+        response.headers['Content-Type'] = 'text/csv'
+        response.headers['Content-Disposition'] = f'attachment; filename=drivers_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+        
+        return response
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @api.route('/driver-details/<int:driver_id>')
 @admin_required
 def get_driver_details(driver_id):
@@ -312,3 +366,128 @@ def get_driver_details(driver_id):
             'date': to_eat(ride.request_time).strftime('%Y-%m-%d')
         } for ride in history]
     })
+
+@api.route('/suggest-drivers', methods=['POST'])
+@admin_required
+def suggest_drivers():
+    """Suggest best drivers for a ride based on various criteria"""
+    try:
+        data = request.json
+        ride_id = data.get('ride_id')
+        pickup_lat = data.get('pickup_lat')
+        pickup_lon = data.get('pickup_lon')
+        vehicle_type = data.get('vehicle_type', 'Bajaj')
+        
+        if not ride_id or not pickup_lat or not pickup_lon:
+            return jsonify({'error': 'Missing required fields'}), 400
+        
+        # Get available drivers of the requested vehicle type
+        available_drivers = Driver.query.filter(
+            Driver.status == 'Available',
+            Driver.vehicle_type == vehicle_type,
+            Driver.is_blocked == False
+        ).all()
+        
+        if not available_drivers:
+            return jsonify({
+                'success': True,
+                'suggestions': [],
+                'message': 'No available drivers found'
+            })
+        
+        # Calculate driver scores and suggestions
+        suggestions = []
+        for driver in available_drivers:
+            score = _calculate_driver_score(driver, pickup_lat, pickup_lon, vehicle_type)
+            
+            # Get driver's last ride for distance estimation
+            last_ride = Ride.query.filter_by(driver_id=driver.id).order_by(Ride.request_time.desc()).first()
+            
+            # Estimate distance (simplified - in real app would use GPS)
+            estimated_distance = "Unknown"
+            if last_ride:
+                # Simple distance estimation based on last known location
+                estimated_distance = "~2.5 km"  # Placeholder
+            
+            # Get driver rating
+            rating = _get_driver_rating(driver.id)
+            
+            suggestions.append({
+                'driver_id': driver.id,
+                'name': driver.name,
+                'phone_number': driver.phone_number,
+                'vehicle_type': driver.vehicle_type,
+                'vehicle_details': driver.vehicle_details,
+                'profile_picture': driver.profile_picture,
+                'rating': rating,
+                'estimated_distance': estimated_distance,
+                'score': score,
+                'last_ride_time': last_ride.request_time.isoformat() if last_ride else None,
+                'total_rides': Ride.query.filter_by(driver_id=driver.id, status='Completed').count()
+            })
+        
+        # Sort by score (highest first)
+        suggestions.sort(key=lambda x: x['score'], reverse=True)
+        
+        # Limit to top 5 suggestions
+        suggestions = suggestions[:5]
+        
+        return jsonify({
+            'success': True,
+            'suggestions': suggestions,
+            'total_available': len(available_drivers)
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+def _calculate_driver_score(driver, pickup_lat, pickup_lon, vehicle_type):
+    """Calculate driver suitability score (0-100)"""
+    score = 50  # Base score
+    
+    # Vehicle type match (already filtered, but good to have)
+    if driver.vehicle_type == vehicle_type:
+        score += 20
+    
+    # Driver rating bonus
+    rating = _get_driver_rating(driver.id)
+    if rating >= 4.5:
+        score += 20
+    elif rating >= 4.0:
+        score += 15
+    elif rating >= 3.5:
+        score += 10
+    elif rating >= 3.0:
+        score += 5
+    
+    # Recent activity bonus (more recent = higher score)
+    last_ride = Ride.query.filter_by(driver_id=driver.id).order_by(Ride.request_time.desc()).first()
+    if last_ride:
+        from datetime import datetime, timezone, timedelta
+        time_diff = datetime.now(timezone.utc) - last_ride.request_time
+        if time_diff < timedelta(hours=2):
+            score += 10
+        elif time_diff < timedelta(hours=6):
+            score += 5
+    
+    # Total rides experience bonus
+    total_rides = Ride.query.filter_by(driver_id=driver.id, status='Completed').count()
+    if total_rides >= 100:
+        score += 10
+    elif total_rides >= 50:
+        score += 5
+    elif total_rides >= 20:
+        score += 2
+    
+    return min(score, 100)  # Cap at 100
+
+def _get_driver_rating(driver_id):
+    """Get average rating for a driver"""
+    rating_result = db.session.query(func.avg(Feedback.rating)).join(
+        Ride, Feedback.ride_id == Ride.id
+    ).filter(
+        Ride.driver_id == driver_id,
+        Feedback.rating.isnot(None)
+    ).scalar()
+    
+    return round(float(rating_result or 0), 1)

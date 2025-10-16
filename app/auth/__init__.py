@@ -29,9 +29,8 @@ def login():
         if session.get('user_type') == 'admin':
             return redirect(url_for('admin.dashboard'))
         else:
-            # Redirect passenger to their own page instead of logging them out
-            flash('You are already logged in as a passenger. Please logout first to access dispatcher login.', 'warning')
-            return redirect(url_for('passenger.app'))
+            # Allow switching to admin role - just show a warning but allow access
+            flash('Switching to dispatcher mode. You can access both sides simultaneously.', 'info')
     
     if request.method == 'POST':
         try:
@@ -76,9 +75,8 @@ def passenger_login():
         if session.get('user_type') == 'passenger':
             return redirect(url_for('passenger.app'))
         else:
-            # Redirect admin to their own page instead of logging them out
-            flash('You are already logged in as a dispatcher. Please logout first to access passenger login.', 'warning')
-            return redirect(url_for('admin.dashboard'))
+            # Allow switching to passenger role - just show a warning but allow access
+            flash('Switching to passenger mode. You can access both sides simultaneously.', 'info')
     
     if request.method == 'POST':
         phone_number_input = request.form.get('phone_number', '').strip()
@@ -147,6 +145,22 @@ def passenger_signup():
         return redirect(url_for('auth.passenger_login'))
     
     return render_template('passenger_signup.html')
+
+@auth.route('/switch-role/<role>')
+@login_required
+def switch_role(role):
+    """Switch between admin and passenger roles without logging out"""
+    if role in ['admin', 'passenger']:
+        session['user_type'] = role
+        flash(f'Switched to {role} mode. You can now access both sides simultaneously.', 'success')
+        
+        if role == 'admin':
+            return redirect(url_for('admin.dashboard'))
+        else:
+            return redirect(url_for('passenger.app'))
+    else:
+        flash('Invalid role specified.', 'error')
+        return redirect(url_for('admin.dashboard'))
 
 @auth.route('/logout')
 @login_required

@@ -128,3 +128,34 @@ class SavedPlace(db.Model):
     
     # Ensure unique labels per passenger
     __table_args__ = (db.UniqueConstraint('passenger_id', 'label', name='_passenger_label_uc'),)
+
+class DriverEarnings(db.Model):
+    """Driver earnings tracking for completed rides"""
+    __tablename__ = 'driver_earnings'
+    id = db.Column(db.Integer, primary_key=True)
+    driver_id = db.Column(db.Integer, db.ForeignKey('driver.id'), nullable=False, index=True)
+    ride_id = db.Column(db.Integer, db.ForeignKey('ride.id'), nullable=False, index=True)
+    gross_fare = db.Column(db.Numeric(10, 2), nullable=False)  # Total fare from ride
+    commission_rate = db.Column(db.Numeric(5, 2), nullable=False)  # Commission percentage (e.g., 20.00 for 20%)
+    commission_amount = db.Column(db.Numeric(10, 2), nullable=False)  # Amount taken as commission
+    driver_earnings = db.Column(db.Numeric(10, 2), nullable=False)  # Amount driver receives
+    payment_status = db.Column(db.String(20), default='Pending', nullable=False, index=True)  # Pending, Paid, Disputed
+    payment_date = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, server_default=db.func.now(), index=True)
+    
+    driver = db.relationship('Driver', backref=db.backref('earnings', lazy=True))
+    ride = db.relationship('Ride', backref=db.backref('driver_earnings', lazy=True))
+
+class Commission(db.Model):
+    """Commission settings and rates"""
+    __tablename__ = 'commission'
+    id = db.Column(db.Integer, primary_key=True)
+    vehicle_type = db.Column(db.String(50), nullable=False, index=True)  # Bajaj, Car
+    commission_rate = db.Column(db.Numeric(5, 2), nullable=False)  # Commission percentage
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    effective_date = db.Column(db.DateTime, server_default=db.func.now(), nullable=False)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+    updated_at = db.Column(db.DateTime, onupdate=db.func.now())
+    
+    # Ensure one active commission rate per vehicle type
+    __table_args__ = (db.UniqueConstraint('vehicle_type', 'effective_date', name='_vehicle_commission_uc'),)

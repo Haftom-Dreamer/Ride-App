@@ -93,25 +93,43 @@ def request_ride():
 @admin_required
 def assign_ride():
     """Assign a driver to a ride"""
-    data = request.json
-    ride = Ride.query.get(data.get('ride_id'))
-    driver = Driver.query.get(data.get('driver_id'))
-    
-    if not ride or not driver:
-        return jsonify({'error': 'Ride or Driver not found'}), 404
+    try:
+        data = request.json
+        ride_id = data.get('ride_id')
+        driver_id = data.get('driver_id')
+        
+        if not ride_id or not driver_id:
+            return jsonify({'error': 'Missing ride_id or driver_id'}), 400
+        
+        ride = Ride.query.get(ride_id)
+        driver = Driver.query.get(driver_id)
+        
+        if not ride:
+            return jsonify({'error': 'Ride not found'}), 404
+        if not driver:
+            return jsonify({'error': 'Driver not found'}), 404
+        
+        if ride.status != 'Requested':
+            return jsonify({'error': 'Ride is not in Requested status'}), 400
+        if driver.status != 'Available':
+            return jsonify({'error': 'Driver is not available'}), 400
 
-    # Assign driver to ride
-    ride.driver_id = driver.id
-    ride.status = 'Assigned'
-    ride.assigned_time = datetime.now(timezone.utc)
-    
-    # Update driver status
-    driver.status = 'On Trip'
-    driver.current_lat = ride.pickup_lat
-    driver.current_lon = ride.pickup_lon
-    
-    db.session.commit()
-    return jsonify({'message': 'Ride assigned successfully'})
+        # Assign driver to ride
+        ride.driver_id = driver.id
+        ride.status = 'Assigned'
+        ride.assigned_time = datetime.now(timezone.utc)
+        
+        # Update driver status
+        driver.status = 'On Trip'
+        driver.current_lat = ride.pickup_lat
+        driver.current_lon = ride.pickup_lon
+        
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Ride assigned successfully'})
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 
 @api.route('/complete-ride', methods=['POST'])
 @admin_required

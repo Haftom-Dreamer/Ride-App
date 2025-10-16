@@ -13,188 +13,8 @@
     crossorigin=""></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment@1.0.1"></script>
-<style>
-    :root {
-        --sidebar-bg: #111827;
-        --main-bg: #f3f4f6;
-        --text-primary: #1f2937;
-        --text-secondary: #6b7280;
-        --card-bg: #ffffff;
-        --border-color: #e5e7eb;
-        --success-bg: #dcfce7;
-        --success-text: #166534;
-        --info-bg: #dbeafe;
-        --info-text: #1e40af;
-        --danger-bg: #fee2e2;
-        --danger-text: #991b1b;
-        --warning-bg: #ffedd5;
-        --warning-text: #9a3412;
-        --chart-green: #22c55e;
-        --chart-blue: #3b82f6;
-        --chart-red: #ef4444;
-        --chart-purple: #8b5cf6;
-        --chart-orange: #f97316;
-        --chart-yellow: #facc15;
-    }
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
 
-    .dark {
-        --sidebar-bg: #030712;
-        --main-bg: #111827;
-        --text-primary: #f9fafb;
-        --text-secondary: #9ca3af;
-        --card-bg: #1f2937;
-        --border-color: #4b5563;
-        --success-bg: #052e16;
-        --success-text: #4ade80;
-        --info-bg: #1e293b;
-        --info-text: #60a5fa;
-        --danger-bg: #450a0a;
-        --danger-text: #f87171;
-        --warning-bg: #4a2c0d;
-        --warning-text: #fb923c;
-        --chart-green: #4ade80;
-        --chart-blue: #60a5fa;
-        --chart-red: #f87171;
-        --chart-purple: #a78bfa;
-        --chart-orange: #fb923c;
-        --chart-yellow: #fde047;
-    }
-
-    body {
-        background-color: var(--main-bg);
-        color: var(--text-primary);
-        font-family: 'Inter', sans-serif;
-        font-size: 14px;
-    }
-    .sidebar { background-color: var(--sidebar-bg); transition: width 0.3s ease-in-out; }
-    .main-content { background-color: var(--main-bg); transition: margin-left 0.3s ease-in-out; }
-    .card { background-color: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-primary); }
-    .dark .card { border-color: var(--border-color); }
-    .sidebar-link, .sidebar-summary summary { transition: all 0.2s ease-in-out; }
-    .sidebar-link.active, .sidebar-link[aria-current="page"] { background-color: #F97316; color: white; font-weight: 600; }
-    .sidebar-link.active .icon-solid { display: inline-block; transform: scale(1.1); }
-    .sidebar-link.active .icon-outline { display: none; }
-    .icon-solid { display: none; }
-    .sidebar-link:not(.active):hover, .sidebar-summary summary:hover { background-color: #374151; }
-    .pane { display: none; }
-    .pane.active { display: block; animation: fadeIn 0.3s ease-in-out; }
-    @keyframes fadeIn { from { opacity: 0.8; } to { opacity: 1; } }
-    .modal { background-color: rgba(0, 0, 0, 0.6); }
-    .modal-content { background-color: var(--card-bg); color: var(--text-primary); }
-    .status-badge, .driver-status-select { padding: 4px 10px; border-radius: 6px; font-weight: 600; font-size: 11px; text-transform: uppercase; border: 1px solid transparent; }
-    .status-Available, .status-select-Available { background-color: var(--success-bg); color: var(--success-text); }
-    .status-On-Trip, .status-Assigned, .status-select-On-Trip { background-color: var(--warning-bg); color: var(--warning-text); }
-    .status-Offline, .status-select-Offline { background-color: var(--border-color); color: var(--text-secondary); }
-    .status-Requested { background-color: var(--info-bg); color: var(--info-text); }
-    .status-Completed { background-color: var(--success-bg); color: var(--success-text); }
-    .status-Canceled { background-color: var(--danger-bg); color: var(--danger-text); }
-    .action-btn { background: none; border: none; cursor: pointer; padding: 4px; transition: color 0.2s; }
-    .action-btn.view:hover { color: var(--info-text); }
-    .action-btn.edit:hover { color: #F97316; }
-    .action-btn.delete:hover { color: var(--danger-text); }
-    .kpi-card { display: flex; flex-direction: column; justify-content: space-between; min-height: 120px; padding: 1.5rem; }
-    .kpi-card .kpi-title { font-size: 0.875rem; color: var(--text-secondary); white-space: nowrap; }
-    .kpi-card .kpi-value { font-size: 2.25rem; font-weight: 700; line-height: 1.1; }
-    .kpi-card .kpi-trend { font-size: 0.8rem; font-weight: 600; padding: 2px 6px; border-radius: 99px; }
-    .trend-up { background-color: var(--success-bg); color: var(--success-text); }
-    .trend-down { background-color: var(--danger-bg); color: var(--danger-text); }
-    .notification-badge { position: absolute; top: -5px; right: -8px; height: 20px; width: 20px; background-color: var(--danger-text); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; border: 2px solid var(--card-bg); }
-    #notification-dropdown { position: absolute; top: 100%; right: 0; background-color: var(--card-bg); border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); width: 280px; max-height: 300px; overflow-y: auto; z-index: 50; margin-top: 0.5rem; border: 1px solid var(--border-color); }
-    #notification-dropdown .notification-item { color: var(--text-primary); transition: background-color 0.2s; }
-    #notification-dropdown .notification-item:hover { background-color: var(--main-bg); }
-    .sidebar-badge { background-color: var(--info-text); color: white; font-size: 10px; font-weight: bold; padding: 1px 6px; border-radius: 10px; margin-left: auto; }
-    .sidebar-collapsed .sidebar-badge { display: none; }
-    .sidebar-collapsed .sidebar { width: 5rem; }
-    .sidebar-collapsed .sidebar-header-text, .sidebar-collapsed .sidebar-link-text, .sidebar-collapsed .user-info, .sidebar-collapsed .group-title, .sidebar-collapsed .group-arrow { display: none; }
-    .sidebar-collapsed .sidebar-link, .sidebar-collapsed .sidebar-summary summary { justify-content: center; }
-    .sidebar-collapsed #sidebar-toggle-btn svg { transform: rotate(180deg); }
-    .file-input-label { font-size: 0.875rem; color: var(--text-secondary); background-color: var(--main-bg); padding: 0.5rem 1rem; border-radius: 0.375rem; border: 1px solid var(--border-color); cursor: pointer; transition: background-color 0.2s; }
-    .file-input-label:hover { background-color: var(--border-color); }
-    .file-input-filename { margin-left: 0.75rem; font-style: italic; font-size: 0.875rem; color: var(--text-secondary); }
-    .sidebar-summary summary { list-style: none; }
-    .sidebar-summary summary::-webkit-details-marker { display: none; }
-    
-    /* Animations */
-    @keyframes fadeInUp {
-        from {
-            opacity: 0;
-            transform: translateY(20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-    
-    @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-    }
-    
-    @keyframes slideIn {
-        from { transform: translateX(-20px); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
-    }
-    
-    .animate-fade-in {
-        animation: fadeInUp 0.6s ease-out forwards;
-        opacity: 0;
-    }
-    
-    .animate-slide-in {
-        animation: slideIn 0.5s ease-out forwards;
-        opacity: 0;
-    }
-    
-    .stat-card {
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-    
-    .stat-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-    }
-    
-    .chart-container {
-        transition: opacity 0.3s ease;
-    }
-    
-    .chart-container.loading {
-        opacity: 0.5;
-    }
-    .sidebar-summary .group-arrow { transition: transform 0.2s; }
-    .sidebar-summary[open] > summary .group-arrow { transform: rotate(90deg); }
-    .skeleton { animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; background-color: var(--border-color); border-radius: 0.375rem; }
-    @keyframes pulse { 50% { opacity: .5; } }
-    .title-gradient { background-image: linear-gradient(to right, var(--chart-purple), var(--chart-orange)); -webkit-background-clip: text; background-clip: text; color: transparent; }
-    .dark .title-gradient { background-image: linear-gradient(to right, var(--chart-purple), var(--chart-orange)); }
-    .stat-card { background-color: var(--card-bg); border-radius: 0.75rem; padding: 1.5rem; display: flex; align-items: center; gap: 1rem; border: 1px solid var(--border-color); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
-    .stat-card-icon { flex-shrink: 0; width: 3.5rem; height: 3.5rem; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; }
-    .stat-card-icon svg { width: 1.75rem; height: 1.75rem; color: white; }
-    .settings-tab { cursor: pointer; padding: 0.75rem 1rem; border-bottom: 2px solid transparent; transition: all 0.2s; }
-    .settings-tab.active { color: var(--chart-purple); border-bottom-color: var(--chart-purple); font-weight: 600; }
-    .settings-content { display: none; }
-    .settings-content.active { display: block; }
-
-    .lang-dropdown-content { display: none; }
-    .lang-dropdown-content.show { display: block; }
-    
-    /* Fix placeholder text visibility in dark mode */
-    input::placeholder, select::placeholder, textarea::placeholder {
-        color: #6b7280;
-    }
-    .dark input::placeholder, .dark select::placeholder, .dark textarea::placeholder {
-        color: #9ca3af;
-    }
-    .dark input, .dark select, .dark textarea {
-        color: #f3f4f6;
-        background-color: #374151;
-        border-color: #4b5563;
-    }
-    .dark label {
-        color: #e5e7eb;
-    }
-</style>
 {% endblock %}
 
 {% block content %}
@@ -286,6 +106,11 @@
                         <span class="icon-solid"><svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.555 3.333a2.5 2.5 0 012.222-1.111c1.246 0 2.384.693 2.889 1.75 1.003 2.103 2.222 3.333 2.222 3.333V1.667a.833.833 0 111.667 0v11.666a.833.833 0 11-1.667 0v-1.25a3.333 3.333 0 00-3.333-3.333h-1.667a.833.833 0 010-1.667h1.667a1.667 1.667 0 011.667 1.667v1.25a.833.833 0 11-1.667 0V9.167a1.667 1.667 0 01-1.15-.693.834.834 0 01-.22-.644c0-.333.17-.633.427-.811A13.333 13.333 0 018.333 5a3.333 3.333 0 00-2.778-1.667z" clip-rule="evenodd" /></svg></span>
                         <span class="sidebar-link-text">{{ _('ride_history') }}</span>
                     </a>
+                    <a href="#" class="sidebar-link flex items-center p-3 rounded-lg" data-pane="driver-earnings" title="Driver Earnings">
+                        <span class="icon-outline"><svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></span>
+                        <span class="icon-solid"><svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M10.75 10.818v2.614A3.13 3.13 0 0011.888 13c.482-.315.612-.648.612-.875 0-.227-.13-.56-.612-.875a3.13 3.13 0 00-1.138-.432zM8.33 8.62c.053.055.115.11.184.164.208.16.46.284.736.363V6.603a2.45 2.45 0 00-.35.13c-.14.065-.27.143-.386.233A3.13 3.13 0 008.33 8.62z" /><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-6a.75.75 0 01.75.75v.316a3.13 3.13 0 001.138.432c.482.315.612.648.612.875 0 .227-.13.56-.612.875a3.13 3.13 0 00-1.138.432V9.25A.75.75 0 1110 9.25v-.316a3.13 3.13 0 00-1.138-.432c-.482-.315-.612-.648-.612-.875 0-.227.13-.56.612-.875A3.13 3.13 0 0010 6.316V4.75A.75.75 0 0110 4.75z" clip-rule="evenodd" /></svg></span>
+                        <span class="sidebar-link-text">Driver Earnings</span>
+                    </a>
                 </div>
             </details>
 
@@ -352,14 +177,18 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                     </svg>
                     <div id="notification-badge" class="notification-badge hidden">0</div>
-                </div>
                 <div id="notification-dropdown" class="hidden"></div>
+                </div>
                 
                 <div class="flex items-center ml-2 border-l border-gray-200 dark:border-gray-700 pl-4">
                     <img id="sidebar-avatar" src="/{{ current_user.profile_picture or 'static/img/default_avatar.png' }}" class="h-10 w-10 rounded-full object-cover flex-shrink-0" alt="{{ _('dispatcher') }}">
                     <div class="ml-3">
-                        <p class="text-sm font-semibold text-primary">{{ current_user.username | capitalize }}</p>
+                        <p class="text-sm font-semibold text-primary">{{ current_user.username | capitalize }} <span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">🚗 Dispatcher</span></p>
+                        <div class="flex items-center gap-2">
+                            <a href="{{ url_for('auth.switch_role', role='passenger') }}" class="text-xs text-blue-500 hover:underline" title="Switch to Passenger Mode">👤 Passenger</a>
+                            <span class="text-xs text-gray-400">|</span>
                         <a href="{{ url_for('auth.logout') }}" class="text-xs text-red-500 hover:underline">{{ _('logout') }}</a>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -367,42 +196,168 @@
 
         <div class="flex-grow overflow-y-auto">
             <div id="dashboard-pane" class="pane active">
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    <div class="stat-card animate-fade-in">
-                        <div class="stat-card-icon bg-green-500"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /></svg></div>
-                        <div><p class="text-sm text-secondary">Total Revenue</p><p id="stat-revenue" class="text-2xl font-bold">0 ETB</p></div>
+                <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-4">
+                    <div class="stat-card-modern animate-fade-in">
+                        <div class="stat-icon-modern gradient-bg-success">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
                     </div>
-                    <div class="stat-card animate-fade-in" style="animation-delay: 0.1s">
-                        <div class="stat-card-icon bg-blue-500"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 6.75V15m0 0v2.25m0-2.25h1.5m-1.5 0H5.625M17.25 6H10.5m6.75 4.5H10.5" /></svg></div>
-                        <div><p class="text-sm text-secondary">Total Rides</p><p id="stat-rides" class="text-2xl font-bold">0</p></div>
+                        <div>
+                            <p class="text-xs text-secondary mb-1">Total Revenue</p>
+                            <p id="stat-revenue" class="text-lg font-bold text-primary">0 ETB</p>
                     </div>
-                    <div class="stat-card animate-fade-in" style="animation-delay: 0.2s">
-                        <div class="stat-card-icon bg-purple-500"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg></div>
-                        <div><p class="text-sm text-secondary">Total Users</p><p id="stat-users" class="text-2xl font-bold">0</p></div>
                     </div>
-                    <div class="stat-card animate-fade-in" style="animation-delay: 0.3s">
-                        <div class="stat-card-icon bg-yellow-500"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg></div>
-                        <div><p class="text-sm text-secondary">Total Drivers</p><p id="stat-drivers" class="text-2xl font-bold">0</p></div>
+                    <div class="stat-card-modern animate-fade-in" style="animation-delay: 0.1s">
+                        <div class="stat-icon-modern gradient-bg-primary">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m6 4.5v-3a3 3 0 00-3-3H6.75a3 3 0 00-3 3v3m6 0V9.75a3 3 0 00-3-3H6.75a3 3 0 00-3 3v9.75m6 0h6m-6 0v-3a3 3 0 013-3h2.25a3 3 0 013 3v3m-6 0H9.375a1.125 1.125 0 01-1.125-1.125V14.25" />
+                            </svg>
+                    </div>
+                        <div>
+                            <p class="text-xs text-secondary mb-1">Total Rides</p>
+                            <p id="stat-rides" class="text-lg font-bold text-primary">0</p>
+                </div>
+                    </div>
+                    <div class="stat-card-modern animate-fade-in" style="animation-delay: 0.2s">
+                        <div class="stat-icon-modern gradient-bg-secondary">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-xs text-secondary mb-1">Total Users</p>
+                            <p id="stat-users" class="text-lg font-bold text-primary">0</p>
+                        </div>
+                    </div>
+                    <div class="stat-card-modern animate-fade-in" style="animation-delay: 0.3s">
+                        <div class="stat-icon-modern gradient-bg-warning">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-xs text-secondary mb-1">Total Drivers</p>
+                            <p id="stat-drivers" class="text-lg font-bold text-primary">0</p>
+                        </div>
                     </div>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    <div class="stat-card animate-fade-in" style="animation-delay: 0.4s">
-                        <div class="stat-card-icon bg-indigo-500"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
-                        <div><p class="text-sm text-secondary">Completed Rides</p><p id="stat-completed" class="text-2xl font-bold">0</p></div>
+                <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-3 mb-4">
+                    <div class="stat-card-modern animate-fade-in" style="animation-delay: 0.4s">
+                        <div class="stat-icon-modern gradient-bg-primary">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-xs text-secondary mb-1">Completed Rides</p>
+                            <p id="stat-completed" class="text-lg font-bold text-primary">0</p>
+                        </div>
                     </div>
-                    <div class="stat-card animate-fade-in" style="animation-delay: 0.5s">
-                        <div class="stat-card-icon bg-orange-500"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg></div>
-                        <div><p class="text-sm text-secondary">Active Rides</p><p id="stat-active" class="text-2xl font-bold">0</p></div>
+                    <div class="stat-card-modern animate-fade-in" style="animation-delay: 0.5s">
+                        <div class="stat-icon-modern gradient-bg-danger">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-xs text-secondary mb-1">Active Rides</p>
+                            <p id="stat-active" class="text-lg font-bold text-primary">0</p>
+                        </div>
                     </div>
-                    <div class="stat-card animate-fade-in" style="animation-delay: 0.6s">
-                        <div class="stat-card-icon bg-green-600"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
-                        <div><p class="text-sm text-secondary">Today's Revenue</p><p id="stat-today-revenue" class="text-2xl font-bold">0 ETB</p></div>
+                    <div class="stat-card-modern animate-fade-in" style="animation-delay: 0.6s">
+                        <div class="stat-icon-modern gradient-bg-success">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-xs text-secondary mb-1">Today's Revenue</p>
+                            <p id="stat-today-revenue" class="text-lg font-bold text-primary">0 ETB</p>
+                        </div>
                     </div>
-                    <div class="stat-card animate-fade-in" style="animation-delay: 0.7s">
-                        <div class="stat-card-icon bg-red-500"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
-                        <div><p class="text-sm text-secondary">Pending Requests</p><p id="stat-pending" class="text-2xl font-bold">0</p></div>
+                    <div class="stat-card-modern animate-fade-in" style="animation-delay: 0.7s">
+                        <div class="stat-icon-modern gradient-bg-danger">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-xs text-secondary mb-1">Pending Requests</p>
+                            <p id="stat-pending" class="text-lg font-bold text-primary">0</p>
+                        </div>
                     </div>
                 </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+                    <div class="stat-card-modern animate-fade-in" style="animation-delay: 0.8s">
+                        <div class="stat-icon-modern gradient-bg-warning">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-xs text-secondary mb-1">Open Support Tickets</p>
+                            <p id="stat-open-tickets" class="text-lg font-bold text-primary">0</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Quick Actions Section -->
+                <div class="card p-3 rounded-lg shadow mb-3">
+                    <h3 class="font-semibold text-primary mb-2 text-sm">Quick Actions</h3>
+                    <div class="grid grid-cols-3 md:grid-cols-6 lg:grid-cols-6 gap-2">
+                        <button onclick="showPane('drivers')" class="quick-action-btn">
+                            <div class="quick-action-icon bg-blue-100 text-blue-600">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                                </svg>
+                            </div>
+                            <span class="text-xs font-medium">Manage Drivers</span>
+                        </button>
+                        <button onclick="showPane('passengers')" class="quick-action-btn">
+                            <div class="quick-action-icon bg-green-100 text-green-600">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                </svg>
+                            </div>
+                            <span class="text-xs font-medium">Manage Passengers</span>
+                        </button>
+                        <button onclick="showPane('rides')" class="quick-action-btn">
+                            <div class="quick-action-icon bg-purple-100 text-purple-600">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                </svg>
+                            </div>
+                            <span class="text-xs font-medium">Ride History</span>
+                        </button>
+                        <button onclick="showPane('analytics')" class="quick-action-btn">
+                            <div class="quick-action-icon bg-yellow-100 text-yellow-600">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                </svg>
+                            </div>
+                            <span class="text-xs font-medium">Analytics</span>
+                        </button>
+                        <button onclick="showPane('inbox')" class="quick-action-btn">
+                            <div class="quick-action-icon bg-red-100 text-red-600">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                                </svg>
+                            </div>
+                            <span class="text-xs font-medium">Feedback</span>
+                        </button>
+                        <button onclick="showPane('settings')" class="quick-action-btn">
+                            <div class="quick-action-icon bg-gray-100 text-gray-600">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                            </div>
+                            <span class="text-xs font-medium">Settings</span>
+                        </button>
+                    </div>
+                </div>
+                
                 <div class="grid grid-cols-1 lg:grid-cols-5 gap-8 mb-8">
                     <div class="lg:col-span-3 card p-6 rounded-lg shadow"><h3 class="font-semibold mb-4 text-primary">{{ _('live_rides_map') }}</h3><div id="dashboard-map" class="h-96 w-full rounded"></div></div>
                     <div class="lg:col-span-2 card p-6 rounded-lg shadow">
@@ -416,42 +371,225 @@
             </div>
 
             <div id="pending-requests-pane" class="pane">
-                <div class="card p-6 rounded-lg shadow">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="font-semibold text-primary">{{ _('all_pending_ride_requests') }}</h3>
+                <div class="space-y-6">
+                    <!-- Header -->
+                    <div class="modern-card p-6">
+                        <div class="flex justify-between items-center mb-6">
+                            <div>
+                                <h3 class="text-2xl font-bold text-primary mb-2">Pending Ride Requests</h3>
+                                <p class="text-secondary">Smart driver assignment with real-time suggestions</p>
                     </div>
-                <div id="pending-rides-container" class="space-y-3 overflow-y-auto"></div>
+                            <div class="flex gap-3">
+                                <button id="refresh-pending-btn" class="btn-modern btn-secondary">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                    </svg>
+                                    Refresh
+                                </button>
+                                <button id="auto-assign-btn" class="btn-modern btn-success">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                    </svg>
+                                    Auto Assign All
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Quick Stats -->
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                            <div class="stat-card-modern">
+                                <div class="stat-icon-modern gradient-bg-danger">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-secondary mb-1">Pending Requests</p>
+                                    <p id="pending-count" class="text-lg font-bold text-primary">0</p>
+                                </div>
+                            </div>
+                            <div class="stat-card-modern">
+                                <div class="stat-icon-modern gradient-bg-success">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-secondary mb-1">Available Drivers</p>
+                                    <p id="available-drivers-count" class="text-lg font-bold text-primary">0</p>
+                                </div>
+                            </div>
+                            <div class="stat-card-modern">
+                                <div class="stat-icon-modern gradient-bg-warning">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-secondary mb-1">Avg Wait Time</p>
+                                    <p id="avg-wait-time" class="text-lg font-bold text-primary">0 min</p>
+                                </div>
+                            </div>
+                            <div class="stat-card-modern">
+                                <div class="stat-icon-modern gradient-bg-primary">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-secondary mb-1">Success Rate</p>
+                                    <p id="assignment-success-rate" class="text-lg font-bold text-primary">0%</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- Pending Rides Container -->
+                    <div id="pending-rides-container" class="space-y-4">
+                        <!-- Rides will be dynamically loaded here -->
+                    </div>
                 </div>
             </div>
             
             <div id="analytics-pane" class="pane">
-                <div class="card p-4 rounded-lg shadow mb-6">
-                    <div id="analytics-filters" class="flex flex-wrap items-center gap-x-6 gap-y-2">
-                        <h3 class="text-lg font-semibold text-primary">{{ _('filter_by_date') }}</h3>
-                        <div class="flex items-center gap-2" id="analytics-period-btns">
-                            <button data-period="today" class="analytics-filter-btn px-3 py-1.5 text-sm font-semibold rounded-md bg-gray-200 dark:bg-gray-700">{{ _('today') }}</button>
-                            <button data-period="week" class="analytics-filter-btn px-3 py-1.5 text-sm font-semibold rounded-md bg-gray-200 dark:bg-gray-700">{{ _('this_week') }}</button>
-                            <button data-period="month" class="analytics-filter-btn px-3 py-1.5 text-sm font-semibold rounded-md bg-gray-200 dark:bg-gray-700">{{ _('this_month') }}</button>
-                            <button data-period="all" class="analytics-filter-btn px-3 py-1.5 text-sm font-semibold rounded-md bg-gray-200 dark:bg-gray-700">{{ _('all_time') }}</button>
+                <div class="space-y-6">
+                    <!-- Analytics Header -->
+                    <div class="modern-card p-6">
+                        <div class="flex justify-between items-center mb-6">
+                            <div>
+                                <h3 class="text-2xl font-bold text-primary mb-2">Analytics & Reports</h3>
+                                <p class="text-secondary">Comprehensive business intelligence and performance metrics</p>
+                            </div>
+                            <div class="flex gap-3">
+                                <button id="export-analytics-btn" class="btn-modern btn-secondary">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    </svg>
+                                    Export Report
+                                </button>
+                            </div>
                         </div>
-                        <div class="flex items-center gap-2"><input type="date" id="start-date-input" class="border p-1.5 rounded-md text-sm"><span class="text-gray-500">{{ _('to') }}</span><input type="date" id="end-date-input" class="border p-1.5 rounded-md text-sm"><button id="custom-range-btn" class="px-3 py-1.5 text-sm font-semibold rounded-md bg-indigo-600 text-white">{{ _('apply') }}</button></div>
+                        
+                        <!-- Analytics Filters -->
+                    <div id="analytics-filters" class="flex flex-wrap items-center gap-x-6 gap-y-2">
+                            <h4 class="text-lg font-semibold text-primary">Filter by Date</h4>
+                        <div class="flex items-center gap-2" id="analytics-period-btns">
+                                <button data-period="today" class="analytics-filter-btn px-3 py-1.5 text-sm font-semibold rounded-md bg-gray-200 dark:bg-gray-700">Today</button>
+                                <button data-period="week" class="analytics-filter-btn px-3 py-1.5 text-sm font-semibold rounded-md bg-gray-200 dark:bg-gray-700">This Week</button>
+                                <button data-period="month" class="analytics-filter-btn px-3 py-1.5 text-sm font-semibold rounded-md bg-gray-200 dark:bg-gray-700">This Month</button>
+                                <button data-period="all" class="analytics-filter-btn px-3 py-1.5 text-sm font-semibold rounded-md bg-gray-200 dark:bg-gray-700">All Time</button>
+                        </div>
+                            <div class="flex items-center gap-2">
+                                <input type="date" id="start-date-input" class="border p-1.5 rounded-md text-sm">
+                                <span class="text-gray-500">to</span>
+                                <input type="date" id="end-date-input" class="border p-1.5 rounded-md text-sm">
+                                <button id="custom-range-btn" class="px-3 py-1.5 text-sm font-semibold rounded-md bg-indigo-600 text-white">Apply</button>
                     </div>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-                    <div class="kpi-card card rounded-lg shadow"><p class="kpi-title">{{ _('rides_completed') }}</p><p id="kpi-rides-completed" class="kpi-value" style="color: var(--chart-green);">0</p><div id="kpi-rides-trend" class="kpi-trend">--</div></div>
-                    <div class="kpi-card card rounded-lg shadow"><p class="kpi-title">{{ _('active_rides') }}</p><p id="kpi-active-rides-now" class="kpi-value flex items-center" style="color: var(--chart-blue);">0 <span class="ml-2 w-3 h-3 bg-[--chart-blue] rounded-full live-pulse"></span></p><div class="kpi-trend opacity-0">--</div></div>
-                    <div class="kpi-card card rounded-lg shadow"><p class="kpi-title">{{ _('rides_canceled') }}</p><p id="kpi-rides-canceled" class="kpi-value" style="color: var(--chart-red);">0</p><div class="kpi-trend opacity-0">--</div></div>
-                    <div class="kpi-card card rounded-lg shadow"><p class="kpi-title">{{ _('total_revenue') }}</p><p id="kpi-total-revenue" class="kpi-value" style="color: var(--chart-purple);">0</p><div id="kpi-revenue-trend" class="kpi-trend">--</div></div>
-                    <div class="kpi-card card rounded-lg shadow"><p class="kpi-title">{{ _('average_fare') }}</p><p id="kpi-avg-fare" class="kpi-value" style="color: var(--chart-orange);">0</p><div class="kpi-trend opacity-0">--</div></div>
                 </div>
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div class="lg:col-span-2 card p-6 rounded-lg shadow"><h3 class="font-semibold mb-4 text-primary">Revenue Over Time</h3><div class="relative h-96"><canvas id="revenue-over-time-chart"></canvas></div></div>
-                    <div class="space-y-8">
-                        <div class="card p-6 rounded-lg shadow"><h3 class="font-semibold mb-4 text-primary">Vehicle Distribution</h3><div class="relative h-40"><canvas id="vehicle-dist-chart"></canvas></div></div>
-                        <div class="card p-6 rounded-lg shadow"><h3 class="font-semibold mb-4 text-primary">Payment Methods</h3><div class="relative h-40"><canvas id="payment-dist-chart"></canvas></div></div>
+
+                    <!-- Key Performance Indicators -->
+                    <div class="modern-card p-6">
+                        <h4 class="text-lg font-semibold text-primary mb-4">Key Performance Indicators</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div class="kpi-card">
+                                <div class="kpi-icon bg-blue-500">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                                    </svg>
+                    </div>
+                                <div>
+                                    <p class="kpi-label">Rides Completed</p>
+                                    <p id="kpi-rides-completed" class="kpi-value">0</p>
+                                    <p id="kpi-rides-trend" class="kpi-trend">+0%</p>
+                </div>
+                            </div>
+                            <div class="kpi-card">
+                                <div class="kpi-icon bg-green-500">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="kpi-label">Active Rides Now</p>
+                                    <p id="kpi-active-rides-now" class="kpi-value">0</p>
+                                    <p id="kpi-active-trend" class="kpi-trend">+0%</p>
+                                </div>
+                            </div>
+                            <div class="kpi-card">
+                                <div class="kpi-icon bg-red-500">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="kpi-label">Rides Canceled</p>
+                                    <p id="kpi-rides-canceled" class="kpi-value">0</p>
+                                    <p id="kpi-cancel-trend" class="kpi-trend">+0%</p>
+                                </div>
+                            </div>
+                            <div class="kpi-card">
+                                <div class="kpi-icon bg-yellow-500">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="kpi-label">Total Revenue</p>
+                                    <p id="kpi-total-revenue" class="kpi-value">0 ETB</p>
+                                    <p id="kpi-revenue-trend" class="kpi-trend">+0%</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Charts Section -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- Revenue Chart -->
+                        <div class="modern-card p-6">
+                            <h4 class="text-lg font-semibold text-primary mb-4">Revenue Over Time</h4>
+                            <div class="chart-container">
+                                <canvas id="revenueChart" width="400" height="200"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Vehicle Distribution Chart -->
+                        <div class="modern-card p-6">
+                            <h4 class="text-lg font-semibold text-primary mb-4">Vehicle Type Distribution</h4>
+                            <div class="chart-container">
+                                <canvas id="vehicleDistChart" width="400" height="200"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Performance Metrics -->
+                    <div class="modern-card p-6">
+                        <h4 class="text-lg font-semibold text-primary mb-4">Performance Metrics</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div class="text-center">
+                                <div class="text-3xl font-bold text-blue-600 mb-2" id="avg-fare">0 ETB</div>
+                                <div class="text-sm text-secondary">Average Fare</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-3xl font-bold text-green-600 mb-2" id="completion-rate">0%</div>
+                                <div class="text-sm text-secondary">Completion Rate</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-3xl font-bold text-purple-600 mb-2" id="avg-rating">0.0</div>
+                                <div class="text-sm text-secondary">Average Rating</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Top Drivers Section -->
+                    <div class="modern-card p-6">
+                        <h4 class="text-lg font-semibold text-primary mb-4">Top Performing Drivers</h4>
+                        <div id="top-drivers-list" class="space-y-3">
+                            <!-- Top drivers will be loaded here -->
+                        </div>
                     </div>
                 </div>
-                <div class="card p-6 rounded-lg shadow mt-8"><h3 class="font-semibold text-primary mb-4">Top 5 Drivers This Week</h3><div id="top-drivers-list" class="space-y-3"></div></div>
             </div>
 
             <div id="inbox-pane" class="pane">
@@ -463,15 +601,88 @@
             </div>
 
             <div id="support-tickets-pane" class="pane">
-                <div class="card p-6 rounded-lg shadow">
+                <div class="space-y-6">
+                    <!-- Support Tickets Header -->
+                    <div class="modern-card p-6">
                     <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-xl font-semibold text-primary">Support Tickets</h3>
-                        <button onclick="refreshSupportTickets()" class="px-3 py-1 bg-indigo-600 text-white rounded text-sm hover:bg-indigo-700">
+                            <div>
+                                <h3 class="text-2xl font-bold text-primary mb-2">Support Tickets</h3>
+                                <p class="text-secondary">Manage passenger inquiries and issues</p>
+                            </div>
+                            <div class="flex gap-3">
+                                <button class="btn-modern btn-secondary" onclick="refreshSupportTickets()">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                    </svg>
                             Refresh
                         </button>
+                                <button class="btn-modern btn-primary" onclick="createSampleTickets()">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                    </svg>
+                                    Add Sample
+                                </button>
                     </div>
-                    <div id="support-tickets-list" class="space-y-3">
-                        <p class="text-gray-500">Loading support tickets...</p>
+                    </div>
+                        
+                        <!-- Support Stats -->
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                            <div class="stat-card">
+                                <div class="stat-card-icon bg-blue-500">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-secondary mb-1">Total Tickets</p>
+                                    <p id="total-tickets" class="text-2xl font-bold text-primary">0</p>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-card-icon bg-red-500">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-secondary mb-1">Open Tickets</p>
+                                    <p id="open-tickets" class="text-2xl font-bold text-primary">0</p>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-card-icon bg-yellow-500">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-secondary mb-1">In Progress</p>
+                                    <p id="in-progress-tickets" class="text-2xl font-bold text-primary">0</p>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-card-icon bg-green-500">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-secondary mb-1">Resolved</p>
+                                    <p id="resolved-tickets" class="text-2xl font-bold text-primary">0</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Support Tickets List -->
+                    <div class="modern-card p-6">
+                        <h4 class="text-lg font-semibold text-primary mb-4">All Support Tickets</h4>
+                        <div id="support-tickets-list" class="space-y-4">
+                            <div class="text-center py-8">
+                                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                                <p class="text-secondary">Loading support tickets...</p>
+                            </div>
+                        </div>
                     </div>
                     </div>
                 </div>
@@ -506,12 +717,113 @@
             </div>
 
             <div id="drivers-pane" class="pane">
-                <div class="card p-6 rounded-lg shadow">
-                    <div class="flex justify-between items-center mb-4">
-                        <div class="flex items-center gap-4"><input type="text" id="driver-search-input" placeholder="{{ _('search_by_name_phone_id') }}" class="border p-2 rounded-md w-64"><select id="driver-status-filter" class="border p-2 rounded-md"><option value="All">{{ _('all_statuses') }}</option><option value="Available">{{ _('available') }}</option><option value="On Trip">{{ _('on_trip') }}</option><option value="Offline">{{ _('offline') }}</option></select></div>
-                        <button id="add-driver-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold">{{ _('add_new_driver') }}</button>
+                <div class="space-y-6">
+                    <!-- Header with Quick Actions -->
+                    <div class="modern-card p-6">
+                        <div class="flex justify-between items-center mb-6">
+                            <div>
+                                <h3 class="text-2xl font-bold text-primary mb-2">Driver Management</h3>
+                                <p class="text-secondary">Manage drivers, view performance, and handle assignments</p>
                     </div>
-                    <div class="overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b border-border"><th class="p-2">ID</th><th>Name</th><th>Contact</th><th>Vehicle</th><th>Status</th><th>Rating</th><th>Actions</th></tr></thead><tbody id="drivers-table-body"></tbody></table></div>
+                            <div class="flex gap-3">
+                                <button id="add-driver-btn" class="btn-modern btn-success">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                    </svg>
+                                    Add Driver
+                                </button>
+                                <button id="export-drivers-btn" class="btn-modern btn-secondary">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    </svg>
+                                    Export
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Filters and Search -->
+                        <div class="flex flex-wrap gap-4 mb-6">
+                            <div class="flex-1 min-w-64">
+                                <input type="text" id="driver-search-input" placeholder="Search by name, phone, or ID..." class="border border-border rounded-md px-3 py-2 w-full">
+                            </div>
+                            <div class="min-w-48">
+                                <select id="driver-status-filter" class="border border-border rounded-md px-3 py-2 w-full">
+                                    <option value="All">All Statuses</option>
+                                    <option value="Available">Available</option>
+                                    <option value="On Trip">On Trip</option>
+                                    <option value="Offline">Offline</option>
+                                </select>
+                            </div>
+                            <div class="min-w-48">
+                                <select id="driver-vehicle-filter" class="border border-border rounded-md px-3 py-2 w-full">
+                                    <option value="All">All Vehicles</option>
+                                    <option value="Bajaj">Bajaj</option>
+                                    <option value="Car">Car</option>
+                                </select>
+                            </div>
+                            <div class="flex items-end">
+                                <button id="clear-driver-filters-btn" class="btn-modern btn-secondary">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                    Clear
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Batch Actions -->
+                        <div class="flex items-center gap-4 mb-6">
+                            <div class="flex items-center">
+                                <input type="checkbox" id="select-all-drivers" class="rounded border-border">
+                                <label for="select-all-drivers" class="ml-2 text-sm text-primary">Select All</label>
+                            </div>
+                            <div class="flex gap-2" id="batch-driver-actions" style="display: none;">
+                                <button id="batch-online-drivers" class="btn-modern btn-success text-sm px-3 py-1">
+                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    Mark Online
+                                </button>
+                                <button id="batch-offline-drivers" class="btn-modern btn-secondary text-sm px-3 py-1">
+                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    Mark Offline
+                                </button>
+                                <button id="batch-block-drivers" class="btn-modern btn-danger text-sm px-3 py-1">
+                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728"></path>
+                                    </svg>
+                                    Block Selected
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Drivers Table -->
+                    <div class="modern-card p-6">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left">
+                                <thead>
+                                    <tr class="border-b border-border">
+                                        <th class="p-3 font-semibold text-primary">Select</th>
+                                        <th class="p-3 font-semibold text-primary">Driver</th>
+                                        <th class="p-3 font-semibold text-primary">Contact</th>
+                                        <th class="p-3 font-semibold text-primary">Vehicle</th>
+                                        <th class="p-3 font-semibold text-primary">Status</th>
+                                        <th class="p-3 font-semibold text-primary">Rating</th>
+                                        <th class="p-3 font-semibold text-primary">Earnings</th>
+                                        <th class="p-3 font-semibold text-primary">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="drivers-table-body">
+                                    <tr>
+                                        <td colspan="8" class="text-center p-8 text-secondary">Loading drivers...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div id="passengers-pane" class="pane">
@@ -541,6 +853,144 @@
                 <div class="card p-6 rounded-lg shadow">
                     <div class="flex justify-between items-center mb-4"><input type="text" id="ride-history-search" placeholder="{{ _('search_by_passenger_driver') }}" class="border p-2 rounded w-1/3"><div><button id="ride-history-prev" class="px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600">&lt; {{ _('prev') }}</button><span id="ride-history-page-info" class="mx-2 text-primary">{{ _('page') }} 1</span><button id="ride-history-next" class="px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600">{{ _('next') }} &gt;</button></div></div>
                     <table class="w-full text-left"><thead><tr class="border-b border-border"><th class="p-2">ID</th><th>Passenger</th><th>Driver</th><th>Fare</th><th>Status</th><th>Rating</th><th>Date</th><th>Actions</th></tr></thead><tbody id="rides-history-table-body"></tbody></table>
+                </div>
+            </div>
+
+            <div id="driver-earnings-pane" class="pane">
+                <div class="space-y-6">
+                    <!-- Header with Actions -->
+                    <div class="modern-card p-6">
+                        <div class="flex justify-between items-center mb-6">
+                            <div>
+                                <h3 class="text-2xl font-bold text-primary mb-2">Driver Earnings Management</h3>
+                                <p class="text-secondary">Track driver earnings, commissions, and payment status</p>
+                            </div>
+                            <div class="flex gap-3">
+                                <button id="calculate-earnings-btn" class="btn-modern btn-success">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                                    </svg>
+                                    Calculate Earnings
+                                </button>
+                                <button id="commission-settings-btn" class="btn-modern btn-secondary">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    </svg>
+                                    Commission Settings
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Filters -->
+                        <div class="flex flex-wrap gap-4 mb-6">
+                            <div class="flex-1 min-w-48">
+                                <label class="block text-sm font-medium text-primary mb-2">Date Range</label>
+                                <div class="flex gap-2">
+                                    <input type="date" id="earnings-start-date" class="border border-border rounded-md px-3 py-2 flex-1">
+                                    <input type="date" id="earnings-end-date" class="border border-border rounded-md px-3 py-2 flex-1">
+                                </div>
+                            </div>
+                            <div class="min-w-48">
+                                <label class="block text-sm font-medium text-primary mb-2">Driver</label>
+                                <select id="earnings-driver-filter" class="border border-border rounded-md px-3 py-2 w-full">
+                                    <option value="">All Drivers</option>
+                                </select>
+                            </div>
+                            <div class="flex items-end">
+                                <button id="earnings-filter-btn" class="btn-modern">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z"></path>
+                                    </svg>
+                                    Filter
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Summary Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div class="stat-card-modern">
+                            <div class="stat-icon-modern gradient-bg-primary">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-xs text-secondary mb-1">Total Earnings</p>
+                                <p id="total-driver-earnings" class="text-2xl font-bold text-primary">0 ETB</p>
+                            </div>
+                        </div>
+                        <div class="stat-card-modern">
+                            <div class="stat-icon-modern gradient-bg-secondary">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-xs text-secondary mb-1">Total Commission</p>
+                                <p id="total-commission" class="text-2xl font-bold text-primary">0 ETB</p>
+                            </div>
+                        </div>
+                        <div class="stat-card-modern">
+                            <div class="stat-icon-modern gradient-bg-success">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-xs text-secondary mb-1">Active Drivers</p>
+                                <p id="active-drivers-count" class="text-2xl font-bold text-primary">0</p>
+                            </div>
+                        </div>
+                        <div class="stat-card-modern">
+                            <div class="stat-icon-modern gradient-bg-warning">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-xs text-secondary mb-1">Pending Payments</p>
+                                <p id="pending-payments-count" class="text-2xl font-bold text-primary">0</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Driver Earnings Table -->
+                    <div class="modern-card p-6">
+                        <div class="flex justify-between items-center mb-6">
+                            <h4 class="text-xl font-semibold text-primary">Driver Earnings Summary</h4>
+                            <div class="flex gap-2">
+                                <button id="export-earnings-btn" class="btn-modern btn-secondary">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    </svg>
+                                    Export
+                                </button>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left">
+                                <thead>
+                                    <tr class="border-b border-border">
+                                        <th class="p-3 font-semibold text-primary">Driver</th>
+                                        <th class="p-3 font-semibold text-primary">Vehicle</th>
+                                        <th class="p-3 font-semibold text-primary">Total Rides</th>
+                                        <th class="p-3 font-semibold text-primary">Total Fare</th>
+                                        <th class="p-3 font-semibold text-primary">Commission</th>
+                                        <th class="p-3 font-semibold text-primary">Driver Earnings</th>
+                                        <th class="p-3 font-semibold text-primary">Avg per Ride</th>
+                                        <th class="p-3 font-semibold text-primary">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="driver-earnings-table-body">
+                                    <tr>
+                                        <td colspan="8" class="text-center p-8 text-secondary">Loading earnings data...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div id="settings-pane" class="pane">
@@ -746,923 +1196,43 @@
 </div>
 
 
+<!-- Commission Settings Modal -->
+<div id="commission-settings-modal" class="modal fixed inset-0 z-50 items-center justify-center hidden">
+    <div class="absolute inset-0 bg-black opacity-50"></div>
+    <div class="modal-content p-8 rounded-lg shadow-xl z-10 w-full max-w-md">
+        <h2 class="text-2xl font-bold mb-6">Commission Settings</h2>
+        <form id="commission-settings-form" class="space-y-4">
+            <div>
+                <label for="bajaj-commission-rate" class="block text-sm font-medium mb-2">Bajaj Commission Rate (%)</label>
+                <input type="number" id="bajaj-commission-rate" name="bajaj_rate" min="0" max="100" step="0.1" 
+                       class="w-full p-3 border border-border rounded-md" placeholder="15.0" required>
+            </div>
+            <div>
+                <label for="car-commission-rate" class="block text-sm font-medium mb-2">Car Commission Rate (%)</label>
+                <input type="number" id="car-commission-rate" name="car_rate" min="0" max="100" step="0.1" 
+                       class="w-full p-3 border border-border rounded-md" placeholder="20.0" required>
+            </div>
+            <div class="flex justify-end space-x-3 pt-4">
+                <button type="button" class="cancel-modal-btn px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">
+                    Cancel
+                </button>
+                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                    Save Settings
+                </button>
+            </div>
+        </form>
+        <p id="commission-feedback" class="text-sm mt-3"></p>
+    </div>
+</div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/moment@2.29.1/moment.js"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 <script>
-    // Translation function for dynamic content
-    const LANG = "{{ session.get('language', 'en') }}";
-    const TRANSLATIONS = {{ translations|tojson|safe }};
-    const t = (key) => TRANSLATIONS[LANG]?.[key] || key;
-    
-    const updateFilenameLabel = (inputId, labelId) => { const input = document.getElementById(inputId); const label = document.getElementById(labelId); label.textContent = input.files.length > 0 ? input.files[0].name : t('no_file_chosen'); };
-
-    document.addEventListener('DOMContentLoaded', () => {
-        // --- STATE & CONFIG ---
-        const API_BASE_URL = 'http://127.0.0.1:5000/api';
-        let dashboardMap, revenueChart, vehicleDistChart, paymentDistChart;
-        let rideLayers = {};
-        let currentAnalyticsParams = 'period=week';
-        let currentReportParams = 'period=all';
-        let allDrivers = [], allRidesHistory = [], allFeedback = [], allPendingRides = [], allActiveRides = [], allPassengers = [], recentNotifications = [];
-        let rideHistoryPage = 1, RIDES_PER_PAGE = 10, lastPendingCount = 0;
-        const notificationSound = new Audio("data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU"+Array(500).join("12345678"));
-        const getCssVar = (varName) => getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
-        const chartTextColor = () => getCssVar('--text-primary');
-        const pendingIcon = L.icon({ iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png', shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png', iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41] });
-        const activeIcon = L.icon({ iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png', shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png', iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41] });
-        const destIcon = L.icon({ iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png', shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png', iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41] });
-
-        // --- HELPER FUNCTIONS ---
-        const fetchData = async (endpoint, params = '') => { let r; try { r = await fetch(`${API_BASE_URL}/${endpoint}?${params}`, { cache: "no-store", credentials: 'include' }); if (!r.ok) throw new Error(`HTTP error ${r.status}`); return await r.json(); } catch (e) { console.error(`Fetch error for ${endpoint}:`, e); if (r && r.status === 401) { window.location.href = '/login'; } return null; } };
-        const postData = async (endpoint, data, method = 'POST') => { let r; try { r = await fetch(`${API_BASE_URL}/${endpoint}`, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data), credentials: 'include' }); const result = await r.json(); if (!r.ok) throw new Error(result.error || `HTTP error ${r.status}`); return result; } catch (e) { console.error(`Post error for ${endpoint}:`, e); if (r && r.status === 401) { window.location.href = '/login'; } return {error: e.message}; } };
-        const postFormData = async (endpoint, formData) => { 
-            try { 
-                const r = await fetch(`${API_BASE_URL}/${endpoint}`, { method: 'POST', body: formData, credentials: 'include' }); 
-                if (!r.ok) { 
-                    let err;
-                    const contentType = r.headers.get('content-type');
-                    if (contentType && contentType.includes('application/json')) {
-                        err = await r.json();
-                    } else {
-                        // Server returned HTML instead of JSON (likely an error page)
-                        err = { error: `Server error (${r.status}). Please check your session and try again.` };
-                    }
-                    throw new Error(err.error || `HTTP error ${r.status}`); 
-                } 
-                return await r.json(); 
-            } catch (e) { 
-                console.error(`Post Form error for ${endpoint}:`, e); 
-                alert(`Error: ${e.message || 'Failed to save. Please try again.'}`); 
-                if (e.message && (e.message.includes('401') || e.message.includes('Session'))) { 
-                    window.location.href = '/login'; 
-                } 
-                return {error: e.message}; 
-            } 
-        };
-        const showModal = (id) => { hideModals(); document.getElementById(id).classList.remove('hidden'); document.getElementById(id).classList.add('flex'); };
-        const hideModals = () => document.querySelectorAll('.modal').forEach(m => { m.classList.add('hidden'); m.classList.remove('flex'); });
-
-        // --- UI & NAVIGATION ---
-        const showPane = (paneId) => { 
-            document.querySelectorAll('.pane').forEach(p => p.classList.remove('active')); 
-            document.getElementById(`${paneId}-pane`).classList.add('active'); 
-            document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active')); 
-            const activeLink = document.querySelector(`.sidebar-link[data-pane="${paneId}"]`); 
-            if(activeLink) { 
-                activeLink.classList.add('active'); 
-                document.getElementById('pane-title').textContent = activeLink.title;
-            } 
-            if (paneId === 'dashboard' && !dashboardMap) initDashboardMap(); 
-            if (paneId === 'analytics') updateAnalytics(); 
-            if (paneId === 'inbox') refreshFeedback(); 
-            if (paneId === 'support-tickets') refreshSupportTickets(); 
-            if(paneId === 'settings') refreshAdminUsers(); 
-            if (dashboardMap) setTimeout(() => dashboardMap.invalidateSize(), 310); 
-        };
-        document.querySelectorAll('.sidebar-link').forEach(link => { if (link.dataset.pane) { link.addEventListener('click', e => { e.preventDefault(); showPane(link.dataset.pane); }); } });
-
-        // --- DARK MODE & SIDEBAR ---
-        document.getElementById('sidebar-toggle-btn').addEventListener('click', () => { document.getElementById('main-wrapper').classList.toggle('sidebar-collapsed'); localStorage.setItem('sidebarCollapsed', document.getElementById('main-wrapper').classList.contains('sidebar-collapsed')); setTimeout(() => { if (dashboardMap) dashboardMap.invalidateSize(); }, 300); });
-        if (localStorage.getItem('sidebarCollapsed') === 'true') document.getElementById('main-wrapper').classList.add('sidebar-collapsed');
-        const setDarkMode = (isDark) => { if (isDark) { document.documentElement.classList.add('dark'); document.getElementById('dark-mode-icon').textContent = '🌙'; } else { document.documentElement.classList.remove('dark'); document.getElementById('dark-mode-icon').textContent = '☀️'; } localStorage.setItem('dispatcherDarkMode', isDark); if (document.getElementById('analytics-pane').classList.contains('active')) updateAnalytics(); };
-        document.getElementById('dark-mode-toggle-checkbox').addEventListener('change', (e) => setDarkMode(e.target.checked));
-        if (localStorage.getItem('dispatcherDarkMode') === 'true') { document.getElementById('dark-mode-toggle-checkbox').checked = true; setDarkMode(true); } else { setDarkMode(false); }
-
-        // --- MODAL & FORM LOGIC ---
-        document.getElementById('add-driver-btn').addEventListener('click', () => showModal('add-driver-modal'));
-        document.querySelectorAll('.modal').forEach(modal => modal.addEventListener('click', e => { if (e.target.classList.contains('modal') || e.target.classList.contains('cancel-modal-btn')) hideModals(); }));
-        document.getElementById('add-driver-form').addEventListener('submit', async e => { e.preventDefault(); await postFormData('add-driver', new FormData(e.target)); hideModals(); e.target.reset(); refreshAllData(); });
-        document.getElementById('edit-driver-form').addEventListener('submit', async e => { e.preventDefault(); const formData = new FormData(e.target); await postFormData(`update-driver/${formData.get('id')}`, formData); hideModals(); refreshAllData(); });
-        document.getElementById('confirm-delete-btn').addEventListener('click', async e => { await postData('delete-driver', { driver_id: e.target.dataset.driverId }); hideModals(); refreshAllData(); });
-        
-        // --- REPORTING & ANALYTICS FILTERS ---
-        const setupFilterButtons = (containerId, callback) => { document.getElementById(containerId).addEventListener('click', e => { if (e.target.matches('.analytics-filter-btn')) { document.querySelectorAll(`#${containerId} .analytics-filter-btn`).forEach(btn => btn.classList.remove('active-filter')); e.target.classList.add('active-filter'); const period = `period=${e.target.dataset.period}`; callback(period); } }); };
-        setupFilterButtons('analytics-period-btns', params => { currentAnalyticsParams = params; updateAnalytics(); });
-        setupFilterButtons('report-period-btns', params => { currentReportParams = params; });
-        document.getElementById('custom-range-btn').addEventListener('click', () => { const start = document.getElementById('start-date-input').value; const end = document.getElementById('end-date-input').value; if (start && end) { currentAnalyticsParams = `start_date=${start}&end_date=${end}`; updateAnalytics(); } });
-        document.getElementById('report-custom-range-btn').addEventListener('click', () => { const start = document.getElementById('report-start-date').value; const end = document.getElementById('report-end-date').value; if (start && end) { currentReportParams = `start_date=${start}&end_date=${end}`; } });
-        document.getElementById('export-pdf-btn').addEventListener('click', () => { window.location.href = `${API_BASE_URL}/export-report?format=pdf&${currentReportParams}`; });
-        document.getElementById('export-excel-btn').addEventListener('click', () => { window.location.href = `${API_BASE_URL}/export-report?format=excel&${currentReportParams}`; });
-
-        // --- DATA RENDERING FUNCTIONS ---
-        const updateBadges = (stats, unreadCount) => {
-            if (stats) {
-                const driversBadge = document.getElementById('drivers-badge');
-                driversBadge.textContent = stats.drivers_online;
-                driversBadge.classList.toggle('hidden', stats.drivers_online === 0);
-
-                const pendingBadge = document.getElementById('pending-requests-badge');
-                pendingBadge.textContent = stats.pending_requests;
-                pendingBadge.classList.toggle('hidden', stats.pending_requests === 0);
-
-                const activeBadge = document.getElementById('active-rides-badge');
-                activeBadge.textContent = stats.active_rides;
-                activeBadge.classList.toggle('hidden', stats.active_rides === 0);
-            }
-
-            if (unreadCount !== undefined) {
-                const inboxBadge = document.getElementById('inbox-badge');
-                inboxBadge.textContent = unreadCount;
-                inboxBadge.classList.toggle('hidden', unreadCount === 0);
-            }
-        };
-        const updateDashboardStats = stats => { 
-            if (stats) { 
-                // Update main stats with animation
-                const statMappings = {
-                    'stat-revenue': { value: stats.total_revenue, suffix: ' ETB' },
-                    'stat-rides': { value: stats.total_rides, suffix: '' },
-                    'stat-users': { value: stats.total_passengers, suffix: '' },
-                    'stat-drivers': { value: stats.total_drivers, suffix: '' },
-                    'stat-completed': { value: stats.completed_rides, suffix: '' },
-                    'stat-active': { value: stats.active_rides, suffix: '' },
-                    'stat-today-revenue': { value: stats.today_revenue, suffix: ' ETB' },
-                    'stat-pending': { value: stats.pending_requests, suffix: '' }
-                };
-                
-                Object.entries(statMappings).forEach(([id, config]) => {
-                    const el = document.getElementById(id);
-                    if (el) {
-                        // Animate the number change
-                        animateNumber(el, config.value, config.suffix);
-                    }
-                });
-                
-                if(stats.pending_requests > lastPendingCount) { 
-                    notificationSound.play(); 
-                } 
-                lastPendingCount = stats.pending_requests; 
-                // Update notification badge with unread notification count
-                const unreadCount = recentNotifications.length;
-                const badge = document.getElementById('notification-badge');
-                badge.textContent = unreadCount > 0 ? unreadCount : stats.pending_requests;
-                badge.classList.toggle('hidden', unreadCount === 0 && stats.pending_requests === 0); 
-            } 
-        };
-        
-        // Animate number changes
-        const animateNumber = (element, targetValue, suffix = '') => {
-            const startValue = parseFloat(element.textContent.replace(/[^\d.-]/g, '')) || 0;
-            const duration = 1000; // 1 second
-            const startTime = performance.now();
-            
-            const animate = (currentTime) => {
-                const elapsed = currentTime - startTime;
-                const progress = Math.min(elapsed / duration, 1);
-                
-                // Easing function for smooth animation
-                const easeOutQuart = 1 - Math.pow(1 - progress, 4);
-                const currentValue = startValue + (targetValue - startValue) * easeOutQuart;
-                
-                element.textContent = Math.round(currentValue) + suffix;
-                
-                if (progress < 1) {
-                    requestAnimationFrame(animate);
-                }
-            };
-            
-            requestAnimationFrame(animate);
-        };
-        const updateAnalytics = async () => { 
-            // Add loading animation
-            const chartContainers = document.querySelectorAll('.chart-container');
-            chartContainers.forEach(container => container.classList.add('loading'));
-            
-            const data = await fetchData('analytics-data', currentAnalyticsParams); 
-            if(data) { 
-                const {kpis, charts, performance} = data; 
-                
-                // Animate KPI updates
-                animateNumber(document.getElementById('kpi-rides-completed'), kpis.rides_completed);
-                animateNumber(document.getElementById('kpi-active-rides-now'), kpis.active_rides_now);
-                animateNumber(document.getElementById('kpi-rides-canceled'), kpis.rides_canceled);
-                animateNumber(document.getElementById('kpi-total-revenue'), kpis.total_revenue, ' ETB');
-                animateNumber(document.getElementById('kpi-avg-fare'), kpis.avg_fare, ' ETB');
-                
-                const updateTrend = (elId, val) => { 
-                    const el = document.getElementById(elId); 
-                    el.textContent = `${val >= 0 ? '↑' : '↓'} ${Math.abs(val)}%`; 
-                    el.className = `kpi-trend ${val >= 0 ? 'trend-up' : 'trend-down'}`; 
-                    el.style.animation = 'fadeIn 0.5s ease-out';
-                }; 
-                updateTrend('kpi-rides-trend', kpis.trends.rides); 
-                updateTrend('kpi-revenue-trend', kpis.trends.revenue); 
-                
-                const createChart = (ctxId, chartVar, type, data, options) => { 
-                    const ctx = document.getElementById(ctxId).getContext('2d'); 
-                    if(window[chartVar]) window[chartVar].destroy(); 
-                    window[chartVar] = new Chart(ctx, { type, data, options }); 
-                }; 
-                const commonOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: chartTextColor() } } } }; 
-                createChart('revenue-over-time-chart', 'revenueChart', 'bar', { labels: charts.revenue_over_time.labels, datasets: [{ label: 'Daily Revenue (ETB)', data: charts.revenue_over_time.data, backgroundColor: getCssVar('--chart-purple') }] }, { ...commonOptions, scales: { y: { beginAtZero: true, ticks: { color: chartTextColor() } }, x: { ticks: { color: chartTextColor() } } } }); 
-                createChart('vehicle-dist-chart', 'vehicleDistChart', 'doughnut', { labels: Object.keys(charts.vehicle_distribution), datasets: [{ data: Object.values(charts.vehicle_distribution), backgroundColor: [getCssVar('--chart-orange'), getCssVar('--chart-blue'), getCssVar('--chart-yellow')] }] }, commonOptions); 
-                createChart('payment-dist-chart', 'paymentDistChart', 'doughnut', { labels: Object.keys(charts.payment_method_distribution), datasets: [{ data: Object.values(charts.payment_method_distribution), backgroundColor: [getCssVar('--chart-green'), getCssVar('--chart-purple'), getCssVar('--chart-red')] }] }, commonOptions); 
-                
-                const topDriversList = document.getElementById('top-drivers-list'); 
-                topDriversList.innerHTML = ''; 
-                performance.top_drivers.forEach((d, index) => { 
-                    const div = document.createElement('div'); 
-                    div.className = 'flex items-center justify-between p-2 animate-slide-in';
-                    div.style.animationDelay = `${index * 0.1}s`;
-                    div.innerHTML = `<div class="flex items-center"><img src="/${d.avatar}" class="h-10 w-10 rounded-full mr-4 object-cover"><div><p class="font-semibold">${d.name}</p><p class="text-xs text-secondary">${d.avg_rating} ★</p></div></div><p class="font-bold text-lg">${d.completed_rides} rides</p>`; 
-                    topDriversList.appendChild(div); 
-                }); 
-                
-                // Remove loading animation
-                chartContainers.forEach(container => container.classList.remove('loading'));
-            }
-        };
-        
-        const renderPendingRides = (rides, availableDrivers, containerId) => {
-            const list = document.getElementById(containerId);
-            list.innerHTML = '';
-             if (!rides || rides.length === 0) {
-                list.innerHTML = `<p class="text-gray-500 text-sm p-4 text-center">No pending rides at the moment.</p>`;
-                return;
-            }
-
-            rides.forEach(ride => {
-                const rideEl = document.createElement('div');
-                rideEl.className = 'border-b border-[--border-color] pb-3 p-3';
-                rideEl.dataset.rideId = ride.id;
-
-                const filteredDrivers = availableDrivers.filter(d => d.vehicle_type === ride.vehicle_type && d.status === 'Available');
-                const driverOptions = filteredDrivers.length > 0
-                    ? filteredDrivers.map(d => `<option value="${d.id}">${d.name}</option>`).join('')
-                    : '<option disabled>No available drivers</option>';
-
-                rideEl.innerHTML = `
-                    <div class="flex justify-between items-start">
-                        <p class="font-bold text-sm">${ride.user_name} <span class="font-normal text-xs text-secondary">(${ride.user_phone})</span></p>
-                        <span class="font-bold text-sm text-[--chart-purple]">${ride.vehicle_type}</span>
-                    </div>
-                    <div class="mt-2 text-xs space-y-1 text-secondary">
-                        <p><span class="font-semibold text-[--text-primary]">From:</span> ${ride.pickup_address || 'N/A'}</p>
-                        <p><span class="font-semibold text-[--text-primary]">To:</span> ${ride.dest_address}</p>
-                        <p class="text-xs text-indigo-600 font-medium">Note: ${ride.note || 'None'}</p>
-                        <p class="text-xs font-semibold">Time: ${ride.request_time}</p>
-                    </div>
-                    <div class="mt-2 flex items-center">
-                        <select id="driver-select-${ride.id}" class="p-1 border rounded text-xs w-full">${driverOptions}</select>
-                        <button class="assign-ride-btn ml-2 px-3 py-1 bg-blue-500 text-white text-xs rounded" data-ride-id="${ride.id}" ${filteredDrivers.length === 0 ? 'disabled' : ''}>Assign</button>
-                    </div>`;
-                list.appendChild(rideEl);
-            });
-        };
-
-        const updateDriversTable = () => { const searchTerm = document.getElementById('driver-search-input').value.toLowerCase(); const statusFilter = document.getElementById('driver-status-filter').value; const filtered = allDrivers.filter(d => (d.name.toLowerCase().includes(searchTerm) || d.phone_number.includes(searchTerm) || (d.driver_uid && d.driver_uid.toLowerCase().includes(searchTerm))) && (statusFilter === 'All' || d.status === statusFilter)); const tbody = document.getElementById('drivers-table-body'); tbody.innerHTML = ''; if (!filtered.length) { tbody.innerHTML = '<tr><td colspan="8" class="text-center p-4">No drivers found.</td></tr>'; return; } filtered.forEach(d => { const row = tbody.insertRow(); const blockedBadge = d.is_blocked ? '<span class="ml-2 px-2 py-1 text-xs bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 rounded">BLOCKED</span>' : ''; const blockBtn = d.is_blocked ? `<button class="action-btn text-green-600" onclick="unblockUser(${d.id}, 'driver', '${d.name}')" title="Unblock">🔓</button>` : `<button class="action-btn text-red-600" onclick="blockUser(${d.id}, 'driver', '${d.name}')" title="Block">🔒</button>`; row.innerHTML = `<td class="p-2 font-mono text-xs">${d.driver_uid||'N/A'}</td><td class="flex items-center"><img src="/${d.profile_picture}" class="h-8 w-8 rounded-full mr-3 object-cover" onerror="this.src='/static/img/default_avatar.png'"><span class="cursor-pointer hover:text-blue-600" onclick="showDriverDetails(${d.id})">${d.name}</span>${blockedBadge}</td><td><a href="tel:${d.phone_number}" class="text-blue-500">${d.phone_number}</a></td><td>${d.vehicle_type}</td><td><select class="driver-status-select status-select-${d.status.replace(' ','-')}" data-driver-id="${d.id}">${['Available','On Trip','Offline'].map(s => `<option value="${s}" ${d.status===s?'selected':''}>${s}</option>`).join('')}</select></td><td>${d.avg_rating.toFixed(1)} ★</td><td class="space-x-2"><button class="action-btn view" data-driver-id="${d.id}" title="View Details">👁️</button><button class="action-btn edit" data-driver-id="${d.id}" title="Edit">✏️</button><button class="action-btn delete" data-driver-id="${d.id}" title="Delete">🗑️</button>${blockBtn}</td>`; }); };
-        
-        const updatePassengersTable = () => {
-            const searchTerm = document.getElementById('passenger-search-input').value.toLowerCase();
-            const filtered = allPassengers.filter(p =>
-                p.username.toLowerCase().includes(searchTerm) ||
-                p.phone_number.includes(searchTerm) ||
-                (p.passenger_uid && p.passenger_uid.toLowerCase().includes(searchTerm))
-            );
-            const tbody = document.getElementById('passengers-table-body');
-            tbody.innerHTML = '';
-            if (!filtered.length) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center p-4">No passengers found.</td></tr>';
-                return;
-            }
-            filtered.forEach(p => {
-                const row = tbody.insertRow();
-                const blockedBadge = p.is_blocked ? '<span class="ml-2 px-2 py-1 text-xs bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 rounded">BLOCKED</span>' : '';
-                const blockBtn = p.is_blocked 
-                    ? `<button class="action-btn text-green-600" onclick="unblockUser(${p.id}, 'passenger', '${p.username}')" title="Unblock">🔓</button>`
-                    : `<button class="action-btn text-red-600" onclick="blockUser(${p.id}, 'passenger', '${p.username}')" title="Block">🔒</button>`;
-                
-                row.innerHTML = `
-                    <td class="p-2 font-mono text-xs">${p.passenger_uid || 'N/A'}</td>
-                    <td class="p-2 flex items-center">
-                        <img src="/${p.profile_picture}" class="h-8 w-8 rounded-full mr-3 object-cover" onerror="this.src='/static/img/default_avatar.png'">
-                        <span class="cursor-pointer hover:text-blue-600" onclick="showPassengerDetails(${p.id})">${p.username}</span>
-                        ${blockedBadge}
-                    </td>
-                    <td><a href="tel:${p.phone_number}" class="text-blue-500">${p.phone_number}</a></td>
-                    <td>${p.rides_taken}</td>
-                    <td>${p.join_date}</td>
-                    <td class="space-x-2">
-                        <button class="action-btn view view-passenger-btn" data-passenger-id="${p.id}" title="View Details">👁️</button>
-                        ${blockBtn}
-                    </td>
-                `;
-            });
-        };
-
-        const updateActiveRidesTable = (rides) => { const tbody = document.getElementById('active-rides-table-body'); tbody.innerHTML = ''; if (!rides?.length) { tbody.innerHTML = '<tr><td colspan="5" class="text-center p-4">No active rides</td></tr>'; return; } rides.forEach(r => { const row = tbody.insertRow(); row.innerHTML = `<td class="p-2">${r.user_name}</td><td>${r.driver_name}</td><td class="text-xs max-w-xs truncate">${r.dest_address}</td><td><span class="status-badge status-${r.status.replace(' ','-')}">${r.status}</span></td><td class="space-x-2"><button class="px-3 py-1 bg-green-500 text-white text-xs rounded complete-ride-btn" data-ride-id="${r.id}">Complete</button><button class="px-3 py-1 bg-yellow-500 text-white text-xs rounded reassign-ride-btn" data-ride-id="${r.id}">Re-assign</button></td>`; }); };
-        const updateRideHistoryTable = () => { const tbody = document.getElementById('rides-history-table-body'); tbody.innerHTML = ''; if (!allRidesHistory?.length) { tbody.innerHTML = '<tr><td colspan="8" class="text-center p-4">No ride history.</td></tr>'; return; } const search = document.getElementById('ride-history-search').value.toLowerCase(); const filtered = allRidesHistory.filter(r => r.user_name.toLowerCase().includes(search) || r.driver_name?.toLowerCase().includes(search)); const pageInfo = document.getElementById('ride-history-page-info'); const totalPages = Math.ceil(filtered.length / RIDES_PER_PAGE); rideHistoryPage = Math.min(rideHistoryPage, totalPages) || 1; pageInfo.textContent = `Page ${rideHistoryPage} of ${totalPages}`; const paginated = filtered.slice((rideHistoryPage - 1) * RIDES_PER_PAGE, rideHistoryPage * RIDES_PER_PAGE); paginated.forEach(r => { const row = tbody.insertRow(); row.innerHTML = `<td class="p-2">${r.id}</td><td>${r.user_name}</td><td>${r.driver_name}</td><td>${r.fare} ETB</td><td><span class="status-badge status-${r.status}">${r.status}</span></td><td>${r.rating ? '★'.repeat(r.rating) : 'N/A'}</td><td>${r.request_time}</td><td><button class="action-btn view view-ride-btn" data-ride-id="${r.id}">👁️</button></td>`; }); };
-        const refreshFeedback = async () => { allFeedback = await fetchData('all-feedback') || []; const list = document.getElementById('feedback-list'); list.innerHTML = ''; if(!allFeedback.length) { list.innerHTML = '<p class="text-secondary text-center">No feedback yet.</p>'; return; } allFeedback.forEach(f => { const item = document.createElement('div'); item.className = `border-b pb-3 ${f.is_resolved ? 'opacity-50' : ''}`; item.innerHTML = `<div class="flex justify-between items-center"><p class="font-semibold">Ride #${f.ride_id} - ${f.passenger_name}</p><span class="text-xs text-secondary">${f.date}</span></div><div class="flex items-center mt-1"><span class="text-yellow-500">${f.rating ? '★'.repeat(f.rating) : ''}</span><p class="ml-2 text-sm italic">"${f.comment || 'No comment'}"</p></div><div class="flex justify-between items-center mt-1"><p class="text-xs text-secondary">Driver: ${f.driver_name}</p>${!f.is_resolved ? `<button data-id="${f.id}" class="resolve-feedback-btn px-2 py-1 text-xs bg-green-500 text-white rounded">Mark as Resolved</button>`: '<span class="text-xs text-green-600 font-semibold">Resolved</span>'}</div>`; list.appendChild(item); }); };
-        
-        const refreshSupportTickets = async () => { 
-            const tickets = await fetchData('support-tickets') || []; 
-            const list = document.getElementById('support-tickets-list'); 
-            list.innerHTML = ''; 
-            
-            if(!tickets.length) { 
-                list.innerHTML = '<p class="text-gray-500 text-center">No support tickets yet.</p>'; 
-                return; 
-            } 
-            
-            tickets.forEach(ticket => { 
-                const item = document.createElement('div'); 
-                const statusColors = {
-                    'Open': 'bg-red-100 text-red-800',
-                    'In Progress': 'bg-yellow-100 text-yellow-800',
-                    'Resolved': 'bg-green-100 text-green-800',
-                    'Closed': 'bg-gray-100 text-gray-800'
-                };
-                item.className = `border border-gray-200 dark:border-gray-700 rounded-lg p-4 ${ticket.status === 'Resolved' ? 'opacity-60' : ''}`;
-                item.innerHTML = `
-                    <div class="flex justify-between items-start mb-2">
-                        <div>
-                            <p class="font-semibold text-gray-900 dark:text-white">${ticket.passenger_name}</p>
-                            <p class="text-xs text-gray-500">${ticket.passenger_phone}</p>
-                        </div>
-                        <span class="px-2 py-1 text-xs rounded-full ${statusColors[ticket.status] || 'bg-gray-100'}">${ticket.status}</span>
-                    </div>
-                    <div class="mb-2">
-                        <span class="text-xs font-medium text-indigo-600">${ticket.feedback_type}</span>
-                        ${ticket.ride_id ? `<span class="text-xs text-gray-500 ml-2">Ride #${ticket.ride_id}</span>` : ''}
-                    </div>
-                    <p class="text-sm text-gray-700 dark:text-gray-300 mb-2">${ticket.details}</p>
-                    <div class="flex justify-between items-center text-xs text-gray-500">
-                        <span>${ticket.created_at}</span>
-                        ${ticket.status !== 'Resolved' ? `<button class="resolve-ticket-btn px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700" data-ticket-id="${ticket.id}">Resolve</button>` : ''}
-                    </div>
-                    ${ticket.admin_response ? `<div class="mt-2 pt-2 border-t border-gray-200"><p class="text-xs text-gray-600"><strong>Response:</strong> ${ticket.admin_response}</p></div>` : ''}
-                `; 
-                list.appendChild(item); 
-            }); 
-        };
-        
-        const renderNotifications = () => {
-            const dropdown = document.getElementById('notification-dropdown');
-            dropdown.innerHTML = '';
-            if (recentNotifications.length === 0) {
-                dropdown.innerHTML = '<p class="p-4 text-sm text-center text-[--text-secondary]">No new notifications</p>';
-                return;
-            }
-            recentNotifications.forEach((notif, index) => {
-                const item = document.createElement('div');
-                item.className = 'notification-item p-3 border-b border-[--border-color] text-sm cursor-pointer hover:bg-[--main-bg]';
-                item.textContent = notif;
-                item.addEventListener('click', () => {
-                    // Mark this notification as read by removing it
-                    recentNotifications.splice(index, 1);
-                    renderNotifications();
-                    // Update badge
-                    const badge = document.getElementById('notification-badge');
-                    badge.textContent = recentNotifications.length;
-                    badge.classList.toggle('hidden', recentNotifications.length === 0);
-                    // Close dropdown if no more notifications
-                    if(recentNotifications.length === 0) {
-                        dropdown.classList.add('hidden');
-                    }
-                });
-                dropdown.appendChild(item);
-            });
-            
-            // Add "Clear All" button if there are notifications
-            if(recentNotifications.length > 0) {
-                const clearBtn = document.createElement('button');
-                clearBtn.className = 'w-full p-2 text-xs text-center text-blue-600 hover:bg-[--main-bg] font-semibold border-t border-[--border-color]';
-                clearBtn.textContent = 'Clear All';
-                clearBtn.addEventListener('click', () => {
-                    recentNotifications.length = 0;
-                    renderNotifications();
-                    const badge = document.getElementById('notification-badge');
-                    badge.classList.add('hidden');
-                    dropdown.classList.add('hidden');
-                });
-                dropdown.appendChild(clearBtn);
-            }
-        };
-
-        // --- EVENT LISTENERS ---
-        document.getElementById('notification-bell').addEventListener('click', (e) => { 
-            e.stopPropagation(); 
-            const dropdown = document.getElementById('notification-dropdown'); 
-            const badge = document.getElementById('notification-badge');
-            dropdown.classList.toggle('hidden'); 
-            if(!dropdown.classList.contains('hidden')) { 
-                renderNotifications(); 
-                // Only hide badge if there are actual notifications to show
-                if(recentNotifications.length > 0) {
-                    badge.classList.add('hidden');
-                }
-            } 
-        });
-        document.addEventListener('click', (e) => { const dropdown = document.getElementById('notification-dropdown'); const bell = document.getElementById('notification-bell'); if (!dropdown.classList.contains('hidden') && !bell.contains(e.target)) { dropdown.classList.add('hidden'); } });
-        const setupAssignmentListeners = (containerId) => { document.getElementById(containerId).addEventListener('click', async (e) => { if (e.target.classList.contains('assign-ride-btn')) { const rideId = e.target.dataset.rideId; const driverId = document.getElementById(`driver-select-${rideId}`).value; if (driverId) { await postData('assign-ride', { ride_id: rideId, driver_id: driverId }); refreshAllData(); } else { alert('Please select a driver.'); } } }); };
-        setupAssignmentListeners('pending-rides-summary-list');
-        setupAssignmentListeners('pending-rides-container');
-
-        document.getElementById('drivers-table-body').addEventListener('change', async e => { if (e.target.classList.contains('driver-status-select')) { await postData('update-driver-status', { driver_id: e.target.dataset.driverId, status: e.target.value }); refreshAllData(); } });
-        document.getElementById('drivers-table-body').addEventListener('click', async e => { const btn = e.target.closest('.action-btn'); if (!btn) return; const id = btn.dataset.driverId; if (btn.classList.contains('view')) { const data = await fetchData(`driver-details/${id}`); if(data) showDriverDetails(data); } else if (btn.classList.contains('edit')) { const driver = await fetchData(`driver/${id}`); if (driver) { const form = document.getElementById('edit-driver-form'); form.reset(); form.elements.id.value = driver.id; form.elements.name.value = driver.name; form.elements.phone_number.value = driver.phone_number; form.elements.vehicle_type.value = driver.vehicle_type; form.elements.vehicle_details.value = driver.vehicle_details; form.elements.vehicle_plate_number.value = driver.vehicle_plate_number; form.elements.license_info.value = driver.license_info; showModal('edit-driver-modal'); } } else if (btn.classList.contains('delete')) { document.getElementById('confirm-delete-btn').dataset.driverId = id; showModal('delete-driver-modal'); } });
-        document.getElementById('active-rides-table-body').addEventListener('click', async e => { const id = e.target.dataset.rideId; if (!id) return; if (e.target.classList.contains('complete-ride-btn')) await postData('complete-ride', { ride_id: id }); else if (e.target.classList.contains('reassign-ride-btn')) await postData('cancel-ride', { ride_id: id }); refreshAllData(); });
-        document.getElementById('feedback-list').addEventListener('click', async e => { if (e.target.classList.contains('resolve-feedback-btn')) { await postData(`feedback/resolve/${e.target.dataset.id}`, {}); refreshFeedback(); refreshUnreadCount(); } });
-        document.getElementById('support-tickets-list').addEventListener('click', async e => { if (e.target.classList.contains('resolve-ticket-btn')) { const ticketId = e.target.dataset.ticketId; const response = prompt('Enter admin response (optional):'); await postData(`support-tickets/${ticketId}/resolve`, { response: response || '' }); refreshSupportTickets(); } });
-        document.getElementById('settings-form').addEventListener('submit', async e => { e.preventDefault(); await postData('settings', Object.fromEntries(new FormData(e.target))); alert('Settings Saved!'); });
-        document.getElementById('driver-search-input').addEventListener('input', updateDriversTable);
-        document.getElementById('passenger-search-input').addEventListener('input', updatePassengersTable);
-        document.getElementById('driver-status-filter').addEventListener('change', updateDriversTable);
-        document.getElementById('ride-history-search').addEventListener('input', () => { rideHistoryPage = 1; updateRideHistoryTable(); });
-        document.getElementById('ride-history-prev').addEventListener('click', () => { if (rideHistoryPage > 1) { rideHistoryPage--; updateRideHistoryTable(); } });
-        document.getElementById('ride-history-next').addEventListener('click', () => { rideHistoryPage++; updateRideHistoryTable(); });
-
-        document.getElementById('rides-history-table-body').addEventListener('click', async e => {
-            const btn = e.target.closest('.view-ride-btn');
-            if (btn) {
-                const id = btn.dataset.rideId;
-                const data = await fetchData(`ride-details/${id}`);
-                if(data) showRideDetails(data);
-            }
-        });
-
-        document.getElementById('passengers-table-body').addEventListener('click', async e => {
-            const btn = e.target.closest('.view-passenger-btn');
-            if (btn) {
-                const id = btn.dataset.passengerId;
-                const data = await fetchData(`passenger-details/${id}`);
-                if(data) showPassengerDetails(data);
-            }
-        });
-
-
-        // --- DRIVER DETAILS & MAP ---
-        const showDriverDetails = (data) => { const content = document.getElementById('driver-details-content'); const p = data.profile; const docLink = (path, name) => path ? `<a href="/${path}" target="_blank" class="text-blue-500 hover:underline">${name}</a>` : 'Not Uploaded'; content.innerHTML = `<div class="grid md:grid-cols-3 gap-6"><div class="text-center"><img src="/${p.avatar}" class="rounded-full w-32 h-32 mx-auto border-4 object-cover" onerror="this.src='/static/img/default_avatar.png'"><h3 class="text-xl font-bold mt-4">${p.name}</h3><p class="text-sm font-mono">${p.driver_uid}</p><p class="text-sm">${p.phone_number}</p><span class="status-badge status-${p.status.replace(' ','-')} mt-2 inline-block">${p.status}</span></div><div class="md:col-span-2 space-y-4"><div><h4 class="font-bold border-b pb-1 mb-2">Vehicle & Docs</h4><div class="text-sm space-y-1"><p><strong>Type:</strong> ${p.vehicle_type}</p><p><strong>Details:</strong> ${p.vehicle_details}</p><p><strong>Plate:</strong> ${p.plate_number}</p><p><strong>License:</strong> ${p.license}</p><p><strong>License Doc:</strong> ${docLink(p.license_document, 'View')}</p><p><strong>Vehicle Doc:</strong> ${docLink(p.vehicle_document, 'View')}</p></div></div><div><h4 class="font-bold border-b pb-1 mb-2">Performance</h4><div class="grid grid-cols-2 gap-4 mt-2 text-sm"><div class="card p-3"><p class="font-semibold">Completed Rides</p><p class="text-2xl font-bold">${data.stats.completed_rides}</p></div><div class="card p-3"><p class="font-semibold">Avg. Rating</p><p class="text-2xl font-bold">${data.stats.avg_rating.toFixed(2)} ★</p></div><div class="card p-3"><p class="font-semibold">Weekly Earnings</p><p class="text-2xl font-bold">${data.stats.total_earnings_weekly} ETB</p></div><div class="card p-3"><p class="font-semibold">Total Earnings</p><p class="text-2xl font-bold">${data.stats.total_earnings_all_time} ETB</p></div></div></div></div></div><div class="mt-6"><h4 class="font-bold border-b pb-1 mb-2">Recent History</h4>${data.history.length ? data.history.map(r => `<div class="grid grid-cols-4 text-sm p-2 border-b"><span>#${r.id}</span><span>${r.date}</span><span>${r.fare} ETB</span><span class="status-badge status-${r.status}">${r.status}</span></div>`).join('') : '<p class="text-center p-4">No recent history.</p>'}</div>`; showModal('driver-details-modal'); };
-        
-        const showPassengerDetails = (data) => {
-            const content = document.getElementById('passenger-details-content');
-            const p = data.profile;
-            content.innerHTML = `
-                <div class="grid md:grid-cols-3 gap-6">
-                    <div class="text-center">
-                        <img src="/${p.avatar}" class="rounded-full w-32 h-32 mx-auto border-4 object-cover" onerror="this.src='/static/img/default_avatar.png'">
-                        <h3 class="text-xl font-bold mt-4">${p.name}</h3>
-                        <p class="text-sm font-mono text-secondary">${p.passenger_uid}</p>
-                        <p class="text-sm">${p.phone_number}</p>
-                        <p class="text-xs text-secondary mt-1">Member since ${p.join_date}</p>
-                    </div>
-                    <div class="md:col-span-2 space-y-4">
-                        <div>
-                            <h4 class="font-bold border-b pb-1 mb-2">Performance</h4>
-                            <div class="grid grid-cols-3 gap-4 mt-2 text-sm">
-                                <div class="card p-3 text-center"><p class="font-semibold">Total Rides</p><p class="text-2xl font-bold">${data.stats.total_rides}</p></div>
-                                <div class="card p-3 text-center"><p class="font-semibold">Total Spent</p><p class="text-2xl font-bold">${data.stats.total_spent} ETB</p></div>
-                                <div class="card p-3 text-center"><p class="font-semibold">Avg. Rating Given</p><p class="text-2xl font-bold">${data.stats.avg_rating_given.toFixed(2)} ★</p></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="mt-6">
-                    <h4 class="font-bold border-b pb-1 mb-2">Recent Ride History (Up to 20)</h4>
-                    <div class="space-y-2">
-                    ${data.history.length ? data.history.map(r => `
-                        <div class="grid grid-cols-5 gap-2 text-xs p-2 border-b">
-                            <span class="col-span-5"><strong class="text-primary">Ride ID: #${r.id}</strong> - ${r.date}</span>
-                            <span class="col-span-2"><strong>From:</strong> ${r.pickup_address || 'N/A'}</span>
-                            <span class="col-span-3"><strong>To:</strong> ${r.dest_address}</span>
-                            <span><strong>Driver:</strong> ${r.driver_name}</span>
-                            <span><strong>Fare:</strong> ${r.fare} ETB</span>
-                             <span class="text-yellow-500"><strong>Rating:</strong> ${r.rating_given !== 'N/A' ? '★'.repeat(r.rating_given) : 'Not Rated'}</span>
-                            <span colspan="2"><span class="status-badge status-${r.status}">${r.status}</span></span>
-                        </div>`).join('') : '<p class="text-center text-secondary p-4">No ride history.</p>'}
-                    </div>
-                </div>`;
-            showModal('passenger-details-modal');
-        };
-
-        const showRideDetails = async (data) => {
-            const content = document.getElementById('ride-details-content');
-            const trip = data.trip_info;
-            const passenger = data.passenger;
-            const driver = data.driver;
-            const timestamps = data.timestamps;
-            const feedback = data.feedback;
-
-            content.innerHTML = `
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div class="lg:col-span-2">
-                        <div id="ride-detail-map" class="w-full h-64 bg-gray-200 rounded-lg border shadow-inner mb-4"></div>
-                        <div class="grid grid-cols-2 gap-4 text-sm">
-                            <div><strong>From:</strong> ${trip.pickup_address}</div>
-                            <div><strong>To:</strong> ${trip.dest_address}</div>
-                        </div>
-                    </div>
-                    <div class="space-y-4 text-sm">
-                        <div class="card p-4">
-                             <h4 class="font-bold text-md mb-2">Trip Info</h4>
-                             <p><strong>ID:</strong> #${trip.id}</p>
-                             <p><strong>Status:</strong> <span class="status-badge status-${trip.status}">${trip.status}</span></p>
-                             <p><strong>Fare:</strong> ${trip.fare} ETB</p>
-                             <p><strong>Distance:</strong> ${trip.distance} km</p>
-                             <p><strong>Payment:</strong> ${trip.payment_method}</p>
-                        </div>
-                         <div class="card p-4">
-                             <h4 class="font-bold text-md mb-2">Timestamps</h4>
-                             <p><strong>Requested:</strong> ${timestamps.requested}</p>
-                             <p><strong>Assigned:</strong> ${timestamps.assigned}</p>
-                        </div>
-                    </div>
-                </div>
-                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                    <div class="card p-4">
-                        <h4 class="font-bold text-md mb-2">Passenger</h4>
-                        <div class="flex items-center">
-                            <img src="/${passenger.avatar}" class="h-12 w-12 rounded-full object-cover mr-4" onerror="this.src='/static/img/default_user.svg'">
-                            <div>
-                                <p class="font-semibold">${passenger.name}</p>
-                                <p class="text-xs text-secondary">${passenger.phone}</p>
-                            </div>
-                        </div>
-                    </div>
-                     <div class="card p-4">
-                        <h4 class="font-bold text-md mb-2">Driver</h4>
-                        <div class="flex items-center">
-                            <img src="/${driver.avatar}" class="h-12 w-12 rounded-full object-cover mr-4" onerror="this.src='/static/img/default_user.svg'">
-                            <div>
-                                <p class="font-semibold">${driver.name}</p>
-                                 <p class="text-xs text-secondary">${driver.phone}</p>
-                                <p class="text-xs text-secondary">${driver.vehicle}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="card p-4 mt-6">
-                    <h4 class="font-bold text-md mb-2">Feedback</h4>
-                    ${feedback.rating ? `
-                        <div class="flex items-center">
-                            <span class="text-yellow-500 text-xl">${'★'.repeat(feedback.rating)}</span>
-                            <p class="ml-4 italic">"${feedback.comment || 'No comment provided.'}"</p>
-                        </div>
-                    ` : '<p class="text-secondary text-sm">No feedback was provided for this ride.</p>'}
-                </div>
-            `;
-            showModal('ride-details-modal');
-
-            // Map has to be initialized AFTER the modal is visible
-            const map = L.map('ride-detail-map').setView([trip.pickup_coords.lat, trip.pickup_coords.lon], 15);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-            L.marker([trip.pickup_coords.lat, trip.pickup_coords.lon], {icon: pendingIcon}).addTo(map).bindPopup("Pickup");
-            L.marker([trip.dest_coords.lat, trip.dest_coords.lon], {icon: destIcon}).addTo(map).bindPopup("Destination");
-            const routeLine = await drawRouteOnMap(trip.pickup_coords, trip.dest_coords);
-            if(routeLine) {
-                routeLine.addTo(map);
-                map.fitBounds(routeLine.getBounds(), {padding: [20, 20]});
-            }
-             setTimeout(() => map.invalidateSize(), 100);
-        };
-
-        async function drawRouteOnMap(pickup, destination, color) {
-            const url = `https://router.project-osrm.org/route/v1/driving/${pickup.lon},${pickup.lat};${destination.lon},${destination.lat}?overview=full&geometries=geojson`;
-            try {
-                const response = await fetch(url);
-                const data = await response.json();
-                if (data.routes?.length) {
-                    return L.polyline(data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]), { color: color || getCssVar('--chart-purple'), weight: 5 });
-                }
-            } catch (error) { console.error('Error fetching route:', error); }
-            return null;
-        }
-
-        const updateLiveMap = async () => {
-            if (!dashboardMap) return;
-
-            // Clear existing ride layers
-            Object.values(rideLayers).forEach(layerGroup => dashboardMap.removeLayer(layerGroup));
-            rideLayers = {};
-            const allBounds = [];
-
-            const processRide = async (ride, isPending) => {
-                const pickup = { lat: ride.pickup_lat, lon: ride.pickup_lon };
-                const dest = { lat: ride.dest_lat, lon: ride.dest_lon };
-                
-                const pickupPopup = `<b>${isPending ? 'Request from' : 'Pickup for'}: ${ride.user_name}</b><br>To: ${ride.dest_address}`;
-                const destPopup = `<b>Destination for ${ride.user_name}</b>`;
-                
-                const pickupMarker = L.marker([pickup.lat, pickup.lon], { icon: isPending ? pendingIcon : activeIcon }).bindPopup(pickupPopup);
-                const destMarker = L.marker([dest.lat, dest.lon], { icon: destIcon }).bindPopup(destPopup);
-                const routeLine = await drawRouteOnMap(pickup, dest, isPending ? getCssVar('--chart-blue') : getCssVar('--chart-red'));
-                
-                const layerGroup = L.layerGroup([pickupMarker, destMarker]);
-                if (routeLine) layerGroup.addLayer(routeLine);
-                
-                rideLayers[ride.id] = layerGroup;
-                allBounds.push([pickup.lat, pickup.lon], [dest.lat, dest.lon]);
-            };
-
-            const ridePromises = [
-                ...allPendingRides.map(ride => processRide(ride, true)),
-                ...allActiveRides.map(ride => processRide(ride, false))
-            ];
-            await Promise.all(ridePromises);
-
-            // Add all new layers to the map and adjust view
-            Object.values(rideLayers).forEach(layerGroup => layerGroup.addTo(dashboardMap));
-            if (allBounds.length > 0) {
-                dashboardMap.fitBounds(allBounds, { padding: [50, 50], maxZoom: 15 });
-            } else {
-                dashboardMap.setView([13.88, 39.46], 10); // Center between Mekelle and Adigrat
-            }
-        };
-
-        // --- ADMIN MANAGEMENT ---
-        const refreshAdminUsers = async () => {
-            const admins = await fetchData('admins');
-            const listEl = document.getElementById('admin-users-list');
-            listEl.innerHTML = '';
-            if (admins) {
-                admins.forEach(admin => {
-                    const div = document.createElement('div');
-                    div.className = 'flex items-center justify-between p-2 bg-[--main-bg] rounded';
-                    div.innerHTML = `<span>${admin.username}</span><button class="action-btn delete delete-admin-btn" data-admin-id="${admin.id}">🗑️</button>`;
-                    listEl.appendChild(div);
-                });
-            }
-        };
-
-        const setFeedbackMessage = (elementId, message, isError = false) => {
-            const el = document.getElementById(elementId);
-            el.textContent = message;
-            el.className = `text-sm mt-2 ${isError ? 'text-red-500' : 'text-green-500'}`;
-            setTimeout(() => el.textContent = '', 4000);
-        };
-
-        // Update Profile (separate from password)
-        document.getElementById('update-profile-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const form = e.target;
-            const formData = new FormData(form);
-            
-            const result = await postFormData('admins/update-profile', formData); 
-        
-            if (result && !result.error) {
-                setFeedbackMessage('profile-feedback', 'Profile updated successfully!');
-                form.elements.profile_picture.value = '';
-                document.getElementById('profile-picture-filename').textContent = 'No file chosen';
-
-                const newUsername = form.elements.username.value;
-                const usernameDisplays = document.querySelectorAll('.font-semibold');
-                usernameDisplays.forEach(el => {
-                    if (el.textContent !== 'Logout') {
-                        el.textContent = newUsername.charAt(0).toUpperCase() + newUsername.slice(1);
-                    }
-                });
-        
-                if (result.profile_picture) {
-                    const newAvatarSrc = `/${result.profile_picture}?v=${new Date().getTime()}`;
-                    document.getElementById('sidebar-avatar').src = newAvatarSrc;
-                    document.getElementById('settings-avatar').src = newAvatarSrc;
-                }
-            } else {
-                const errorMessage = result ? result.error : 'An unexpected error occurred. Please try again.';
-                setFeedbackMessage('profile-feedback', `Error: ${errorMessage}`, true);
-            }
-        });
-
-        // Change Password Button
-        document.getElementById('change-password-btn').addEventListener('click', () => {
-            showModal('change-password-modal');
-        });
-
-        // Change Password Form
-        document.getElementById('change-password-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const currentPassword = document.getElementById('password-current-password').value;
-            const newPassword = document.getElementById('password-new-password').value;
-            const confirmPassword = document.getElementById('password-confirm-password').value;
-            
-            // Validate passwords match
-            if (newPassword !== confirmPassword) {
-                setFeedbackMessage('password-feedback', 'New passwords do not match', true);
-                return;
-            }
-            
-            // Validate password length
-            if (newPassword.length < 6) {
-                setFeedbackMessage('password-feedback', 'Password must be at least 6 characters', true);
-                return;
-            }
-            
-            const result = await postData('admins/change-password', {
-                current_password: currentPassword,
-                new_password: newPassword,
-                confirm_password: confirmPassword
-            });
-            
-            if (result && !result.error) {
-                setFeedbackMessage('password-feedback', 'Password changed successfully!');
-                setTimeout(() => {
-                    hideModals();
-                    e.target.reset();
-                }, 1500);
-            } else {
-                const errorMessage = result ? result.error : 'Failed to change password';
-                setFeedbackMessage('password-feedback', `Error: ${errorMessage}`, true);
-            }
-        });
-
-        document.getElementById('add-admin-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const username = document.getElementById('new-admin-username').value;
-            const password = document.getElementById('new-admin-password').value;
-            const result = await postData('admins/add', { username, password });
-            if (result && !result.error) {
-                setFeedbackMessage('admin-feedback', 'Admin added successfully!');
-                e.target.reset();
-                refreshAdminUsers();
-            } else {
-                 setFeedbackMessage('admin-feedback', `Error: ${result.error}`, true);
-            }
-        });
-
-        // Helper function to show confirm modal
-        const showConfirmModal = (title, message, onConfirm) => {
-            document.getElementById('confirm-modal-title').textContent = title;
-            document.getElementById('confirm-modal-message').textContent = message;
-            document.getElementById('confirm-modal-btn').onclick = () => {
-                hideModals();
-                onConfirm();
-            };
-            showModal('confirm-modal');
-        };
-
-        document.getElementById('admin-users-list').addEventListener('click', async (e) => {
-            if (e.target.classList.contains('delete-admin-btn')) {
-                const adminId = e.target.dataset.adminId;
-                showConfirmModal(
-                    'Delete Admin',
-                    'Are you sure you want to delete this admin? This action cannot be undone.',
-                    async () => {
-                    const result = await postData('admins/delete', { admin_id: parseInt(adminId) });
-                    if (result && !result.error) {
-                        setFeedbackMessage('admin-feedback', 'Admin deleted.');
-                        refreshAdminUsers();
-                    } else {
-                        setFeedbackMessage('admin-feedback', `Error: ${result.error}`, true);
-                    }
-                }
-                );
-            }
-        });
-
-        // Block/Unblock User Functionality
-        document.getElementById('block-user-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const userId = document.getElementById('block-user-id').value;
-            const userType = document.getElementById('block-user-type').value;
-            const reason = document.getElementById('block-reason').value;
-            
-            const result = await postData('users/block', {
-                user_id: parseInt(userId),
-                user_type: userType,
-                reason: reason
-            });
-            
-            if (result && !result.error) {
-                setFeedbackMessage('block-feedback', 'User blocked successfully!');
-                setTimeout(() => {
-                    hideModals();
-                    e.target.reset();
-                    refreshAllData();
-                }, 1500);
-            } else {
-                const errorMessage = result ? result.error : 'Failed to block user';
-                setFeedbackMessage('block-feedback', `Error: ${errorMessage}`, true);
-            }
-        });
-
-        // Helper function to block user - Expose globally for onclick handlers
-        window.blockUser = (userId, userType, userName) => {
-            document.getElementById('block-user-id').value = userId;
-            document.getElementById('block-user-type').value = userType;
-            document.getElementById('block-reason').value = '';
-            showModal('block-user-modal');
-        };
-
-        // Helper function to unblock user - Expose globally for onclick handlers
-        window.unblockUser = async (userId, userType, userName) => {
-            showConfirmModal(
-                'Unblock User',
-                `Are you sure you want to unblock ${userName}?`,
-                async () => {
-                    const result = await postData('users/unblock', {
-                        user_id: parseInt(userId),
-                        user_type: userType
-                    });
-                    
-                    if (result && !result.error) {
-                        alert('User unblocked successfully!');
-                        refreshAllData();
-                    } else {
-                        const errorMessage = result ? result.error : 'Failed to unblock user';
-                        alert(`Error: ${errorMessage}`);
-                    }
-                }
-            );
-        };
-
-        document.getElementById('settings-tabs').addEventListener('click', e => {
-            if(e.target.classList.contains('settings-tab')) {
-                document.querySelectorAll('.settings-tab').forEach(tab => tab.classList.remove('active'));
-                document.querySelectorAll('.settings-content').forEach(content => content.classList.remove('active'));
-                e.target.classList.add('active');
-                document.getElementById(`${e.target.dataset.target}-content`).classList.add('active');
-            }
-        });
-
-        // --- DATA REFRESH & INITIALIZATION ---
-        const refreshUnreadCount = async () => { const data = await fetchData('unread-feedback-count'); updateBadges(null, data?.count); };
-        const refreshDashboardData = async () => {
-             const [stats, pending, active, availableDrivers] = await Promise.all([ fetchData('dashboard-stats'), fetchData('pending-rides'), fetchData('active-rides'), fetchData('available-drivers') ]);
-            if (!stats) return; 
-            updateDashboardStats(stats);
-            
-            const oldPendingIds = new Set(allPendingRides.map(r => r.id));
-            allPendingRides = pending || [];
-            allActiveRides = active || [];
-
-            allPendingRides.forEach(ride => { if (!oldPendingIds.has(ride.id)) { recentNotifications.unshift(`New ride from ${ride.user_name} at ${ride.request_time}`); } });
-            if (recentNotifications.length > 10) recentNotifications.length = 10;
-            
-            updateLiveMap();
-            
-            renderPendingRides(allPendingRides, availableDrivers || [], 'pending-rides-summary-list');
-            renderPendingRides(allPendingRides, availableDrivers || [], 'pending-rides-container');
-            updateActiveRidesTable(allActiveRides);
-            updateBadges(stats);
-        };
-        const refreshAllData = async () => { 
-            const [drivers, rides, passengers] = await Promise.all([ 
-                fetchData('drivers'), 
-                fetchData('all-rides-data'),
-                fetchData('passengers')
-            ]); 
-            allDrivers = drivers || []; 
-            allRidesHistory = rides || []; 
-            allPassengers = passengers || [];
-            updateDriversTable(); 
-            updatePassengersTable();
-            updateRideHistoryTable(); 
-            refreshDashboardData(); 
-            refreshUnreadCount(); 
-        };
-        const initDashboardMap = () => { if (!dashboardMap) { dashboardMap = L.map('dashboard-map').setView([13.88, 39.46], 10); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(dashboardMap); } }
-        
-        document.querySelector('.analytics-filter-btn[data-period="week"]').classList.add('active-filter');
-        showPane('dashboard');
-        refreshAllData();
-        setInterval(refreshDashboardData, 10000);
-        setInterval(refreshUnreadCount, 30000);
-
-        // Language persistence for admin dashboard - fixed to prevent infinite redirects
-        const savedLang = localStorage.getItem('adminLanguage');
-        const currentLang = '{{ session.get("language", "en") }}';
-        
-        // Only redirect if there's a saved preference different from current AND
-        // we haven't just changed the language (check for redirect flag)
-        const justChanged = sessionStorage.getItem('languageJustChanged');
-        if (savedLang && savedLang !== currentLang && !justChanged) {
-            // Set flag to prevent immediate redirect after language change
-            sessionStorage.setItem('languageJustChanged', 'true');
-            document.cookie = `language_preference=${savedLang}; max-age=${365*24*60*60}; path=/`;
-            window.location.href = `/change_language/${savedLang}`;
-        } else {
-            // Clear the flag if it exists and save current language
-            sessionStorage.removeItem('languageJustChanged');
-            localStorage.setItem('adminLanguage', currentLang);
-        }
-
-        // Language dropdown functionality
-        const langDropdownBtn = document.getElementById('lang-dropdown-btn');
-        const langDropdownContent = document.getElementById('lang-dropdown-content');
-        
-        if (langDropdownBtn && langDropdownContent) {
-            langDropdownBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                langDropdownContent.classList.toggle('show');
-            });
-
-            // Close dropdown when clicking outside
-            document.addEventListener('click', (e) => {
-                if (!langDropdownBtn.contains(e.target) && !langDropdownContent.contains(e.target)) {
-                    langDropdownContent.classList.remove('show');
-                }
-            });
-
-            // Update language links to include persistence
-            document.querySelectorAll('.lang-dropdown-content a').forEach(link => {
-                link.addEventListener('click', (e) => {
-                    const lang = e.target.href.split('/').pop();
-                    localStorage.setItem('adminLanguage', lang);
-                    document.cookie = `language_preference=${lang}; max-age=${365*24*60*60}; path=/`;
-                });
-            });
-        }
-    });
+    // Pass template variables to JavaScript
+    window.TEMPLATE_VARS = {
+        LANG: "{{ session.get('language', 'en') }}",
+        API_BASE_URL: 'http://127.0.0.1:5000/api'
+    };
 </script>
 {% endblock %}
