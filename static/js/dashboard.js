@@ -55,12 +55,59 @@ document.addEventListener('DOMContentLoaded', () => {
     const destIcon = L.icon({ iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png', shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png', iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41] });
 
     // --- HELPER FUNCTIONS ---
-    const fetchData = async (endpoint, params = '') => { 
+    // Rate limiting protection
+    const requestQueue = new Map();
+    const RATE_LIMIT_DELAY = 500; // 500ms between requests to same endpoint
+    
+    // Smart caching to reduce API calls
+    const cache = new Map();
+    const CACHE_DURATION = 5000; // 5 seconds cache for dashboard data
+    
+    const fetchData = async (endpoint, params = '', useCache = true) => { 
+        const key = `${endpoint}?${params}`;
+        const now = Date.now();
+        
+        // Check cache first for dashboard endpoints
+        if (useCache && cache.has(key)) {
+            const cached = cache.get(key);
+            if (now - cached.timestamp < CACHE_DURATION) {
+                console.log(`Using cached data for ${endpoint}`);
+                return cached.data;
+            }
+        }
+        
+        // Check if we made a request to this endpoint recently
+        if (requestQueue.has(key)) {
+            const lastRequest = requestQueue.get(key);
+            const timeSinceLastRequest = now - lastRequest;
+            
+            if (timeSinceLastRequest < RATE_LIMIT_DELAY) {
+                const waitTime = RATE_LIMIT_DELAY - timeSinceLastRequest;
+                console.log(`Rate limiting: waiting ${waitTime}ms before next request to ${endpoint}`);
+                await new Promise(resolve => setTimeout(resolve, waitTime));
+            }
+        }
+        
+        requestQueue.set(key, now);
+        
         let r; 
         try { 
             r = await fetch(`${API_BASE_URL}/${endpoint}?${params}`, { cache: "no-store", credentials: 'include' }); 
-            if (!r.ok) throw new Error(`HTTP error ${r.status}`); 
-            return await r.json(); 
+            if (!r.ok) {
+                if (r.status === 429) {
+                    console.warn(`Rate limited for ${endpoint}, will retry later`);
+                    return null; // Don't throw error for rate limiting
+                }
+                throw new Error(`HTTP error ${r.status}`); 
+            }
+            const data = await r.json();
+            
+            // Cache the result for dashboard endpoints
+            if (useCache && ['dashboard-stats', 'pending-rides', 'active-rides', 'available-drivers'].includes(endpoint)) {
+                cache.set(key, { data, timestamp: now });
+            }
+            
+            return data;
         } catch (e) { 
             console.error(`Fetch error for ${endpoint}:`, e); 
             if (r && r.status === 401) { window.location.href = '/login'; } 
@@ -265,6 +312,13 @@ document.addEventListener('DOMContentLoaded', () => {
               const activeBadge = document.getElementById('active-rides-badge');
               activeBadge.textContent = stats.active_rides;
               activeBadge.classList.toggle('hidden', stats.active_rides === 0);
+
+              // Update support tickets badge
+              const ticketsBadge = document.getElementById('tickets-badge');
+              if (ticketsBadge) {
+                  ticketsBadge.textContent = stats.open_tickets || 0;
+                  ticketsBadge.classList.toggle('hidden', (stats.open_tickets || 0) === 0);
+              }
           }
 
           if (unreadCount !== undefined) {
@@ -699,6 +753,33 @@ document.addEventListener('DOMContentLoaded', () => {
           const list = document.getElementById('support-tickets-list'); 
           list.innerHTML = ''; 
           
+          // Get ride history for context
+          const rideHistory = await fetchData('all-rides-data') || [];
+          
+          // Calculate ticket statistics
+          const totalTickets = tickets.length;
+          const openTickets = tickets.filter(t => t.status === 'Open').length;
+          const inProgressTickets = tickets.filter(t => t.status === 'In Progress').length;
+          const resolvedTickets = tickets.filter(t => t.status === 'Resolved').length;
+          
+          // Update support stats
+          const totalTicketsEl = document.getElementById('total-tickets');
+          const openTicketsEl = document.getElementById('open-tickets');
+          const inProgressTicketsEl = document.getElementById('in-progress-tickets');
+          const resolvedTicketsEl = document.getElementById('resolved-tickets');
+          
+          if (totalTicketsEl) animateNumber(totalTicketsEl, totalTickets);
+          if (openTicketsEl) animateNumber(openTicketsEl, openTickets);
+          if (inProgressTicketsEl) animateNumber(inProgressTicketsEl, inProgressTickets);
+          if (resolvedTicketsEl) animateNumber(resolvedTicketsEl, resolvedTickets);
+          
+          // Update tickets badge
+          const ticketsBadge = document.getElementById('tickets-badge');
+          if (ticketsBadge) {
+              ticketsBadge.textContent = openTickets;
+              ticketsBadge.classList.toggle('hidden', openTickets === 0);
+          }
+          
           if(!tickets.length) { 
               list.innerHTML = '<p class="text-gray-500 text-center">No support tickets yet.</p>'; 
               return; 
@@ -712,18 +793,30 @@ document.addEventListener('DOMContentLoaded', () => {
                   'Resolved': 'bg-green-100 text-green-800',
                   'Closed': 'bg-gray-100 text-gray-800'
               };
+              
+              // Find ride details for context
+              const rideDetails = ticket.ride_id ? rideHistory.find(r => r.id === ticket.ride_id) : null;
+              
               item.className = `border border-gray-200 dark:border-gray-700 rounded-lg p-4 ${ticket.status === 'Resolved' ? 'opacity-60' : ''}`;
               item.innerHTML = `
                   <div class="flex justify-between items-start mb-2">
                       <div>
-                          <p class="font-semibold text-gray-900 dark:text-white">${ticket.passenger_name}</p>
+                          <button class="font-semibold text-gray-900 dark:text-white hover:text-blue-600 underline" onclick="viewPassengerDetailsFromTicket('${ticket.passenger_name}')" title="View passenger details">
+                              ${ticket.passenger_name}
+                          </button>
                           <p class="text-xs text-gray-500">${ticket.passenger_phone}</p>
                       </div>
                       <span class="px-2 py-1 text-xs rounded-full ${statusColors[ticket.status] || 'bg-gray-100'}">${ticket.status}</span>
                   </div>
-                  <div class="mb-2">
-                      <span class="text-xs font-medium text-indigo-600">${ticket.feedback_type}</span>
-                      ${ticket.ride_id ? `<span class="text-xs text-gray-500 ml-2">Ride #${ticket.ride_id}</span>` : ''}
+                  <div class="mb-3">
+                      <div class="flex items-center justify-between">
+                          <span class="text-sm font-bold text-red-600 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded">${ticket.feedback_type}</span>
+                          ${ticket.ride_id ? `
+                              <button class="text-sm text-blue-600 hover:text-blue-800 font-medium underline" onclick="viewRideDetailsFromTicket(${ticket.ride_id})" title="View ride details">
+                                  Ride #${ticket.ride_id}
+                              </button>
+                          ` : ''}
+                      </div>
                   </div>
                   <p class="text-sm text-gray-700 dark:text-gray-300 mb-2">${ticket.details}</p>
                   <div class="flex justify-between items-center text-xs text-gray-500">
@@ -734,6 +827,59 @@ document.addEventListener('DOMContentLoaded', () => {
               `; 
               list.appendChild(item); 
           }); 
+      };
+
+      // View ride details from support ticket
+      window.viewRideDetailsFromTicket = async (rideId) => {
+          try {
+              const data = await fetchData(`ride-details/${rideId}`);
+              if (data) {
+                  showRideDetails(data);
+              } else {
+                  alert('Ride details not found');
+              }
+          } catch (error) {
+              console.error('Error loading ride details:', error);
+              alert('Error loading ride details');
+          }
+      };
+
+      // View passenger ride history from support ticket
+      window.viewPassengerRideHistory = (passengerName) => {
+          // Switch to ride history pane and filter by passenger name
+          showPane('ride-history');
+          setTimeout(() => {
+              const searchInput = document.getElementById('ride-history-search');
+              if (searchInput) {
+                  searchInput.value = passengerName;
+                  // Trigger the search
+                  const event = new Event('input', { bubbles: true });
+                  searchInput.dispatchEvent(event);
+              }
+          }, 100);
+      };
+
+      // View passenger details from support ticket
+      window.viewPassengerDetailsFromTicket = async (passengerName) => {
+          try {
+              // Find passenger by name in the passengers list
+              const passengers = await fetchData('passengers') || [];
+              const passenger = passengers.find(p => p.username === passengerName);
+              
+              if (passenger) {
+                  const data = await fetchData(`passenger-details/${passenger.id}`);
+                  if (data) {
+                      showPassengerDetails(data);
+                  } else {
+                      alert('Passenger details not found');
+                  }
+              } else {
+                  alert('Passenger not found');
+              }
+          } catch (error) {
+              console.error('Error loading passenger details:', error);
+              alert('Error loading passenger details');
+          }
       };
       
       const renderNotifications = () => {
@@ -849,7 +995,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('drivers-table-body').addEventListener('click', async e => { const btn = e.target.closest('.action-btn'); if (!btn) return; const id = btn.dataset.driverId; if (btn.classList.contains('view')) { const data = await fetchData(`driver-details/${id}`); if(data) showDriverDetails(data); } else if (btn.classList.contains('edit')) { const driver = await fetchData(`driver/${id}`); if (driver) { const form = document.getElementById('edit-driver-form'); form.reset(); form.elements.id.value = driver.id; form.elements.name.value = driver.name; form.elements.phone_number.value = driver.phone_number; form.elements.vehicle_type.value = driver.vehicle_type; form.elements.vehicle_details.value = driver.vehicle_details; form.elements.vehicle_plate_number.value = driver.vehicle_plate_number; form.elements.license_info.value = driver.license_info; showModal('edit-driver-modal'); } } else if (btn.classList.contains('delete')) { document.getElementById('confirm-delete-btn').dataset.driverId = id; showModal('delete-driver-modal'); } });
       document.getElementById('active-rides-table-body').addEventListener('click', async e => { const id = e.target.dataset.rideId; if (!id) return; if (e.target.classList.contains('complete-ride-btn')) await postData('complete-ride', { ride_id: id }); else if (e.target.classList.contains('reassign-ride-btn')) await postData('cancel-ride', { ride_id: id }); refreshAllData(); });
       document.getElementById('feedback-list').addEventListener('click', async e => { if (e.target.classList.contains('resolve-feedback-btn')) { await postData(`feedback/resolve/${e.target.dataset.id}`, {}); refreshFeedback(); refreshUnreadCount(); } });
-      document.getElementById('support-tickets-list').addEventListener('click', async e => { if (e.target.classList.contains('resolve-ticket-btn')) { const ticketId = e.target.dataset.ticketId; const response = prompt('Enter admin response (optional):'); await postData(`support-tickets/${ticketId}/resolve`, { response: response || '' }); refreshSupportTickets(); } });
+      document.getElementById('support-tickets-list').addEventListener('click', async e => { if (e.target.classList.contains('resolve-ticket-btn')) { const ticketId = e.target.dataset.ticketId; const response = prompt('Enter admin response (optional):'); const result = await postData(`support-tickets/${ticketId}/resolve`, { response: response || '' }); if (result && !result.error) { refreshSupportTickets(); } } });
       document.getElementById('settings-form').addEventListener('submit', async e => { e.preventDefault(); await postData('settings', Object.fromEntries(new FormData(e.target))); alert('Settings Saved!'); });
       
       // Commission settings form handler
@@ -1048,12 +1194,34 @@ document.addEventListener('DOMContentLoaded', () => {
       async function drawRouteOnMap(pickup, destination, color) {
           const url = `https://router.project-osrm.org/route/v1/driving/${pickup.lon},${pickup.lat};${destination.lon},${destination.lat}?overview=full&geometries=geojson`;
           try {
-              const response = await fetch(url);
+              const response = await fetch(url, { 
+                  timeout: 5000, // 5 second timeout
+                  signal: AbortSignal.timeout(5000)
+              });
+              
+              if (!response.ok) {
+                  console.warn('Route service unavailable, skipping route drawing');
+                  return null;
+              }
+              
               const data = await response.json();
               if (data.routes?.length) {
                   return L.polyline(data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]), { color: color || getCssVar('--chart-purple'), weight: 5 });
               }
-          } catch (error) { console.error('Error fetching route:', error); }
+          } catch (error) { 
+              // Silently handle network errors - route drawing is optional
+              if (error.name === 'AbortError' || error.message.includes('Failed to fetch') || error.message.includes('ERR_NETWORK')) {
+                  console.log('Route service unavailable, using straight-line fallback');
+                  // Create a simple straight line as fallback
+                  return L.polyline([[pickup.lat, pickup.lon], [destination.lat, destination.lon]], { 
+                      color: (color || getCssVar('--chart-purple')) + '80', // Add transparency
+                      weight: 3,
+                      dashArray: '5, 5' // Dashed line to indicate it's not a real route
+                  });
+              } else {
+                  console.warn('Route drawing error:', error.message);
+              }
+          }
           return null;
       }
 
@@ -1332,9 +1500,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // --- DATA REFRESH & INITIALIZATION ---
       const refreshUnreadCount = async () => { const data = await fetchData('unread-feedback-count'); updateBadges(null, data?.count); };
+      // Debounce mechanism to prevent rapid calls
+      let refreshTimeout = null;
       const refreshDashboardData = async () => {
-           const [stats, pending, active, availableDrivers] = await Promise.all([ fetchData('dashboard-stats'), fetchData('pending-rides'), fetchData('active-rides'), fetchData('available-drivers') ]);
-          if (!stats) return; 
+          // Clear any pending refresh
+          if (refreshTimeout) {
+              clearTimeout(refreshTimeout);
+          }
+          
+          // Debounce the refresh by 1 second (faster response)
+          refreshTimeout = setTimeout(async () => {
+              const [stats, pending, active, availableDrivers] = await Promise.all([ 
+                  fetchData('dashboard-stats'), 
+                  fetchData('pending-rides'), 
+                  fetchData('active-rides'), 
+                  fetchData('available-drivers') 
+              ]);
+              if (!stats) return; 
           updateDashboardStats(stats);
           
           const oldPendingIds = new Set(allPendingRides.map(r => r.id));
@@ -1351,6 +1533,7 @@ document.addEventListener('DOMContentLoaded', () => {
           updatePendingRidesStats(allPendingRides);
           updateActiveRidesTable(allActiveRides);
           updateBadges(stats);
+          }, 1000); // 1 second debounce
       };
       const refreshAllData = async () => { 
           const [drivers, rides, passengers] = await Promise.all([ 
@@ -1372,8 +1555,8 @@ document.addEventListener('DOMContentLoaded', () => {
       document.querySelector('.analytics-filter-btn[data-period="week"]').classList.add('active-filter');
       showPane('dashboard');
       refreshAllData();
-      setInterval(refreshDashboardData, 10000);
-      setInterval(refreshUnreadCount, 30000);
+      setInterval(refreshDashboardData, 15000); // 15 seconds - good balance
+      setInterval(refreshUnreadCount, 30000); // 30 seconds for notifications
 
       // Language persistence for admin dashboard - fixed to prevent infinite redirects
       const savedLang = localStorage.getItem('adminLanguage');
@@ -1507,7 +1690,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // Load commission settings
       const loadCommissionSettings = async () => {
           try {
-              const response = await fetch(`${API_BASE_URL}/commission/settings`);
+              const response = await fetch(`${API_BASE_URL}/commission-settings`);
               const data = await response.json();
               
               if (data.success) {
@@ -1541,9 +1724,11 @@ document.addEventListener('DOMContentLoaded', () => {
           }
       };
 
-      // Calculate earnings for all completed rides
-      const calculateAllEarnings = async () => {
+      // Process unpaid rides (calculate earnings for completed rides that haven't been processed)
+      const processUnpaidRides = async () => {
           try {
+              setFeedbackMessage('earnings-feedback', 'Processing unpaid rides...', false);
+              
               const response = await fetch(`${API_BASE_URL}/earnings/calculate`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
@@ -1552,14 +1737,18 @@ document.addEventListener('DOMContentLoaded', () => {
               const data = await response.json();
               
               if (data.success) {
-                  setFeedbackMessage('earnings-feedback', `Calculated earnings for ${data.processed_count} rides`);
+                  if (data.processed_count > 0) {
+                      setFeedbackMessage('earnings-feedback', `✅ Processed ${data.processed_count} unpaid rides and calculated earnings`, false);
+                  } else {
+                      setFeedbackMessage('earnings-feedback', '✅ All rides are already processed - no unpaid rides found', false);
+                  }
                   await loadDriverEarnings();
               } else {
-                  setFeedbackMessage('earnings-feedback', data.error, 'error');
+                  setFeedbackMessage('earnings-feedback', `❌ Error: ${data.error}`, true);
               }
           } catch (error) {
-              console.error('Error calculating earnings:', error);
-              setFeedbackMessage('earnings-feedback', 'Error calculating earnings', 'error');
+              console.error('Error processing unpaid rides:', error);
+              setFeedbackMessage('earnings-feedback', '❌ Error processing unpaid rides', true);
           }
       };
 
@@ -1705,7 +1894,7 @@ document.addEventListener('DOMContentLoaded', () => {
       };
 
       // Event listeners for earnings functionality
-      document.getElementById('calculate-earnings-btn')?.addEventListener('click', calculateAllEarnings);
+      document.getElementById('calculate-earnings-btn')?.addEventListener('click', processUnpaidRides);
       document.getElementById('earnings-filter-btn')?.addEventListener('click', applyEarningsFilters);
       document.getElementById('commission-settings-btn')?.addEventListener('click', async () => {
           try {
@@ -1729,7 +1918,10 @@ document.addEventListener('DOMContentLoaded', () => {
       // Initialize earnings when driver-earnings pane is shown
       document.addEventListener('click', (e) => {
           if (e.target.closest('[data-pane="driver-earnings"]')) {
+              // Auto-load earnings data when pane is opened
               initEarningsData();
+              // Show helpful message
+              setFeedbackMessage('earnings-feedback', '📊 Loading driver earnings data...', false);
           }
       });
 
