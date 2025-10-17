@@ -3,7 +3,6 @@ Application Entry Point
 Run this file to start the Flask application with SocketIO support
 """
 
-# Use blueprint structure
 from app import create_app, socketio
 app = create_app()
 

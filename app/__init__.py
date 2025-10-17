@@ -16,7 +16,7 @@ from flask_socketio import SocketIO, emit, join_room, leave_room
 from config import config
 
 # Create global SocketIO instance
-socketio = SocketIO(cors_allowed_origins="*", logger=True, engineio_logger=True)
+socketio = SocketIO(cors_allowed_origins="*", logger=False, engineio_logger=False)
 
 def create_app(config_name=None):
     """Application Factory Pattern"""
