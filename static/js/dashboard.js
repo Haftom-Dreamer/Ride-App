@@ -613,19 +613,20 @@ document.addEventListener('DOMContentLoaded', () => {
           requestAnimationFrame(animate);
       };
       const updateAnalytics = async () => { 
-          console.log('updateAnalytics called with params:', currentAnalyticsParams);
-          
-          // Add loading animation
-          const chartContainers = document.querySelectorAll('.chart-container');
-          chartContainers.forEach(container => container.classList.add('loading'));
-          
-          const data = await fetchData('analytics-data', currentAnalyticsParams); 
-          console.log('Analytics data received:', data);
-          
-          // Remove loading state
-          chartContainers.forEach(container => container.classList.remove('loading'));
-          
-          if(data) { 
+          try {
+              console.log('updateAnalytics called with params:', currentAnalyticsParams);
+              
+              // Add loading animation
+              const chartContainers = document.querySelectorAll('.chart-container');
+              chartContainers.forEach(container => container.classList.add('loading'));
+              
+              const data = await fetchData('analytics-data', currentAnalyticsParams); 
+              console.log('Analytics data received:', data);
+              
+              // Remove loading state
+              chartContainers.forEach(container => container.classList.remove('loading'));
+              
+              if(data) { 
               const {kpis, charts, performance} = data;
               console.log('KPI data:', kpis);
               console.log('Charts data:', charts);
@@ -915,22 +916,22 @@ document.addEventListener('DOMContentLoaded', () => {
                   }
               }
               
-              // Remove loading animation
-              chartContainers.forEach(container => container.classList.remove('loading'));
-          } else {
-              console.warn('No analytics data received');
-              showErrorNotification('Failed to load analytics data. Please try again.');
+                  // Remove loading animation
+                  chartContainers.forEach(container => container.classList.remove('loading'));
+              } else {
+                  console.warn('No analytics data received');
+                  showErrorNotification('Failed to load analytics data. Please try again.');
+                  // Remove loading state on error
+                  chartContainers.forEach(container => container.classList.remove('loading'));
+              }
+          } catch (error) {
+              console.error('Error updating analytics:', error);
+              showErrorNotification('Error loading analytics. Please refresh the page.');
               // Remove loading state on error
+              const chartContainers = document.querySelectorAll('.chart-container');
               chartContainers.forEach(container => container.classList.remove('loading'));
           }
-      } catch (error) {
-          console.error('Error updating analytics:', error);
-          showErrorNotification('Error loading analytics. Please refresh the page.');
-          // Remove loading state on error
-          const chartContainers = document.querySelectorAll('.chart-container');
-          chartContainers.forEach(container => container.classList.remove('loading'));
-      }
-  };
+      };
       
       // Store selected drivers to preserve selection during re-renders
       const pendingRideSelectedDrivers = {};
