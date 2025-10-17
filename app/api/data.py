@@ -599,21 +599,16 @@ def get_analytics_data():
          .limit(5).all()
         
         top_drivers = [{
+            'id': d.id,
             'name': d.name,
             'avatar': d.profile_picture or 'static/img/default_avatar.png',
             'completed_rides': d.completed_rides,
             'avg_rating': round(float(d.avg_rating), 1) if d.avg_rating else 0
         } for d in driver_stats]
         
-        # Add sample drivers if no real data exists
-        if not top_drivers:
-            top_drivers = [
-                {'name': 'John Doe', 'avatar': 'static/img/default_avatar.png', 'completed_rides': 25, 'avg_rating': 4.8},
-                {'name': 'Jane Smith', 'avatar': 'static/img/default_avatar.png', 'completed_rides': 22, 'avg_rating': 4.6},
-                {'name': 'Mike Johnson', 'avatar': 'static/img/default_avatar.png', 'completed_rides': 18, 'avg_rating': 4.4},
-                {'name': 'Sarah Wilson', 'avatar': 'static/img/default_avatar.png', 'completed_rides': 15, 'avg_rating': 4.7},
-                {'name': 'David Brown', 'avatar': 'static/img/default_avatar.png', 'completed_rides': 12, 'avg_rating': 4.3}
-            ]
+        # Don't add fake drivers - show empty state instead
+        # if not top_drivers:
+        #     top_drivers = []
         
         return jsonify({
             'kpis': {

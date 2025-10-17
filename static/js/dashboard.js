@@ -361,14 +361,38 @@ document.addEventListener('DOMContentLoaded', () => {
               updateTrend('kpi-revenue-trend', kpis.trends.revenue); 
               
               const createChart = (ctxId, chartVar, type, data, options) => { 
+                  console.log(`=== Creating Chart: ${ctxId} ===`);
+                  console.log('Chart.js available:', typeof Chart !== 'undefined');
+                  console.log('Chart data:', data);
+                  console.log('Chart options:', options);
+                  
+                  if (typeof Chart === 'undefined') {
+                      console.error('Chart.js is not loaded!');
+                      return;
+                  }
+                  
                   const canvas = document.getElementById(ctxId);
                   if (!canvas) {
                       console.warn(`Canvas element with id '${ctxId}' not found`);
                       return;
                   }
+                  
+                  console.log(`Canvas found: ${ctxId}`, canvas);
                   const ctx = canvas.getContext('2d'); 
-                  if(window[chartVar]) window[chartVar].destroy(); 
-                  window[chartVar] = new Chart(ctx, { type, data, options }); 
+                  
+                  if(window[chartVar]) {
+                      console.log(`Destroying existing chart: ${chartVar}`);
+                      window[chartVar].destroy(); 
+                  }
+                  
+                  try {
+                      window[chartVar] = new Chart(ctx, { type, data, options }); 
+                      console.log(`✅ Chart created successfully: ${chartVar}`);
+                      console.log('Chart instance:', window[chartVar]);
+                  } catch (error) {
+                      console.error(`❌ Error creating chart ${chartVar}:`, error);
+                      console.error('Error details:', error.message, error.stack);
+                  }
               }; 
               
               const commonOptions = { 
@@ -385,10 +409,10 @@ document.addEventListener('DOMContentLoaded', () => {
               
               // Revenue Chart
               console.log('Creating revenue chart with data:', charts.revenue_over_time);
-              if (charts.revenue_over_time && charts.revenue_over_time.labels) {
+              if (charts.revenue_over_time && charts.revenue_over_time.labels && charts.revenue_over_time.labels.length > 0) {
                   console.log('Revenue chart labels:', charts.revenue_over_time.labels);
                   console.log('Revenue chart data:', charts.revenue_over_time.data);
-                  createChart('revenueChart', 'revenueChart', 'bar', { 
+                  createChart('revenue-over-time-chart', 'revenueChart', 'bar', { 
                       labels: charts.revenue_over_time.labels, 
                       datasets: [{ 
                           label: 'Daily Revenue (ETB)', 
@@ -414,63 +438,127 @@ document.addEventListener('DOMContentLoaded', () => {
                       } 
                   }); 
               } else {
-                  console.warn('Revenue chart data not available:', charts.revenue_over_time);
+                  console.warn('Revenue chart data not available or empty:', charts.revenue_over_time);
+                  // Show "No data" message in the chart container
+                  const chartContainer = document.getElementById('revenue-over-time-chart').parentElement;
+                  chartContainer.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500">No revenue data available</div>';
               }
               
               // Vehicle Distribution Chart
               if (charts.vehicle_distribution && Object.keys(charts.vehicle_distribution).length > 0) {
-                  createChart('vehicleDistChart', 'vehicleDistChart', 'doughnut', { 
+                  createChart('vehicle-dist-chart', 'vehicleDistChart', 'doughnut', { 
                       labels: Object.keys(charts.vehicle_distribution), 
                       datasets: [{ 
                           data: Object.values(charts.vehicle_distribution), 
                           backgroundColor: ['#F59E0B', '#3B82F6', '#10B981', '#EF4444', '#8B5CF6']
                       }] 
                   }, commonOptions); 
+              } else {
+                  console.warn('Vehicle distribution data not available:', charts.vehicle_distribution);
+                  const chartContainer = document.getElementById('vehicle-dist-chart').parentElement;
+                  chartContainer.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500">No vehicle data available</div>';
               }
               
               // Payment Method Distribution Chart
               if (charts.payment_method_distribution && Object.keys(charts.payment_method_distribution).length > 0) {
-                  createChart('paymentDistChart', 'paymentDistChart', 'doughnut', { 
+                  createChart('payment-dist-chart', 'paymentDistChart', 'doughnut', { 
                       labels: Object.keys(charts.payment_method_distribution), 
                       datasets: [{ 
                           data: Object.values(charts.payment_method_distribution), 
                           backgroundColor: ['#10B981', '#8B5CF6', '#EF4444', '#F59E0B']
                       }] 
                   }, commonOptions); 
+              } else {
+                  console.warn('Payment method distribution data not available:', charts.payment_method_distribution);
+                  const chartContainer = document.getElementById('payment-dist-chart').parentElement;
+                  chartContainer.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500">No payment data available</div>';
               }
               
-              // Ride Status Distribution Chart
-              if (charts.ride_status_distribution && Object.keys(charts.ride_status_distribution).length > 0) {
-                  createChart('rideStatusChart', 'rideStatusChart', 'pie', { 
-                      labels: Object.keys(charts.ride_status_distribution), 
-                      datasets: [{ 
-                          data: Object.values(charts.ride_status_distribution), 
-                          backgroundColor: ['#10B981', '#EF4444', '#3B82F6', '#F59E0B', '#8B5CF6']
-                      }] 
-                  }, commonOptions); 
-              } 
+              // Ride Status Distribution Chart (removed from simple analytics) 
               
               const topDriversList = document.getElementById('top-drivers-list'); 
               topDriversList.innerHTML = ''; 
-              performance.top_drivers.forEach((d, index) => { 
-                  const div = document.createElement('div'); 
-                  div.className = 'top-driver-item animate-slide-in';
-                  div.style.animationDelay = `${index * 0.1}s`;
-                  div.innerHTML = `
-                      <div class="flex items-center">
-                          <img src="/${d.avatar}" class="driver-avatar" onerror="this.src='/static/img/default_avatar.png'">
-                          <div class="driver-info">
-                              <p class="driver-name">${d.name}</p>
-                              <p class="driver-rating">${d.avg_rating} ★</p>
+              
+              if (performance.top_drivers && performance.top_drivers.length > 0) {
+                  performance.top_drivers.forEach((d, index) => { 
+                      const div = document.createElement('div'); 
+                      div.className = 'top-driver-item animate-slide-in cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-3 rounded-lg transition-colors';
+                      div.style.animationDelay = `${index * 0.1}s`;
+                      div.title = 'Click to view driver details';
+                      
+                      // Only make clickable if driver has a real ID (not fake data)
+                      if (d.id && d.id > 0) {
+                          div.onclick = () => showDriverDetailsFromAnalytics(d.id);
+                      } else {
+                          div.onclick = () => console.log('This is sample data - no real driver details available');
+                          div.title = 'Sample data - no real driver details available';
+                          div.style.cursor = 'not-allowed';
+                          div.style.opacity = '0.7';
+                      }
+                      
+                      div.innerHTML = `
+                          <div class="flex items-center justify-between">
+                              <div class="flex items-center">
+                                  <img src="/${d.avatar}" class="driver-avatar h-10 w-10 rounded-full mr-4 object-cover" onerror="this.src='/static/img/default_avatar.png'">
+                                  <div class="driver-info">
+                                      <p class="driver-name font-semibold">${d.name}</p>
+                                      <p class="driver-rating text-sm text-gray-500">${d.avg_rating} ⭐</p>
+                                  </div>
+                              </div>
+                              <div class="driver-stats text-right">
+                                  <p class="rides-count font-bold text-lg">${d.completed_rides}</p>
+                                  <p class="rides-label text-xs text-gray-500">rides</p>
+                              </div>
                           </div>
+                      `; 
+                      topDriversList.appendChild(div); 
+                  });
+              } else {
+                  topDriversList.innerHTML = `
+                      <div class="text-center py-8">
+                          <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                          </svg>
+                          <h3 class="text-lg font-semibold text-gray-600 mb-2">No Driver Performance Data</h3>
+                          <p class="text-gray-500">Driver performance data will appear here once drivers complete rides and receive ratings.</p>
                       </div>
-                      <div class="driver-stats">
-                          <p class="rides-count">${d.completed_rides}</p>
-                          <p class="rides-label">rides</p>
-                      </div>
-                  `; 
-                  topDriversList.appendChild(div); 
-              }); 
+                  `;
+              } 
+              
+              // Test Chart.js with a simple chart if no data
+              if (!charts.revenue_over_time || !charts.revenue_over_time.labels || charts.revenue_over_time.labels.length === 0) {
+                  console.log('Creating test chart to verify Chart.js is working...');
+                  const testCanvas = document.getElementById('revenue-over-time-chart');
+                  if (testCanvas) {
+                      const testCtx = testCanvas.getContext('2d');
+                      try {
+                          new Chart(testCtx, {
+                              type: 'bar',
+                              data: {
+                                  labels: ['Test'],
+                                  datasets: [{
+                                      label: 'Test Data',
+                                      data: [1],
+                                      backgroundColor: '#8B5CF6'
+                                  }]
+                              },
+                              options: {
+                                  responsive: true,
+                                  maintainAspectRatio: false,
+                                  plugins: {
+                                      title: {
+                                          display: true,
+                                          text: 'Chart.js Test - No Real Data Available'
+                                      }
+                                  }
+                              }
+                          });
+                          console.log('✅ Test chart created successfully');
+                      } catch (error) {
+                          console.error('❌ Test chart failed:', error);
+                      }
+                  }
+              }
               
               // Remove loading animation
               chartContainers.forEach(container => container.classList.remove('loading'));
@@ -791,6 +879,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
       // --- DRIVER DETAILS & MAP ---
+      const showDriverDetailsFromAnalytics = async (driverId) => {
+          try {
+              const data = await fetchData(`driver-details/${driverId}`);
+              if (data) {
+                  showDriverDetails(data);
+              } else {
+                  console.error('Failed to load driver details');
+              }
+          } catch (error) {
+              console.error('Error loading driver details:', error);
+          }
+      };
+
       const showDriverDetails = (data) => { const content = document.getElementById('driver-details-content'); const p = data.profile; const docLink = (path, name) => path ? `<a href="/${path}" target="_blank" class="text-blue-500 hover:underline">${name}</a>` : 'Not Uploaded'; content.innerHTML = `<div class="grid md:grid-cols-3 gap-6"><div class="text-center"><img src="/${p.avatar}" class="rounded-full w-32 h-32 mx-auto border-4 object-cover" onerror="this.src='/static/img/default_avatar.png'"><h3 class="text-xl font-bold mt-4">${p.name}</h3><p class="text-sm font-mono">${p.driver_uid}</p><p class="text-sm">${p.phone_number}</p><span class="status-badge status-${p.status.replace(' ','-')} mt-2 inline-block">${p.status}</span></div><div class="md:col-span-2 space-y-4"><div><h4 class="font-bold border-b pb-1 mb-2">Vehicle & Docs</h4><div class="text-sm space-y-1"><p><strong>Type:</strong> ${p.vehicle_type}</p><p><strong>Details:</strong> ${p.vehicle_details}</p><p><strong>Plate:</strong> ${p.plate_number}</p><p><strong>License:</strong> ${p.license}</p><p><strong>License Doc:</strong> ${docLink(p.license_document, 'View')}</p><p><strong>Vehicle Doc:</strong> ${docLink(p.vehicle_document, 'View')}</p></div></div><div><h4 class="font-bold border-b pb-1 mb-2">Performance</h4><div class="grid grid-cols-2 gap-4 mt-2 text-sm"><div class="card p-3"><p class="font-semibold">Completed Rides</p><p class="text-2xl font-bold">${data.stats.completed_rides}</p></div><div class="card p-3"><p class="font-semibold">Avg. Rating</p><p class="text-2xl font-bold">${data.stats.avg_rating.toFixed(2)} ★</p></div><div class="card p-3"><p class="font-semibold">Weekly Earnings</p><p class="text-2xl font-bold">${data.stats.total_earnings_weekly} ETB</p></div><div class="card p-3"><p class="font-semibold">Total Earnings</p><p class="text-2xl font-bold">${data.stats.total_earnings_all_time} ETB</p></div></div></div></div></div><div class="mt-6"><h4 class="font-bold border-b pb-1 mb-2">Recent History</h4>${data.history.length ? data.history.map(r => `<div class="grid grid-cols-4 text-sm p-2 border-b"><span>#${r.id}</span><span>${r.date}</span><span>${r.fare} ETB</span><span class="status-badge status-${r.status}">${r.status}</span></div>`).join('') : '<p class="text-center p-4">No recent history.</p>'}</div>`; showModal('driver-details-modal'); };
       
       const showPassengerDetails = (data) => {

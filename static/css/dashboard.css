@@ -81,14 +81,30 @@
     animation: pulse 2s infinite;
 }
 
-@keyframes pulse {
-    0%, 100% {
-        opacity: 1;
+    @keyframes pulse {
+        0%, 100% {
+            opacity: 1;
+        }
+        50% {
+            opacity: 0.5;
+        }
     }
-    50% {
-        opacity: 0.5;
+
+    /* Top Drivers Section */
+    .top-driver-item {
+        transition: all 0.2s ease;
+        border: 1px solid transparent;
     }
-}
+
+    .top-driver-item:hover {
+        border-color: var(--chart-blue);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .top-driver-item:hover .driver-name {
+        color: var(--chart-blue);
+    }
 
 .dark {
     --sidebar-bg: #030712;
