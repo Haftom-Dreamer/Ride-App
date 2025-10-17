@@ -1,5 +1,8 @@
 // Translation function for dynamic content
-const LANG = window.TEMPLATE_VARS?.LANG || 'en';
+if (typeof window.DashboardLANG === 'undefined') {
+    window.DashboardLANG = window.TEMPLATE_VARS?.LANG || 'en';
+}
+const LANG = window.DashboardLANG;
 const TRANSLATIONS = {};
 const t = (key) => TRANSLATIONS[LANG]?.[key] || key;
 
@@ -18,7 +21,33 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentReportParams = 'period=all';
     let allDrivers = [], allRidesHistory = [], allFeedback = [], allPendingRides = [], allActiveRides = [], allPassengers = [], recentNotifications = [];
     let rideHistoryPage = 1, RIDES_PER_PAGE = 10, lastPendingCount = 0;
-    const notificationSound = new Audio("data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU"+Array(500).join("12345678"));
+    // Audio notification with user interaction requirement
+    let notificationSound = null;
+    let audioInitialized = false;
+    
+    const initAudio = () => {
+        if (!audioInitialized) {
+            try {
+                notificationSound = new Audio("data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU"+Array(500).join("12345678"));
+                notificationSound.volume = 0.3; // Lower volume
+                audioInitialized = true;
+            } catch (error) {
+                console.warn('Audio initialization failed:', error);
+            }
+        }
+    };
+    
+    const playNotificationSound = () => {
+        if (notificationSound && audioInitialized) {
+            try {
+                notificationSound.play().catch(error => {
+                    console.log('Audio play failed (user interaction required):', error.message);
+                });
+            } catch (error) {
+                console.log('Audio play error:', error.message);
+            }
+        }
+    };
     const getCssVar = (varName) => getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
     const chartTextColor = () => getCssVar('--text-primary');
     const pendingIcon = L.icon({ iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png', shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png', iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41] });
@@ -268,7 +297,7 @@ document.addEventListener('DOMContentLoaded', () => {
               });
               
               if(stats.pending_requests > lastPendingCount) { 
-                  notificationSound.play(); 
+                  playNotificationSound(); 
               } 
               lastPendingCount = stats.pending_requests; 
               // Update notification badge with unread notification count
@@ -1086,9 +1115,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const setFeedbackMessage = (elementId, message, isError = false) => {
           const el = document.getElementById(elementId);
+          if (!el) {
+              console.warn(`Feedback element '${elementId}' not found`);
+              return;
+          }
           el.textContent = message;
           el.className = `text-sm mt-2 ${isError ? 'text-red-500' : 'text-green-500'}`;
-          setTimeout(() => el.textContent = '', 4000);
+          setTimeout(() => {
+              if (el) el.textContent = '';
+          }, 4000);
       };
 
       const getTimeAgo = (dateString) => {
@@ -2526,4 +2561,17 @@ document.addEventListener('DOMContentLoaded', () => {
               setFeedbackMessage('commission-feedback', 'Error loading settings', 'error');
           }
       };
+      
+      // Initialize audio on first user interaction
+      const initAudioOnInteraction = () => {
+          initAudio();
+          // Remove listeners after first interaction
+          document.removeEventListener('click', initAudioOnInteraction);
+          document.removeEventListener('keydown', initAudioOnInteraction);
+          document.removeEventListener('touchstart', initAudioOnInteraction);
+      };
+      
+      document.addEventListener('click', initAudioOnInteraction);
+      document.addEventListener('keydown', initAudioOnInteraction);
+      document.addEventListener('touchstart', initAudioOnInteraction);
   });

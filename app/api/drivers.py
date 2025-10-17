@@ -7,6 +7,7 @@ from sqlalchemy import func
 from app.models import db, Driver, Ride, Feedback
 from app.api import api, admin_required
 from app.utils import handle_file_upload
+from datetime import datetime
 
 @api.route('/add-driver', methods=['POST'])
 @admin_required
@@ -261,7 +262,7 @@ def export_drivers():
         
         # Write header
         writer.writerow([
-            'ID', 'Name', 'Phone', 'Email', 'Vehicle Type', 'Vehicle Details', 
+            'ID', 'Name', 'Phone', 'Vehicle Type', 'Vehicle Details', 
             'License Info', 'Status', 'Rating', 'Total Rides', 'Total Earnings', 'Registration Date'
         ])
         
@@ -273,19 +274,24 @@ def export_drivers():
                 Ride.status == 'Completed'
             ).scalar() or 0
             
+            # Calculate average rating from feedback
+            avg_rating = db.session.query(func.avg(Feedback.rating)).join(Ride).filter(
+                Ride.driver_id == driver.id,
+                Feedback.rating.isnot(None)
+            ).scalar() or 0
+            
             writer.writerow([
                 driver.id,
                 driver.name,
                 driver.phone_number,
-                driver.email or '',
                 driver.vehicle_type,
                 driver.vehicle_details,
                 driver.license_info,
                 driver.status,
-                driver.rating or 0,
+                round(float(avg_rating), 1) if avg_rating else 0,
                 total_rides,
                 float(total_earnings),
-                driver.created_at.strftime('%Y-%m-%d %H:%M:%S') if driver.created_at else ''
+                driver.join_date.strftime('%Y-%m-%d %H:%M:%S') if driver.join_date else ''
             ])
         
         output.seek(0)
