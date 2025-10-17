@@ -102,12 +102,18 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('pane-title').textContent = activeLink.title;
         } 
         if (paneId === 'dashboard' && !dashboardMap) initDashboardMap(); 
-        if (paneId === 'analytics') updateAnalytics(); 
+         if (paneId === 'analytics') {
+             console.log('Analytics pane activated, calling updateAnalytics');
+             updateAnalytics();
+         }
         if (paneId === 'inbox') refreshFeedback(); 
         if (paneId === 'support-tickets') refreshSupportTickets(); 
         if(paneId === 'settings') refreshAdminUsers(); 
         if (dashboardMap) setTimeout(() => dashboardMap.invalidateSize(), 310); 
     };
+
+    // Make showPane globally accessible
+    window.showPane = showPane;
     
     document.querySelectorAll('.sidebar-link').forEach(link => { 
         if (link.dataset.pane) { 
@@ -302,13 +308,20 @@ document.addEventListener('DOMContentLoaded', () => {
           requestAnimationFrame(animate);
       };
       const updateAnalytics = async () => { 
+          console.log('updateAnalytics called with params:', currentAnalyticsParams);
+          
           // Add loading animation
           const chartContainers = document.querySelectorAll('.chart-container');
           chartContainers.forEach(container => container.classList.add('loading'));
           
           const data = await fetchData('analytics-data', currentAnalyticsParams); 
+          console.log('Analytics data received:', data);
+          
           if(data) { 
-              const {kpis, charts, performance} = data; 
+              const {kpis, charts, performance} = data;
+              console.log('KPI data:', kpis);
+              console.log('Charts data:', charts);
+              console.log('Performance data:', performance); 
               
               // Animate KPI updates
               animateNumber(document.getElementById('kpi-rides-completed'), kpis.rides_completed);
@@ -316,6 +329,27 @@ document.addEventListener('DOMContentLoaded', () => {
               animateNumber(document.getElementById('kpi-rides-canceled'), kpis.rides_canceled);
               animateNumber(document.getElementById('kpi-total-revenue'), kpis.total_revenue, ' ETB');
               animateNumber(document.getElementById('kpi-avg-fare'), kpis.avg_fare, ' ETB');
+              
+              // Update performance metrics
+              console.log('Updating performance metrics:', {
+                  avg_fare: kpis.avg_fare,
+                  completion_rate: kpis.completion_rate,
+                  avg_rating: kpis.avg_rating
+              });
+              
+              const avgFareEl = document.getElementById('avg-fare');
+              const completionRateEl = document.getElementById('completion-rate');
+              const avgRatingEl = document.getElementById('avg-rating');
+              
+              console.log('Performance metric elements:', {
+                  avgFareEl,
+                  completionRateEl,
+                  avgRatingEl
+              });
+              
+              if (avgFareEl) animateNumber(avgFareEl, kpis.avg_fare, ' ETB');
+              if (completionRateEl) animateNumber(completionRateEl, kpis.completion_rate, '%');
+              if (avgRatingEl) animateNumber(avgRatingEl, kpis.avg_rating, '/5');
               
               const updateTrend = (elId, val) => { 
                   const el = document.getElementById(elId); 
@@ -327,22 +361,114 @@ document.addEventListener('DOMContentLoaded', () => {
               updateTrend('kpi-revenue-trend', kpis.trends.revenue); 
               
               const createChart = (ctxId, chartVar, type, data, options) => { 
-                  const ctx = document.getElementById(ctxId).getContext('2d'); 
+                  const canvas = document.getElementById(ctxId);
+                  if (!canvas) {
+                      console.warn(`Canvas element with id '${ctxId}' not found`);
+                      return;
+                  }
+                  const ctx = canvas.getContext('2d'); 
                   if(window[chartVar]) window[chartVar].destroy(); 
                   window[chartVar] = new Chart(ctx, { type, data, options }); 
               }; 
-              const commonOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: chartTextColor() } } } }; 
-              createChart('revenue-over-time-chart', 'revenueChart', 'bar', { labels: charts.revenue_over_time.labels, datasets: [{ label: 'Daily Revenue (ETB)', data: charts.revenue_over_time.data, backgroundColor: getCssVar('--chart-purple') }] }, { ...commonOptions, scales: { y: { beginAtZero: true, ticks: { color: chartTextColor() } }, x: { ticks: { color: chartTextColor() } } } }); 
-              createChart('vehicle-dist-chart', 'vehicleDistChart', 'doughnut', { labels: Object.keys(charts.vehicle_distribution), datasets: [{ data: Object.values(charts.vehicle_distribution), backgroundColor: [getCssVar('--chart-orange'), getCssVar('--chart-blue'), getCssVar('--chart-yellow')] }] }, commonOptions); 
-              createChart('payment-dist-chart', 'paymentDistChart', 'doughnut', { labels: Object.keys(charts.payment_method_distribution), datasets: [{ data: Object.values(charts.payment_method_distribution), backgroundColor: [getCssVar('--chart-green'), getCssVar('--chart-purple'), getCssVar('--chart-red')] }] }, commonOptions); 
+              
+              const commonOptions = { 
+                  responsive: true, 
+                  maintainAspectRatio: false, 
+                  plugins: { 
+                      legend: { 
+                          labels: { 
+                              color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary') || '#374151'
+                          } 
+                      } 
+                  } 
+              }; 
+              
+              // Revenue Chart
+              console.log('Creating revenue chart with data:', charts.revenue_over_time);
+              if (charts.revenue_over_time && charts.revenue_over_time.labels) {
+                  console.log('Revenue chart labels:', charts.revenue_over_time.labels);
+                  console.log('Revenue chart data:', charts.revenue_over_time.data);
+                  createChart('revenueChart', 'revenueChart', 'bar', { 
+                      labels: charts.revenue_over_time.labels, 
+                      datasets: [{ 
+                          label: 'Daily Revenue (ETB)', 
+                          data: charts.revenue_over_time.data, 
+                          backgroundColor: '#8B5CF6',
+                          borderColor: '#7C3AED',
+                          borderWidth: 1
+                      }] 
+                  }, { 
+                      ...commonOptions, 
+                      scales: { 
+                          y: { 
+                              beginAtZero: true, 
+                              ticks: { 
+                                  color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary') || '#374151'
+                              } 
+                          }, 
+                          x: { 
+                              ticks: { 
+                                  color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary') || '#374151'
+                              } 
+                          } 
+                      } 
+                  }); 
+              } else {
+                  console.warn('Revenue chart data not available:', charts.revenue_over_time);
+              }
+              
+              // Vehicle Distribution Chart
+              if (charts.vehicle_distribution && Object.keys(charts.vehicle_distribution).length > 0) {
+                  createChart('vehicleDistChart', 'vehicleDistChart', 'doughnut', { 
+                      labels: Object.keys(charts.vehicle_distribution), 
+                      datasets: [{ 
+                          data: Object.values(charts.vehicle_distribution), 
+                          backgroundColor: ['#F59E0B', '#3B82F6', '#10B981', '#EF4444', '#8B5CF6']
+                      }] 
+                  }, commonOptions); 
+              }
+              
+              // Payment Method Distribution Chart
+              if (charts.payment_method_distribution && Object.keys(charts.payment_method_distribution).length > 0) {
+                  createChart('paymentDistChart', 'paymentDistChart', 'doughnut', { 
+                      labels: Object.keys(charts.payment_method_distribution), 
+                      datasets: [{ 
+                          data: Object.values(charts.payment_method_distribution), 
+                          backgroundColor: ['#10B981', '#8B5CF6', '#EF4444', '#F59E0B']
+                      }] 
+                  }, commonOptions); 
+              }
+              
+              // Ride Status Distribution Chart
+              if (charts.ride_status_distribution && Object.keys(charts.ride_status_distribution).length > 0) {
+                  createChart('rideStatusChart', 'rideStatusChart', 'pie', { 
+                      labels: Object.keys(charts.ride_status_distribution), 
+                      datasets: [{ 
+                          data: Object.values(charts.ride_status_distribution), 
+                          backgroundColor: ['#10B981', '#EF4444', '#3B82F6', '#F59E0B', '#8B5CF6']
+                      }] 
+                  }, commonOptions); 
+              } 
               
               const topDriversList = document.getElementById('top-drivers-list'); 
               topDriversList.innerHTML = ''; 
               performance.top_drivers.forEach((d, index) => { 
                   const div = document.createElement('div'); 
-                  div.className = 'flex items-center justify-between p-2 animate-slide-in';
+                  div.className = 'top-driver-item animate-slide-in';
                   div.style.animationDelay = `${index * 0.1}s`;
-                  div.innerHTML = `<div class="flex items-center"><img src="/${d.avatar}" class="h-10 w-10 rounded-full mr-4 object-cover"><div><p class="font-semibold">${d.name}</p><p class="text-xs text-secondary">${d.avg_rating} ★</p></div></div><p class="font-bold text-lg">${d.completed_rides} rides</p>`; 
+                  div.innerHTML = `
+                      <div class="flex items-center">
+                          <img src="/${d.avatar}" class="driver-avatar" onerror="this.src='/static/img/default_avatar.png'">
+                          <div class="driver-info">
+                              <p class="driver-name">${d.name}</p>
+                              <p class="driver-rating">${d.avg_rating} ★</p>
+                          </div>
+                      </div>
+                      <div class="driver-stats">
+                          <p class="rides-count">${d.completed_rides}</p>
+                          <p class="rides-label">rides</p>
+                      </div>
+                  `; 
                   topDriversList.appendChild(div); 
               }); 
               
@@ -351,8 +477,23 @@ document.addEventListener('DOMContentLoaded', () => {
           }
       };
       
+      // Store selected drivers to preserve selection during re-renders
+      const pendingRideSelectedDrivers = {};
+
       const renderPendingRides = (rides, availableDrivers, containerId) => {
           const list = document.getElementById(containerId);
+          
+          // Store current selections before clearing
+          if (list) {
+              const selects = list.querySelectorAll('select[id^="driver-select-"]');
+              selects.forEach(select => {
+                  const rideId = select.id.replace('driver-select-', '');
+                  if (select.value && select.value !== '') {
+                      pendingRideSelectedDrivers[rideId] = select.value;
+                  }
+              });
+          }
+          
           list.innerHTML = '';
            if (!rides || rides.length === 0) {
               list.innerHTML = `<p class="text-gray-500 text-sm p-4 text-center">No pending rides at the moment.</p>`;
@@ -365,8 +506,12 @@ document.addEventListener('DOMContentLoaded', () => {
               rideEl.dataset.rideId = ride.id;
 
               const filteredDrivers = availableDrivers.filter(d => d.vehicle_type === ride.vehicle_type && d.status === 'Available');
+              
+              // Get previously selected driver for this ride
+              const previouslySelected = pendingRideSelectedDrivers[ride.id];
+              
               const driverOptions = filteredDrivers.length > 0
-                  ? filteredDrivers.map(d => `<option value="${d.id}">${d.name}</option>`).join('')
+                  ? filteredDrivers.map(d => `<option value="${d.id}" ${d.id == previouslySelected ? 'selected' : ''}>${d.name}</option>`).join('')
                   : '<option disabled>No available drivers</option>';
 
               rideEl.innerHTML = `
@@ -554,7 +699,32 @@ document.addEventListener('DOMContentLoaded', () => {
           } 
       });
       document.addEventListener('click', (e) => { const dropdown = document.getElementById('notification-dropdown'); const bell = document.getElementById('notification-bell'); if (!dropdown.classList.contains('hidden') && !bell.contains(e.target)) { dropdown.classList.add('hidden'); } });
-      const setupAssignmentListeners = (containerId) => { document.getElementById(containerId).addEventListener('click', async (e) => { if (e.target.classList.contains('assign-ride-btn')) { const rideId = e.target.dataset.rideId; const driverId = document.getElementById(`driver-select-${rideId}`).value; if (driverId) { await postData('assign-ride', { ride_id: rideId, driver_id: driverId }); refreshAllData(); } else { alert('Please select a driver.'); } } }); };
+      const setupAssignmentListeners = (containerId) => { 
+          const container = document.getElementById(containerId);
+          if (container) {
+              container.addEventListener('click', async (e) => { 
+                  if (e.target.classList.contains('assign-ride-btn')) { 
+                      const rideId = e.target.dataset.rideId; 
+                      const driverSelect = document.getElementById(`driver-select-${rideId}`);
+                      if (driverSelect) {
+                          const driverId = driverSelect.value; 
+                          if (driverId && driverId !== '') { 
+                              const result = await postData('assign-ride', { ride_id: rideId, driver_id: driverId }); 
+                              
+                              // Clear the selected driver for this ride since it's now assigned
+                              delete pendingRideSelectedDrivers[rideId];
+                              
+                              refreshAllData(); 
+                          } else { 
+                              alert('Please select a driver.'); 
+                          } 
+                      } else {
+                          console.error(`Driver select element not found for ride ${rideId}`);
+                      }
+                  } 
+              }); 
+          }
+      };
       setupAssignmentListeners('pending-rides-summary-list');
       setupAssignmentListeners('pending-rides-container');
 
@@ -1042,6 +1212,7 @@ document.addEventListener('DOMContentLoaded', () => {
           
           renderPendingRides(allPendingRides, availableDrivers || [], 'pending-rides-summary-list');
           renderPendingRides(allPendingRides, availableDrivers || [], 'pending-rides-container');
+          updatePendingRidesStats(allPendingRides);
           updateActiveRidesTable(allActiveRides);
           updateBadges(stats);
       };
@@ -1650,46 +1821,44 @@ document.addEventListener('DOMContentLoaded', () => {
       // Update pending rides stats
       const updatePendingRidesStats = (rides) => {
           const availableDrivers = allDrivers.filter(d => d.status === 'Available').length;
-          const avgWaitTime = rides.length > 0 ? Math.round(rides.reduce((sum, ride) => {
-              const waitTime = (new Date() - new Date(ride.request_time)) / (1000 * 60); // minutes
-              return sum + waitTime;
-          }, 0) / rides.length) : 0;
           
-          // Calculate success rate based on completed vs total rides
-          const totalRides = allRides.length;
-          const completedRides = allRides.filter(ride => ride.status === 'Completed').length;
+          // Calculate average wait time
+          let avgWaitTime = 0;
+          if (rides.length > 0) {
+              const totalWaitTime = rides.reduce((sum, ride) => {
+                  try {
+                      const requestTime = new Date(ride.request_time);
+                      const now = new Date();
+                      const waitTime = (now - requestTime) / (1000 * 60); // minutes
+                      return sum + Math.max(0, waitTime); // Ensure non-negative
+                  } catch (error) {
+                      console.warn('Error parsing request_time:', ride.request_time, error);
+                      return sum;
+                  }
+              }, 0);
+              avgWaitTime = Math.round(totalWaitTime / rides.length);
+          }
+          
+          // Calculate success rate based on completed vs total rides from ride history
+          const totalRides = allRidesHistory.length;
+          const completedRides = allRidesHistory.filter(ride => ride.status === 'Completed').length;
           const successRate = totalRides > 0 ? Math.round((completedRides / totalRides) * 100) : 0;
           
-          animateNumber(document.getElementById('pending-count'), rides.length);
-          animateNumber(document.getElementById('available-drivers-count'), availableDrivers);
-          animateNumber(document.getElementById('avg-wait-time'), avgWaitTime, ' min');
-          animateNumber(document.getElementById('assignment-success-rate'), successRate, '%');
+          // Update the UI elements
+          const pendingCountEl = document.getElementById('pending-count');
+          const availableDriversEl = document.getElementById('available-drivers-count');
+          const avgWaitTimeEl = document.getElementById('avg-wait-time');
+          const successRateEl = document.getElementById('assignment-success-rate');
+          
+          if (pendingCountEl) animateNumber(pendingCountEl, rides.length);
+          if (availableDriversEl) animateNumber(availableDriversEl, availableDrivers);
+          if (avgWaitTimeEl) animateNumber(avgWaitTimeEl, avgWaitTime, ' min');
+          if (successRateEl) animateNumber(successRateEl, successRate, '%');
       };
 
-      // Auto assign all pending rides
-      const autoAssignAllRides = async () => {
-          try {
-              const pendingRides = allPendingRides.filter(ride => ride.status === 'Requested');
-              let assignedCount = 0;
-
-              for (const ride of pendingRides) {
-                  if (driverSuggestions[ride.id] && driverSuggestions[ride.id].length > 0) {
-                      const bestDriver = driverSuggestions[ride.id][0];
-                      await assignDriver(ride.id, bestDriver.driver_id);
-                      assignedCount++;
-                  }
-              }
-
-              setFeedbackMessage('auto-assign-feedback', `Auto-assigned ${assignedCount} rides successfully!`);
-          } catch (error) {
-              console.error('Error in auto-assign:', error);
-              setFeedbackMessage('auto-assign-feedback', 'Error in auto-assignment', 'error');
-          }
-      };
 
       // Event listeners for enhanced pending rides
       document.getElementById('refresh-pending-btn')?.addEventListener('click', refreshAllData);
-      document.getElementById('auto-assign-btn')?.addEventListener('click', autoAssignAllRides);
 
       // Override the existing updatePendingRides function
       const originalUpdatePendingRides = window.updatePendingRides;
@@ -1934,7 +2103,10 @@ document.addEventListener('DOMContentLoaded', () => {
       // Export drivers functionality
       document.getElementById('export-drivers-btn')?.addEventListener('click', async () => {
           try {
+              console.log('Starting driver export...');
               const response = await fetch(`${API_BASE_URL}/drivers/export`);
+              console.log('Export response status:', response.status);
+              
               if (response.ok) {
                   const blob = await response.blob();
                   const url = window.URL.createObjectURL(blob);
@@ -1946,12 +2118,15 @@ document.addEventListener('DOMContentLoaded', () => {
                   window.URL.revokeObjectURL(url);
                   document.body.removeChild(a);
                   setFeedbackMessage('export-feedback', 'Drivers exported successfully!');
+                  console.log('Driver export completed successfully');
               } else {
-                  setFeedbackMessage('export-feedback', 'Error exporting drivers', 'error');
+                  const errorText = await response.text();
+                  console.error('Export failed:', response.status, errorText);
+                  setFeedbackMessage('export-feedback', `Error exporting drivers: ${response.status}`, 'error');
               }
           } catch (error) {
               console.error('Export error:', error);
-              setFeedbackMessage('export-feedback', 'Error exporting drivers', 'error');
+              setFeedbackMessage('export-feedback', `Error exporting drivers: ${error.message}`, 'error');
           }
       });
 
@@ -2026,6 +2201,155 @@ document.addEventListener('DOMContentLoaded', () => {
               setFeedbackMessage('export-feedback', 'Error exporting data', 'error');
           }
       };
+
+      // --- SIMPLE ANALYTICS FUNCTIONALITY ---
+      // (updateAnalytics function already exists around line 310)
+
+      const updateCharts = (charts) => {
+          // Revenue Chart
+          if (charts.revenue_over_time) {
+              const ctx = document.getElementById('revenue-over-time-chart');
+              if (ctx) {
+                  if (revenueChart) revenueChart.destroy();
+                  
+                  revenueChart = new Chart(ctx, {
+                      type: 'bar',
+                      data: {
+                          labels: charts.revenue_over_time.labels || [],
+                          datasets: [{
+                              label: 'Daily Revenue (ETB)',
+                              data: charts.revenue_over_time.data || [],
+                              backgroundColor: '#8B5CF6'
+                          }]
+                      },
+                      options: {
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          plugins: {
+                              legend: {
+                                  display: false
+                              }
+                          },
+                          scales: {
+                              y: {
+                                  beginAtZero: true
+                              }
+                          }
+                      }
+                  });
+              }
+          }
+          
+          // Vehicle Distribution Chart
+          if (charts.vehicle_distribution) {
+              const ctx = document.getElementById('vehicle-dist-chart');
+              if (ctx) {
+                  if (vehicleDistChart) vehicleDistChart.destroy();
+                  
+                  const labels = Object.keys(charts.vehicle_distribution);
+                  const values = Object.values(charts.vehicle_distribution);
+                  
+                  vehicleDistChart = new Chart(ctx, {
+                      type: 'doughnut',
+                      data: {
+                          labels: labels,
+                          datasets: [{
+                              data: values,
+                              backgroundColor: ['#F59E0B', '#3B82F6', '#EF4444']
+                          }]
+                      },
+                      options: {
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          plugins: {
+                              legend: {
+                                  position: 'bottom'
+                              }
+                          }
+                      }
+                  });
+              }
+          }
+          
+          // Payment Distribution Chart
+          if (charts.payment_method_distribution) {
+              const ctx = document.getElementById('payment-dist-chart');
+              if (ctx) {
+                  if (paymentDistChart) paymentDistChart.destroy();
+                  
+                  const labels = Object.keys(charts.payment_method_distribution);
+                  const values = Object.values(charts.payment_method_distribution);
+                  
+                  paymentDistChart = new Chart(ctx, {
+                      type: 'doughnut',
+                      data: {
+                          labels: labels,
+                          datasets: [{
+                              data: values,
+                              backgroundColor: ['#10B981', '#8B5CF6', '#EF4444']
+                          }]
+                      },
+                      options: {
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          plugins: {
+                              legend: {
+                                  position: 'bottom'
+                              }
+                          }
+                      }
+                  });
+              }
+          }
+      };
+
+      const updateTopDrivers = (drivers) => {
+          const container = document.getElementById('top-drivers-list');
+          if (!container) return;
+          
+          if (!drivers || drivers.length === 0) {
+              container.innerHTML = '<p class="text-center text-gray-500">No driver data available</p>';
+              return;
+          }
+          
+          container.innerHTML = drivers.map(driver => `
+              <div class="flex items-center justify-between p-2">
+                  <div class="flex items-center">
+                      <img src="/${driver.avatar}" class="h-10 w-10 rounded-full mr-4 object-cover" alt="${driver.name}">
+                      <div>
+                          <p class="font-semibold">${driver.name}</p>
+                          <p class="text-xs text-gray-500">${driver.avg_rating} ⭐</p>
+                      </div>
+                  </div>
+                  <p class="font-bold text-lg">${driver.completed_rides} rides</p>
+              </div>
+          `).join('');
+      };
+
+      // Setup filter buttons (using existing function from line 186)
+
+      // Initialize analytics
+      setupFilterButtons('analytics-period-btns', params => {
+          currentAnalyticsParams = params;
+          updateAnalytics();
+      });
+
+      // Set default active button
+      document.addEventListener('DOMContentLoaded', () => {
+          const weekBtn = document.querySelector('.analytics-filter-btn[data-period="week"]');
+          if (weekBtn) {
+              weekBtn.classList.add('bg-indigo-600', 'text-white');
+          }
+      });
+
+      // Load analytics when analytics pane is shown
+      document.addEventListener('click', (e) => {
+          if (e.target.closest('[data-pane="analytics"]')) {
+              setTimeout(() => {
+                  updateAnalytics();
+              }, 100);
+          }
+      });
 
       window.showCommissionSettings = async () => {
           try {

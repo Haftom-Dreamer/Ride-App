@@ -6,27 +6,41 @@ This script helps migrate your existing database to the new schema with indexes 
 
 import os
 import sys
+import shutil
 from datetime import datetime
+
+# Get the project's root directory (one level up from 'scripts')
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DB_PATH = os.path.join(PROJECT_ROOT, 'ride_app.db')
+BACKUP_DIR = os.path.join(PROJECT_ROOT, 'archive', 'backups')
 
 def backup_database():
     """Create a backup of the current database"""
     if os.path.exists('app.db'):
         backup_name = f'app.db.backup_{datetime.now().strftime("%Y%m%d_%H%M%S")}'
+    if os.path.exists(DB_PATH):
+        os.makedirs(BACKUP_DIR, exist_ok=True)
+        backup_name = f'ride_app.db.backup_{datetime.now().strftime("%Y%m%d_%H%M%S")}'
+        backup_path = os.path.join(BACKUP_DIR, backup_name)
         try:
             import shutil
             shutil.copy2('app.db', backup_name)
             print(f"✅ Database backed up to: {backup_name}")
+            shutil.copy2(DB_PATH, backup_path)
+            print(f"✅ Database backed up to: {os.path.relpath(backup_path, PROJECT_ROOT)}")
             return True
         except Exception as e:
             print(f"❌ Failed to backup database: {e}")
             return False
     else:
         print("ℹ️  No existing database found. Will create a new one.")
+        print("ℹ️  No existing database found (ride_app.db). Will create a new one.")
         return True
 
 def check_env_file():
     """Check if .env file exists"""
     if not os.path.exists('.env'):
+    if not os.path.exists(os.path.join(PROJECT_ROOT, '.env')):
         print("⚠️  Warning: .env file not found!")
         print("📄 Creating .env file from template...")
         
@@ -45,6 +59,10 @@ def run_migrations():
     """Run Flask-Migrate to update the database schema"""
     print("\n🔄 Running database migrations...")
     
+
+    # Change to root directory to run flask commands
+    original_dir = os.getcwd()
+    os.chdir(PROJECT_ROOT)
     try:
         # Check if migrations folder exists
         if not os.path.exists('migrations'):
@@ -75,12 +93,17 @@ def run_migrations():
     except Exception as e:
         print(f"❌ Migration error: {e}")
         return False
+    finally:
+        os.chdir(original_dir)
 
 def verify_admin_exists():
     """Check if an admin user exists"""
     print("\n👤 Checking for admin user...")
     
+    # Add project root to path to allow import
+    sys.path.insert(0, PROJECT_ROOT)
     try:
+        # This assumes main.py is the entry point with the app
         from main import app, Admin
         with app.app_context():
             admin = Admin.query.first()
@@ -92,10 +115,15 @@ def verify_admin_exists():
                 response = input("Create an admin user now? (yes/no): ")
                 if response.lower() in ['yes', 'y']:
                     os.system('python create_admin.py')
+                    # Execute create_admin.py using its full path
+                    create_admin_script = os.path.join(PROJECT_ROOT, 'scripts', 'create_admin.py')
+                    os.system(f'python {create_admin_script}')
                 return True
     except Exception as e:
         print(f"⚠️  Could not verify admin: {e}")
         return True
+    finally:
+        sys.path.pop(0)
 
 def main():
     """Main migration process"""
