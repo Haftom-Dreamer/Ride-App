@@ -13,14 +13,59 @@ const updateFilenameLabel = (inputId, labelId) => {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-    // --- STATE & CONFIG ---
-    const API_BASE_URL = window.TEMPLATE_VARS?.API_BASE_URL || 'http://127.0.0.1:5000/api';
-    let dashboardMap, revenueChart, vehicleDistChart, paymentDistChart;
-    let rideLayers = {};
-    let currentAnalyticsParams = 'period=week';
-    let currentReportParams = 'period=all';
-    let allDrivers = [], allRidesHistory = [], allFeedback = [], allPendingRides = [], allActiveRides = [], allPassengers = [], recentNotifications = [];
-    let rideHistoryPage = 1, RIDES_PER_PAGE = 10, lastPendingCount = 0;
+        // --- STATE & CONFIG ---
+        const API_BASE_URL = window.TEMPLATE_VARS?.API_BASE_URL || 'http://127.0.0.1:5000/api';
+        let dashboardMap, revenueChart, vehicleDistChart, paymentDistChart, rideStatusChart;
+        let rideLayers = {};
+        let currentAnalyticsParams = 'period=week';
+        let currentReportParams = 'period=all';
+        let allDrivers = [], allRidesHistory = [], allFeedback = [], allPendingRides = [], allActiveRides = [], allPassengers = [], recentNotifications = [];
+        let rideHistoryPage = 1, RIDES_PER_PAGE = 10, lastPendingCount = 0;
+        
+        // --- ERROR HANDLING & OFFLINE SUPPORT ---
+        let isOnline = navigator.onLine;
+        let connectionRetryCount = 0;
+        const MAX_RETRY_ATTEMPTS = 3;
+        const RETRY_DELAY = 2000;
+        
+        // Global error handler
+        window.addEventListener('error', (event) => {
+            console.error('Global error:', event.error);
+            showErrorNotification('An unexpected error occurred. Please refresh the page.');
+        });
+        
+        // Unhandled promise rejection handler
+        window.addEventListener('unhandledrejection', (event) => {
+            console.error('Unhandled promise rejection:', event.reason);
+            showErrorNotification('A network error occurred. Please check your connection.');
+            event.preventDefault();
+        });
+        
+        // Online/Offline detection
+        window.addEventListener('online', () => {
+            isOnline = true;
+            connectionRetryCount = 0;
+            hideOfflineMessage();
+            showSuccessNotification('Connection restored! Refreshing data...');
+            setTimeout(() => refreshAllData(), 1000);
+        });
+        
+        window.addEventListener('offline', () => {
+            isOnline = false;
+            showOfflineMessage();
+            showErrorNotification('You are offline. Some features may not work.');
+        });
+        
+        // Check connection status periodically
+        setInterval(() => {
+            if (!navigator.onLine && isOnline) {
+                isOnline = false;
+                showOfflineMessage();
+            } else if (navigator.onLine && !isOnline) {
+                isOnline = true;
+                hideOfflineMessage();
+            }
+        }, 5000);
     
     // --- SOCKETIO SETUP ---
     let socket = null;
@@ -87,49 +132,88 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 1000);
     };
     
-    const showToastNotification = (message, type = 'info') => {
-        // Create toast notification
-        const toast = document.createElement('div');
-        toast.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-sm transform transition-all duration-300 translate-x-full`;
-        
-        const colors = {
-            'info': 'bg-blue-500 text-white',
-            'success': 'bg-green-500 text-white',
-            'warning': 'bg-yellow-500 text-white',
-            'error': 'bg-red-500 text-white'
+        const showToastNotification = (message, type = 'info') => {
+            // Create toast notification
+            const toast = document.createElement('div');
+            toast.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-sm transform transition-all duration-300 translate-x-full`;
+            
+            const colors = {
+                'info': 'bg-blue-500 text-white',
+                'success': 'bg-green-500 text-white',
+                'warning': 'bg-yellow-500 text-white',
+                'error': 'bg-red-500 text-white'
+            };
+            
+            toast.className += ` ${colors[type] || colors.info}`;
+            toast.innerHTML = `
+                <div class="flex items-center">
+                    <div class="flex-1">
+                        <p class="font-semibold">${message}</p>
+                    </div>
+                    <button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-white hover:text-gray-200">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            `;
+            
+            document.body.appendChild(toast);
+            
+            // Animate in
+            setTimeout(() => {
+                toast.classList.remove('translate-x-full');
+            }, 100);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                toast.classList.add('translate-x-full');
+                setTimeout(() => {
+                    if (toast.parentElement) {
+                        toast.remove();
+                    }
+                }, 300);
+            }, 5000);
         };
         
-        toast.className += ` ${colors[type] || colors.info}`;
-        toast.innerHTML = `
-            <div class="flex items-center">
-                <div class="flex-1">
-                    <p class="font-semibold">${message}</p>
-                </div>
-                <button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-white hover:text-gray-200">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                </button>
-            </div>
-        `;
+        // Enhanced notification functions
+        const showErrorNotification = (message) => showToastNotification(message, 'error');
+        const showSuccessNotification = (message) => showToastNotification(message, 'success');
+        const showWarningNotification = (message) => showToastNotification(message, 'warning');
         
-        document.body.appendChild(toast);
-        
-        // Animate in
-        setTimeout(() => {
-            toast.classList.remove('translate-x-full');
-        }, 100);
-        
-        // Auto remove after 5 seconds
-        setTimeout(() => {
-            toast.classList.add('translate-x-full');
+        // Offline message display
+        const showOfflineMessage = () => {
+            let offlineBanner = document.getElementById('offline-banner');
+            if (!offlineBanner) {
+                offlineBanner = document.createElement('div');
+                offlineBanner.id = 'offline-banner';
+                offlineBanner.className = 'fixed top-0 left-0 right-0 z-50 bg-red-600 text-white text-center py-2 px-4 transform -translate-y-full transition-transform duration-300';
+                offlineBanner.innerHTML = `
+                    <div class="flex items-center justify-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192L5.636 18.364M12 2.25a9.75 9.75 0 100 19.5 9.75 9.75 0 000-19.5z"></path>
+                        </svg>
+                        <span class="font-semibold">You are offline. Some features may not work properly.</span>
+                    </div>
+                `;
+                document.body.appendChild(offlineBanner);
+            }
             setTimeout(() => {
-                if (toast.parentElement) {
-                    toast.remove();
-                }
-            }, 300);
-        }, 5000);
-    };
+                offlineBanner.classList.remove('-translate-y-full');
+            }, 100);
+        };
+        
+        const hideOfflineMessage = () => {
+            const offlineBanner = document.getElementById('offline-banner');
+            if (offlineBanner) {
+                offlineBanner.classList.add('-translate-y-full');
+                setTimeout(() => {
+                    if (offlineBanner.parentElement) {
+                        offlineBanner.remove();
+                    }
+                }, 300);
+            }
+        };
     // Audio notification with user interaction requirement
     let notificationSound = null;
     let audioInitialized = false;
@@ -201,11 +285,26 @@ document.addEventListener('DOMContentLoaded', () => {
         
         let r; 
         try { 
+            // Check if offline
+            if (!isOnline) {
+                throw new Error('No internet connection');
+            }
+            
             r = await fetch(`${API_BASE_URL}/${endpoint}?${params}`, { cache: "no-store", credentials: 'include' }); 
             if (!r.ok) {
                 if (r.status === 429) {
                     console.warn(`Rate limited for ${endpoint}, will retry later`);
+                    showWarningNotification('Too many requests. Please wait a moment.');
                     return null; // Don't throw error for rate limiting
+                } else if (r.status >= 500) {
+                    showErrorNotification('Server error. Please try again later.');
+                    throw new Error(`Server error ${r.status}`); 
+                } else if (r.status === 404) {
+                    showErrorNotification('Resource not found.');
+                    throw new Error(`Resource not found ${r.status}`); 
+                } else if (r.status === 403) {
+                    showErrorNotification('Access denied. Please refresh the page.');
+                    throw new Error(`Access denied ${r.status}`); 
                 }
                 throw new Error(`HTTP error ${r.status}`); 
             }
@@ -216,10 +315,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 cache.set(key, { data, timestamp: now });
             }
             
+            connectionRetryCount = 0; // Reset retry count on success
             return data;
         } catch (e) { 
             console.error(`Fetch error for ${endpoint}:`, e); 
-            if (r && r.status === 401) { window.location.href = '/login'; } 
+            
+            // Handle specific error types
+            if (e.message === 'No internet connection') {
+                showErrorNotification('No internet connection. Please check your network.');
+            } else if (e.message.includes('Failed to fetch')) {
+                showErrorNotification('Network error. Please check your connection.');
+            } else if (e.message.includes('Server error')) {
+                showErrorNotification('Server error. Please try again later.');
+            }
+            
+            if (r && r.status === 401) { 
+                showErrorNotification('Session expired. Redirecting to login...');
+                setTimeout(() => window.location.href = '/login', 2000);
+            } 
             return null; 
         } 
     };
@@ -509,6 +622,9 @@ document.addEventListener('DOMContentLoaded', () => {
           const data = await fetchData('analytics-data', currentAnalyticsParams); 
           console.log('Analytics data received:', data);
           
+          // Remove loading state
+          chartContainers.forEach(container => container.classList.remove('loading'));
+          
           if(data) { 
               const {kpis, charts, performance} = data;
               console.log('KPI data:', kpis);
@@ -578,7 +694,7 @@ document.addEventListener('DOMContentLoaded', () => {
                   }
                   
                   try {
-                      window[chartVar] = new Chart(ctx, { type, data, options }); 
+                  window[chartVar] = new Chart(ctx, { type, data, options }); 
                       console.log(`✅ Chart created successfully: ${chartVar}`);
                       console.log('Chart instance:', window[chartVar]);
                   } catch (error) {
@@ -633,7 +749,15 @@ document.addEventListener('DOMContentLoaded', () => {
                   console.warn('Revenue chart data not available or empty:', charts.revenue_over_time);
                   // Show "No data" message in the chart container
                   const chartContainer = document.getElementById('revenue-over-time-chart').parentElement;
-                  chartContainer.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500">No revenue data available</div>';
+                  chartContainer.innerHTML = `
+                      <div class="flex flex-col items-center justify-center h-full text-gray-500 p-8">
+                          <svg class="w-16 h-16 mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                          </svg>
+                          <h3 class="text-lg font-semibold mb-2">No Revenue Data</h3>
+                          <p class="text-sm text-center">No completed rides found for the selected period.</p>
+                      </div>
+                  `;
               }
               
               // Vehicle Distribution Chart
@@ -648,7 +772,15 @@ document.addEventListener('DOMContentLoaded', () => {
               } else {
                   console.warn('Vehicle distribution data not available:', charts.vehicle_distribution);
                   const chartContainer = document.getElementById('vehicle-dist-chart').parentElement;
-                  chartContainer.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500">No vehicle data available</div>';
+                  chartContainer.innerHTML = `
+                      <div class="flex flex-col items-center justify-center h-full text-gray-500 p-8">
+                          <svg class="w-16 h-16 mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
+                          </svg>
+                          <h3 class="text-lg font-semibold mb-2">No Vehicle Data</h3>
+                          <p class="text-sm text-center">No rides found for the selected period.</p>
+                      </div>
+                  `;
               }
               
               // Payment Method Distribution Chart
@@ -663,7 +795,38 @@ document.addEventListener('DOMContentLoaded', () => {
               } else {
                   console.warn('Payment method distribution data not available:', charts.payment_method_distribution);
                   const chartContainer = document.getElementById('payment-dist-chart').parentElement;
-                  chartContainer.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500">No payment data available</div>';
+                  chartContainer.innerHTML = `
+                      <div class="flex flex-col items-center justify-center h-full text-gray-500 p-8">
+                          <svg class="w-16 h-16 mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                          </svg>
+                          <h3 class="text-lg font-semibold mb-2">No Payment Data</h3>
+                          <p class="text-sm text-center">No completed rides found for the selected period.</p>
+                      </div>
+                  `;
+              }
+              
+              // Ride Status Distribution Chart
+              if (charts.ride_status_distribution && Object.keys(charts.ride_status_distribution).length > 0) {
+                  createChart('ride-status-chart', 'rideStatusChart', 'doughnut', { 
+                      labels: Object.keys(charts.ride_status_distribution), 
+                      datasets: [{ 
+                          data: Object.values(charts.ride_status_distribution), 
+                          backgroundColor: ['#10B981', '#EF4444', '#F59E0B', '#3B82F6', '#8B5CF6']
+                      }] 
+                  }, commonOptions); 
+              } else {
+                  console.warn('Ride status distribution data not available:', charts.ride_status_distribution);
+                  const chartContainer = document.getElementById('ride-status-chart').parentElement;
+                  chartContainer.innerHTML = `
+                      <div class="flex flex-col items-center justify-center h-full text-gray-500 p-8">
+                          <svg class="w-16 h-16 mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                          </svg>
+                          <h3 class="text-lg font-semibold mb-2">No Ride Status Data</h3>
+                          <p class="text-sm text-center">No rides found for the selected period.</p>
+                      </div>
+                  `;
               }
               
               // Ride Status Distribution Chart (removed from simple analytics) 
@@ -672,10 +835,10 @@ document.addEventListener('DOMContentLoaded', () => {
               topDriversList.innerHTML = ''; 
               
               if (performance.top_drivers && performance.top_drivers.length > 0) {
-                  performance.top_drivers.forEach((d, index) => { 
-                      const div = document.createElement('div'); 
+              performance.top_drivers.forEach((d, index) => { 
+                  const div = document.createElement('div'); 
                       div.className = 'top-driver-item animate-slide-in cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-3 rounded-lg transition-colors';
-                      div.style.animationDelay = `${index * 0.1}s`;
+                  div.style.animationDelay = `${index * 0.1}s`;
                       div.title = 'Click to view driver details';
                       
                       // Only make clickable if driver has a real ID (not fake data)
@@ -688,23 +851,23 @@ document.addEventListener('DOMContentLoaded', () => {
                           div.style.opacity = '0.7';
                       }
                       
-                      div.innerHTML = `
+                  div.innerHTML = `
                           <div class="flex items-center justify-between">
-                              <div class="flex items-center">
+                      <div class="flex items-center">
                                   <img src="/${d.avatar}" class="driver-avatar h-10 w-10 rounded-full mr-4 object-cover" onerror="this.src='/static/img/default_avatar.png'">
-                                  <div class="driver-info">
+                          <div class="driver-info">
                                       <p class="driver-name font-semibold">${d.name}</p>
                                       <p class="driver-rating text-sm text-gray-500">${d.avg_rating} ⭐</p>
-                                  </div>
-                              </div>
+                          </div>
+                      </div>
                               <div class="driver-stats text-right">
                                   <p class="rides-count font-bold text-lg">${d.completed_rides}</p>
                                   <p class="rides-label text-xs text-gray-500">rides</p>
                               </div>
-                          </div>
-                      `; 
-                      topDriversList.appendChild(div); 
-                  });
+                      </div>
+                  `; 
+                  topDriversList.appendChild(div); 
+              }); 
               } else {
                   topDriversList.innerHTML = `
                       <div class="text-center py-8">
@@ -754,8 +917,20 @@ document.addEventListener('DOMContentLoaded', () => {
               
               // Remove loading animation
               chartContainers.forEach(container => container.classList.remove('loading'));
+          } else {
+              console.warn('No analytics data received');
+              showErrorNotification('Failed to load analytics data. Please try again.');
+              // Remove loading state on error
+              chartContainers.forEach(container => container.classList.remove('loading'));
           }
-      };
+      } catch (error) {
+          console.error('Error updating analytics:', error);
+          showErrorNotification('Error loading analytics. Please refresh the page.');
+          // Remove loading state on error
+          const chartContainers = document.querySelectorAll('.chart-container');
+          chartContainers.forEach(container => container.classList.remove('loading'));
+      }
+  };
       
       // Store selected drivers to preserve selection during re-renders
       const pendingRideSelectedDrivers = {};
@@ -1625,7 +1800,7 @@ document.addEventListener('DOMContentLoaded', () => {
                   fetchData('active-rides'), 
                   fetchData('available-drivers') 
               ]);
-              if (!stats) return; 
+          if (!stats) return; 
           updateDashboardStats(stats);
           
           const oldPendingIds = new Set(allPendingRides.map(r => r.id));
