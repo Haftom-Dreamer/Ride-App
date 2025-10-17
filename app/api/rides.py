@@ -87,6 +87,32 @@ def request_ride():
     db.session.add(new_ride)
     db.session.commit()
     
+    # Emit SocketIO notification for new ride
+    try:
+        from app.utils.socket_utils import emit_new_ride_notification
+        
+        # Get passenger name for notification
+        passenger_name = current_user.username if current_user.username else f"Passenger #{current_user.id}"
+        
+        ride_notification_data = {
+            'ride_id': new_ride.id,
+            'passenger_name': passenger_name,
+            'passenger_phone': getattr(current_user, 'phone_number', 'N/A'),
+            'pickup_address': pickup_address or 'Location not specified',
+            'dest_address': dest_address,
+            'fare': float(fare),
+            'vehicle_type': vehicle_type,
+            'payment_method': payment_method,
+            'distance_km': float(distance_km),
+            'request_time': new_ride.request_time.isoformat()
+        }
+        
+        emit_new_ride_notification(ride_notification_data)
+        
+    except Exception as e:
+        current_app.logger.error(f"Failed to emit ride notification: {e}")
+        # Don't fail the ride creation if notification fails
+    
     return jsonify({'message': 'Ride requested successfully', 'ride_id': new_ride.id}), 201
 
 @api.route('/assign-ride', methods=['POST'])

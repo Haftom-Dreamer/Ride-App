@@ -21,6 +21,115 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentReportParams = 'period=all';
     let allDrivers = [], allRidesHistory = [], allFeedback = [], allPendingRides = [], allActiveRides = [], allPassengers = [], recentNotifications = [];
     let rideHistoryPage = 1, RIDES_PER_PAGE = 10, lastPendingCount = 0;
+    
+    // --- SOCKETIO SETUP ---
+    let socket = null;
+    let socketConnected = false;
+    
+    const initSocket = () => {
+        try {
+            socket = io();
+            
+            socket.on('connect', () => {
+                console.log('✅ Connected to SocketIO server');
+                socketConnected = true;
+                socket.emit('join_dispatcher_room');
+            });
+            
+            socket.on('disconnect', () => {
+                console.log('❌ Disconnected from SocketIO server');
+                socketConnected = false;
+            });
+            
+            socket.on('new_ride_notification', (data) => {
+                console.log('🚨 New ride notification received:', data);
+                handleNewRideNotification(data);
+            });
+            
+            socket.on('connected', (data) => {
+                console.log('SocketIO:', data.status);
+            });
+            
+            socket.on('joined_room', (data) => {
+                console.log(`Joined room: ${data.room}`);
+            });
+            
+        } catch (error) {
+            console.error('SocketIO connection failed:', error);
+        }
+    };
+    
+    const handleNewRideNotification = (rideData) => {
+        // Add to recent notifications
+        recentNotifications.unshift(`🚨 New ride from ${rideData.passenger_name} - ${rideData.fare} ETB`);
+        
+        // Keep only last 10 notifications
+        if (recentNotifications.length > 10) {
+            recentNotifications.length = 10;
+        }
+        
+        // Update notification badge
+        const badge = document.getElementById('notification-badge');
+        if (badge) {
+            badge.textContent = recentNotifications.length;
+            badge.classList.remove('hidden');
+        }
+        
+        // Play notification sound
+        playNotificationSound();
+        
+        // Show visual notification
+        showToastNotification(`New ride from ${rideData.passenger_name}`, 'info');
+        
+        // Refresh dashboard data to show new ride
+        setTimeout(() => {
+            refreshDashboardData();
+        }, 1000);
+    };
+    
+    const showToastNotification = (message, type = 'info') => {
+        // Create toast notification
+        const toast = document.createElement('div');
+        toast.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-sm transform transition-all duration-300 translate-x-full`;
+        
+        const colors = {
+            'info': 'bg-blue-500 text-white',
+            'success': 'bg-green-500 text-white',
+            'warning': 'bg-yellow-500 text-white',
+            'error': 'bg-red-500 text-white'
+        };
+        
+        toast.className += ` ${colors[type] || colors.info}`;
+        toast.innerHTML = `
+            <div class="flex items-center">
+                <div class="flex-1">
+                    <p class="font-semibold">${message}</p>
+                </div>
+                <button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-white hover:text-gray-200">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+        `;
+        
+        document.body.appendChild(toast);
+        
+        // Animate in
+        setTimeout(() => {
+            toast.classList.remove('translate-x-full');
+        }, 100);
+        
+        // Auto remove after 5 seconds
+        setTimeout(() => {
+            toast.classList.add('translate-x-full');
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.remove();
+                }
+            }, 300);
+        }, 5000);
+    };
     // Audio notification with user interaction requirement
     let notificationSound = null;
     let audioInitialized = false;
@@ -1555,6 +1664,10 @@ document.addEventListener('DOMContentLoaded', () => {
       document.querySelector('.analytics-filter-btn[data-period="week"]').classList.add('active-filter');
       showPane('dashboard');
       refreshAllData();
+      
+      // Initialize SocketIO
+      initSocket();
+      
       setInterval(refreshDashboardData, 15000); // 15 seconds - good balance
       setInterval(refreshUnreadCount, 30000); // 30 seconds for notifications
 

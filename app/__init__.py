@@ -12,7 +12,11 @@ from flask_marshmallow import Marshmallow
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_wtf.csrf import CSRFProtect
+from flask_socketio import SocketIO, emit, join_room, leave_room
 from config import config
+
+# Create global SocketIO instance
+socketio = SocketIO(cors_allowed_origins="*", logger=True, engineio_logger=True)
 
 def create_app(config_name=None):
     """Application Factory Pattern"""
@@ -37,6 +41,9 @@ def create_app(config_name=None):
     migrate = Migrate(app, db)
     ma = Marshmallow(app)
     csrf = CSRFProtect(app)
+    
+    # Initialize SocketIO
+    socketio.init_app(app)
     
     # Handle CSRF errors
     from werkzeug.exceptions import BadRequest
@@ -248,5 +255,30 @@ def create_app(config_name=None):
                 
         except Exception as e:
             app.logger.error(f"Database initialization error: {e}")
+    
+    # SocketIO Event Handlers
+    @socketio.on('connect')
+    def handle_connect():
+        """Handle client connection"""
+        app.logger.info(f"Client connected: {request.sid}")
+        emit('connected', {'status': 'Connected to dispatcher dashboard'})
+    
+    @socketio.on('disconnect')
+    def handle_disconnect():
+        """Handle client disconnection"""
+        app.logger.info(f"Client disconnected: {request.sid}")
+    
+    @socketio.on('join_dispatcher_room')
+    def handle_join_dispatcher_room():
+        """Join dispatcher room for notifications"""
+        join_room('dispatchers')
+        app.logger.info(f"Client {request.sid} joined dispatcher room")
+        emit('joined_room', {'room': 'dispatchers'})
+    
+    @socketio.on('leave_dispatcher_room')
+    def handle_leave_dispatcher_room():
+        """Leave dispatcher room"""
+        leave_room('dispatchers')
+        app.logger.info(f"Client {request.sid} left dispatcher room")
     
     return app
