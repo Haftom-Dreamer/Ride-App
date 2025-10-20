@@ -14,7 +14,7 @@ const updateFilenameLabel = (inputId, labelId) => {
 
 document.addEventListener('DOMContentLoaded', () => {
         // --- STATE & CONFIG ---
-        const API_BASE_URL = window.TEMPLATE_VARS?.API_BASE_URL || 'http://127.0.0.1:5000/api';
+        const API_BASE_URL = window.TEMPLATE_VARS?.API_BASE_URL || `${window.location.origin}/api`;
         let dashboardMap, revenueChart, vehicleDistChart, paymentDistChart, rideStatusChart;
         let rideLayers = {};
         let currentAnalyticsParams = 'period=week';
@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Only show toast if offline or it's a fetch/network error, with cooldown
             if (!navigator.onLine || reasonText.includes('Failed to fetch') || reasonText.includes('NetworkError')) {
                 if (now - lastNetworkToastAt > NETWORK_TOAST_COOLDOWN_MS) {
-                    showErrorNotification('A network error occurred. Please check your connection.');
+            showErrorNotification('A network error occurred. Please check your connection.');
                     lastNetworkToastAt = now;
                 }
             }
@@ -396,7 +396,8 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- PENDING RIDES UI ---
-    const refreshPendingRides = async () => {
+    // ensure only one definition exists
+    window.refreshPendingRides = async () => {
         const data = await fetchData('pending-rides');
         if (!data) return;
         allPendingRides = data;
@@ -418,7 +419,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <tr class="border-b">
                 <td class="py-2 pr-2">#${r.id}</td>
                 <td class="py-2 pr-2">
-                    <div class="flex flex-col"><span class="font-semibold">${r.user_name}</span><span class="text-xs text-secondary">${r.user_phone}</span></div>
+                    <div class="flex flex-col"><span class="font-semibold">${r.user_name}</span><span class="text-xs text-secondary">${r.user_phone || ''}</span></div>
                 </td>
                 <td class="py-2 pr-2">
                     <div class="flex flex-col"><span>${r.pickup_address || 'Pickup'}</span><span class="text-xs text-secondary">→ ${r.dest_address}</span></div>
@@ -506,7 +507,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (paneId === 'support-tickets') refreshSupportTickets(); 
         if(paneId === 'settings') refreshAdminUsers(); 
         if (paneId === 'pending-rides') refreshPendingRides();
-        if (paneId === 'active-rides') refreshActiveRides?.();
+        if (paneId === 'active-rides') refreshActiveRides();
         if (dashboardMap) setTimeout(() => dashboardMap.invalidateSize(), 310); 
     };
 
@@ -635,9 +636,17 @@ document.addEventListener('DOMContentLoaded', () => {
               driversBadge.textContent = stats.drivers_online;
               driversBadge.classList.toggle('hidden', stats.drivers_online === 0);
 
-              const pendingBadge = document.getElementById('pending-requests-badge');
-              pendingBadge.textContent = stats.pending_requests;
-              pendingBadge.classList.toggle('hidden', stats.pending_requests === 0);
+              // Support both legacy and new pending badges
+              const pendingBadgeLegacy = document.getElementById('pending-requests-badge');
+              const pendingBadgeNew = document.getElementById('pending-rides-badge');
+              if (pendingBadgeLegacy) {
+                  pendingBadgeLegacy.textContent = stats.pending_requests;
+                  pendingBadgeLegacy.classList.toggle('hidden', stats.pending_requests === 0);
+              }
+              if (pendingBadgeNew) {
+                  pendingBadgeNew.textContent = stats.pending_requests;
+                  pendingBadgeNew.classList.toggle('hidden', stats.pending_requests === 0);
+              }
 
               const activeBadge = document.getElementById('active-rides-badge');
               activeBadge.textContent = stats.active_rides;
@@ -1304,7 +1313,43 @@ document.addEventListener('DOMContentLoaded', () => {
           } 
       });
       document.addEventListener('click', (e) => { const dropdown = document.getElementById('notification-dropdown'); const bell = document.getElementById('notification-bell'); if (!dropdown.classList.contains('hidden') && !bell.contains(e.target)) { dropdown.classList.add('hidden'); } });
-      // Pending rides assignment listeners removed
+      // Lightweight refresh functions used by pane switching
+      function refreshPendingRides() { try { window.refreshPendingRides?.(); } catch (e) { console.warn('refreshPendingRides error', e); } }
+      function refreshActiveRides() { try { refreshDashboardData(); } catch (e) { console.warn('refreshActiveRides error', e); } }
+
+      // Assignment handling for pending rides cards
+      document.addEventListener('click', async (e) => {
+          const btn = e.target.closest('.assign-ride-btn');
+          if (!btn) return;
+          const rideId = btn.dataset.rideId;
+          const select = document.getElementById(`driver-select-${rideId}`);
+          if (!select) return;
+          const raw = (select.value || '').trim();
+          if (!raw) { alert('Please select a driver'); return; }
+          const driverId = parseInt(raw, 10);
+          if (!Number.isFinite(driverId) || driverId <= 0) { alert('Invalid driver selection'); return; }
+          const prev = btn.textContent; btn.disabled = true; btn.textContent = 'Assigning...';
+          try {
+              const res = await fetch(`${API_BASE_URL}/assign-ride`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ride_id: rideId, driver_id: driverId }) });
+              const data = await res.json();
+                              if (data.success) {
+                  // Refresh data and badges after assignment
+                                  await refreshAllData();
+                  setFeedbackMessage('assignment-feedback', 'Driver assigned successfully!');
+                          } else { 
+                  setFeedbackMessage('assignment-feedback', data.error || 'Failed to assign', 'error');
+                              }
+          } catch (err) {
+              console.error('Assign error', err);
+                              setFeedbackMessage('assignment-feedback', 'Error assigning driver', 'error');
+          } finally {
+              btn.disabled = false; btn.textContent = prev;
+          }
+      });
+
+      // Filters and refresh button for pending rides
+      document.getElementById('pending-vehicle-filter')?.addEventListener('change', renderPendingRideCards);
+      document.getElementById('refresh-pending-btn')?.addEventListener('click', () => { refreshDashboardData(); });
 
       document.getElementById('drivers-table-body').addEventListener('change', async e => { if (e.target.classList.contains('driver-status-select')) { await postData('update-driver-status', { driver_id: e.target.dataset.driverId, status: e.target.value }); refreshAllData(); } });
       document.getElementById('drivers-table-body').addEventListener('click', async e => { const btn = e.target.closest('.action-btn'); if (!btn) return; const id = btn.dataset.driverId; if (btn.classList.contains('view')) { const data = await fetchData(`driver-details/${id}`); if(data) showDriverDetails(data); } else if (btn.classList.contains('edit')) { const driver = await fetchData(`driver/${id}`); if (driver) { const form = document.getElementById('edit-driver-form'); form.reset(); form.elements.id.value = driver.id; form.elements.name.value = driver.name; form.elements.phone_number.value = driver.phone_number; form.elements.vehicle_type.value = driver.vehicle_type; form.elements.vehicle_details.value = driver.vehicle_details; form.elements.vehicle_plate_number.value = driver.vehicle_plate_number; form.elements.license_info.value = driver.license_info; showModal('edit-driver-modal'); } } else if (btn.classList.contains('delete')) { document.getElementById('confirm-delete-btn').dataset.driverId = id; showModal('delete-driver-modal'); } });
@@ -1848,18 +1893,21 @@ document.addEventListener('DOMContentLoaded', () => {
           
           // Debounce the refresh by 1 second (faster response)
           refreshTimeout = setTimeout(async () => {
-            const [stats, active] = await Promise.all([ 
+              const [stats, pending, active] = await Promise.all([ 
                   fetchData('dashboard-stats'), 
+                  fetchData('pending-rides'), 
                 fetchData('active-rides') 
               ]);
           if (!stats) return; 
           updateDashboardStats(stats);
           
+          allPendingRides = pending || [];
           allActiveRides = active || [];
           
           updateLiveMap();
           
-        // Pending rides UI removed
+          // Render pending rides cards (pane)
+          renderPendingRideCards();
           updateActiveRidesTable(allActiveRides);
           updateBadges(stats);
           }, 1000); // 1 second debounce
@@ -2258,7 +2306,57 @@ document.addEventListener('DOMContentLoaded', () => {
           }
       });
 
-      // Pending rides functionality removed
+      // Render pending rides as cards in the pending rides pane
+      function renderPendingRideCards() {
+          const tbody = document.getElementById('pending-rides-table-body');
+          if (!tbody) return;
+          const vehicleFilter = document.getElementById('pending-vehicle-filter')?.value || '';
+          tbody.innerHTML = '';
+          const rides = (allPendingRides || []).filter(r => !vehicleFilter || r.vehicle_type === vehicleFilter);
+          if (!rides.length) {
+              tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-secondary">No pending rides</td></tr>`;
+              return;
+          }
+          rides.forEach(ride => {
+              const row = document.createElement('tr');
+              row.className = 'border-b align-top';
+              row.innerHTML = `
+                  <td class="py-3 pr-2">
+                      <div class="font-semibold text-primary">#${ride.id}</div>
+                      <div class="text-xs text-secondary">${ride.vehicle_type}</div>
+                  </td>
+                  <td class="py-3 pr-2">
+                      <div class="font-semibold">${ride.user_name || ride.passenger_name || 'Passenger'}</div>
+                      <div class="text-xs text-secondary">${ride.user_phone || ''}</div>
+                  </td>
+                  <td class="py-3 pr-2">
+                      <div class="text-xs"><span class="font-medium text-primary">From:</span> ${ride.pickup_address || 'N/A'}</div>
+                      <div class="text-xs mt-1"><span class="font-medium text-primary">To:</span> ${ride.dest_address || 'N/A'}</div>
+                  </td>
+                  <td class="py-3 pr-2">${ride.fare || ride.estimated_fare || '—'} ETB</td>
+                  <td class="py-3 pr-2">${ride.vehicle_type}</td>
+                  <td class="py-3 pr-2 text-xs text-secondary">${ride.request_time || ''}</td>
+                  <td class="py-3 pr-2">
+                      <div class="flex items-center gap-2">
+                          <select class="p-1 border rounded text-xs w-40" id="driver-select-${ride.id}"></select>
+                          <button class="assign-ride-btn px-3 py-1 bg-blue-500 text-white text-xs rounded" data-ride-id="${ride.id}">Assign</button>
+                  </div>
+                  </td>
+              `;
+              tbody.appendChild(row);
+              // populate drivers list by vehicle type
+              const select = row.querySelector(`#driver-select-${ride.id}`);
+              const available = (allDrivers || []).filter(d => d.status === 'Available' && d.vehicle_type === ride.vehicle_type);
+              if (!available.length) {
+                  select.innerHTML = '<option disabled selected>No available drivers</option>';
+                  row.querySelector('.assign-ride-btn').disabled = true;
+              } else {
+                  select.innerHTML = ['<option value="" disabled selected>Select a driver...</option>'].concat(
+                      available.map(d => `<option value="${d.id}">${d.name}</option>`)
+                  ).join('');
+              }
+          });
+      }
 
       // Enhanced pending rides display with driver suggestions
       
