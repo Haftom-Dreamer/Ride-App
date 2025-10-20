@@ -135,8 +135,11 @@ def assign_ride():
         if not driver:
             return jsonify({'error': 'Driver not found'}), 404
         
-        if ride.status != 'Requested':
-            return jsonify({'error': 'Ride is not in Requested status'}), 400
+        # Debug logging
+        current_app.logger.info(f"Assigning ride {ride_id} (status: {ride.status}) to driver {driver_id}")
+        
+        if ride.status not in ['Requested', 'Pending']:
+            return jsonify({'error': f'Ride is not available for assignment. Current status: {ride.status}'}), 400
         if driver.status != 'Available':
             return jsonify({'error': 'Driver is not available'}), 400
 

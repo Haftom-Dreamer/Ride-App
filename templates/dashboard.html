@@ -48,12 +48,13 @@
                         <span class="sidebar-link-text">{{ _('active_rides') }}</span>
                         <span class="sidebar-badge hidden" id="active-rides-badge">0</span>
                     </a>
-                    <a href="#" class="sidebar-link flex items-center p-3 rounded-lg" data-pane="pending-requests" title="{{ _('pending_requests') }}">
-                        <span class="icon-outline"><svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></span>
-                        <span class="icon-solid"><svg class="h-5 w-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clip-rule="evenodd" /></svg></span>
-                        <span class="sidebar-link-text">{{ _('pending_requests') }}</span>
-                        <span class="sidebar-badge" id="pending-requests-badge">0</span>
+                    <a href="#" class="sidebar-link flex items-center p-3 rounded-lg" data-pane="pending-rides" title="Pending Rides">
+                        <span class="icon-outline"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></span>
+                        <span class="icon-solid"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a8 8 0 100 16 8 8 0 000-16zm.75 4a.75.75 0 00-1.5 0v3.5c0 .199.079.39.22.53l2.5 2.5a.75.75 0 001.06-1.06L10.75 9.19V6z"/></svg></span>
+                        <span class="sidebar-link-text">Pending Rides</span>
+                        <span class="sidebar-badge hidden" id="pending-rides-badge" style="background-color:#ef4444;color:#fff">0</span>
                     </a>
+                    
                 </div>
             </details>
 
@@ -361,92 +362,49 @@
                 </div>
                 
                 <div class="grid grid-cols-1 lg:grid-cols-5 gap-8 mb-8">
-                    <div class="lg:col-span-3 card p-6 rounded-lg shadow"><h3 class="font-semibold mb-4 text-primary">{{ _('live_rides_map') }}</h3><div id="dashboard-map" class="h-96 w-full rounded"></div></div>
-                    <div class="lg:col-span-2 card p-6 rounded-lg shadow">
-                        <div class="flex justify-between items-center mb-4">
-                            <h3 class="font-semibold text-primary">{{ _('pending_rides') }}</h3>
-                            <a href="#" class="text-sm text-indigo-600 font-semibold hover:underline" onclick="showPane('pending-requests'); return false;">{{ _('view_all') }}</a>
-                        </div>
-                        <div id="pending-rides-summary-list" class="space-y-3 overflow-y-auto h-96"></div>
-                    </div>
+                    <div class="lg:col-span-5 card p-6 rounded-lg shadow"><h3 class="font-semibold mb-4 text-primary">{{ _('live_rides_map') }}</h3><div id="dashboard-map" class="h-96 w-full rounded"></div></div>
                 </div>
             </div>
 
-            <div id="pending-requests-pane" class="pane">
+            <div id="pending-rides-pane" class="pane">
                 <div class="space-y-6">
-                    <!-- Header -->
                     <div class="modern-card p-6">
-                        <div class="flex justify-between items-center mb-6">
+                        <div class="flex justify-between items-center mb-4">
                             <div>
-                                <h3 class="text-2xl font-bold text-primary mb-2">Pending Ride Requests</h3>
-                                <p class="text-secondary">Smart driver assignment with real-time suggestions</p>
-                    </div>
-                            <div class="flex gap-3">
-                                <button id="refresh-pending-btn" class="btn-modern btn-secondary">
-                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                                    </svg>
-                                    Refresh
-                                </button>
+                                <h3 class="text-2xl font-bold text-primary">Pending Ride Requests</h3>
+                                <p class="text-secondary text-sm">Assign drivers manually to waiting passengers</p>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <select id="pending-vehicle-filter" class="border p-2 rounded text-sm">
+                                    <option value="">All Vehicles</option>
+                                    <option value="Bajaj">Bajaj</option>
+                                    <option value="Car">Car</option>
+                                </select>
+                                <button id="refresh-pending-btn" class="btn-modern btn-secondary">Refresh</button>
                             </div>
                         </div>
-                        
-                        <!-- Quick Stats -->
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                            <div class="stat-card-modern">
-                                <div class="stat-icon-modern gradient-bg-danger">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                    </svg>
-                                </div>
-                                <div>
-                                    <p class="text-xs text-secondary mb-1">Pending Requests</p>
-                                    <p id="pending-count" class="text-lg font-bold text-primary">0</p>
-                                </div>
-                            </div>
-                            <div class="stat-card-modern">
-                                <div class="stat-icon-modern gradient-bg-success">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
-                                    </svg>
-                                </div>
-                                <div>
-                                    <p class="text-xs text-secondary mb-1">Available Drivers</p>
-                                    <p id="available-drivers-count" class="text-lg font-bold text-primary">0</p>
-                                </div>
-                            </div>
-                            <div class="stat-card-modern">
-                                <div class="stat-icon-modern gradient-bg-warning">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
-                                    </svg>
-                                </div>
-                                <div>
-                                    <p class="text-xs text-secondary mb-1">Avg Wait Time</p>
-                                    <p id="avg-wait-time" class="text-lg font-bold text-primary">0 min</p>
-                                </div>
-                            </div>
-                            <div class="stat-card-modern">
-                                <div class="stat-icon-modern gradient-bg-primary">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                                    </svg>
-                                </div>
-                                <div>
-                                    <p class="text-xs text-secondary mb-1">Success Rate</p>
-                                    <p id="assignment-success-rate" class="text-lg font-bold text-primary">0%</p>
-                                </div>
-                            </div>
+
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead>
+                                    <tr class="text-left border-b">
+                                        <th class="py-2 pr-2">Ride</th>
+                                        <th class="py-2 pr-2">Passenger</th>
+                                        <th class="py-2 pr-2">From → To</th>
+                                        <th class="py-2 pr-2">Fare</th>
+                                        <th class="py-2 pr-2">Vehicle</th>
+                                        <th class="py-2 pr-2">Requested</th>
+                                        <th class="py-2 pr-2">Assign</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pending-rides-table-body"></tbody>
+                            </table>
                         </div>
-                    </div>
-
-
-                    <!-- Pending Rides Container -->
-                    <div id="pending-rides-container" class="space-y-4">
-                        <!-- Rides will be dynamically loaded here -->
                     </div>
                 </div>
             </div>
+
+            
             
             <div id="analytics-pane" class="pane">
                 <div class="space-y-6">
@@ -1016,6 +974,16 @@
                             <button data-period="month" class="analytics-filter-btn px-3 py-1.5 text-sm font-semibold rounded-md bg-gray-200 dark:bg-gray-700">This Month</button>
                             <button data-period="all" class="analytics-filter-btn px-3 py-1.5 text-sm font-semibold rounded-md bg-gray-200 dark:bg-gray-700">All Time</button>
                         </div>
+                    </div>
+                    
+                    <!-- Export Buttons - Link to Report Section -->
+                    <div class="mt-4 flex justify-center gap-4">
+                        <button onclick="showPane('report-export-pane')" class="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-md bg-blue-600 text-white hover:bg-blue-700">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd" />
+                            </svg>
+                            Export Analytics Report
+                        </button>
                     </div>
                 </div>
                 

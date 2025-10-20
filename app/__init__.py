@@ -211,6 +211,13 @@ def create_app(config_name=None):
                 session.clear()
         return redirect(url_for('auth.login'))
     
+    # Favicon route
+    @app.route('/favicon.ico')
+    def favicon():
+        from flask import send_from_directory
+        import os
+        return send_from_directory(os.path.join(app.root_path, 'static'), 'favicon.ico', mimetype='image/vnd.microsoft.icon')
+    
     # Initialize database and default data
     with app.app_context():
         try:

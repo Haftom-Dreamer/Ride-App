@@ -1136,28 +1136,47 @@ def _export_excel_report(rides, drivers, passengers, start_date, end_date):
         ws_summary = wb.active
         ws_summary.title = "Summary"
         
+        # Add title
+        ws_summary.merge_cells('A1:B1')
+        title_cell = ws_summary.cell(row=1, column=1, value="🚗 RIDE Management System - Analytics Report")
+        title_cell.font = Font(bold=True, size=16, color="FFFFFF")
+        title_cell.fill = PatternFill(start_color="3B82F6", end_color="3B82F6", fill_type="solid")
+        title_cell.alignment = Alignment(horizontal="center")
+        
+        # Add period info
+        ws_summary.merge_cells('A2:B2')
+        period_cell = ws_summary.cell(row=2, column=1, value=f"📅 Report Period: {start_date.strftime('%B %d, %Y')} to {end_date.strftime('%B %d, %Y')}")
+        period_cell.font = Font(size=12, color="6B7280")
+        period_cell.alignment = Alignment(horizontal="center")
+        
         # Add headers
-        headers = ['Metric', 'Value']
+        headers = ['📊 Metric', '📈 Value']
         for col, header in enumerate(headers, 1):
-            cell = ws_summary.cell(row=1, column=col, value=header)
-            cell.font = Font(bold=True)
-            cell.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+            cell = ws_summary.cell(row=4, column=col, value=header)
+            cell.font = Font(bold=True, color="FFFFFF")
+            cell.fill = PatternFill(start_color="3B82F6", end_color="3B82F6", fill_type="solid")
             cell.alignment = Alignment(horizontal="center")
         
-        # Add summary data
+        # Add summary data with emojis
         summary_data = [
-            ['Report Period', f"{start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}"],
-            ['Total Rides', len(rides)],
-            ['Completed Rides', len([r for r in rides if r.status == 'Completed'])],
-            ['Total Revenue', sum(float(r.fare) for r in rides if r.status == 'Completed')],
-            ['Total Drivers', len(drivers)],
-            ['Total Passengers', len(passengers)],
-            ['Average Rating', round(sum(r.feedback.rating for r in rides if r.feedback and r.feedback.rating) / len([r for r in rides if r.feedback and r.feedback.rating]), 2) if any(r.feedback and r.feedback.rating for r in rides) else 0]
+            ['🚗 Total Rides', len(rides)],
+            ['✅ Completed Rides', len([r for r in rides if r.status == 'Completed'])],
+            ['💰 Total Revenue', f"ETB {sum(float(r.fare) for r in rides if r.status == 'Completed'):.2f}"],
+            ['👨‍💼 Total Drivers', len(drivers)],
+            ['👥 Total Passengers', len(passengers)],
+            ['⭐ Average Rating', f"{round(sum(r.feedback.rating for r in rides if r.feedback and r.feedback.rating) / len([r for r in rides if r.feedback and r.feedback.rating]), 2) if any(r.feedback and r.feedback.rating for r in rides) else 0}/5.0"]
         ]
         
-        for row, (metric, value) in enumerate(summary_data, 2):
+        for row, (metric, value) in enumerate(summary_data, 5):
             ws_summary.cell(row=row, column=1, value=metric)
             ws_summary.cell(row=row, column=2, value=value)
+            
+            # Style the data rows
+            for col in range(1, 3):
+                cell = ws_summary.cell(row=row, column=col)
+                cell.font = Font(size=11)
+                if row % 2 == 0:  # Alternate row colors
+                    cell.fill = PatternFill(start_color="F8FAFC", end_color="F8FAFC", fill_type="solid")
         
         # Rides sheet
         ws_rides = wb.create_sheet("Rides")
@@ -1216,16 +1235,32 @@ def _export_pdf_report(rides, drivers, passengers, start_date, end_date):
         styles = getSampleStyleSheet()
         story = []
         
-        # Title
-        title = Paragraph("Ride Management System - Analytics Report", styles['Title'])
-        story.append(title)
-        story.append(Spacer(1, 12))
+        # Create custom styles for better formatting
+        title_style = styles['Title']
+        title_style.textColor = colors.HexColor('#1f2937')
+        title_style.fontSize = 24
+        title_style.spaceAfter = 20
         
-        # Report period
-        period_text = f"Report Period: {start_date.strftime('%B %d, %Y')} to {end_date.strftime('%B %d, %Y')}"
-        period = Paragraph(period_text, styles['Normal'])
-        story.append(period)
+        heading_style = styles['Heading2']
+        heading_style.textColor = colors.HexColor('#374151')
+        heading_style.fontSize = 16
+        heading_style.spaceAfter = 12
+        
+        # Title with better styling
+        title = Paragraph("🚗 RIDE Management System", title_style)
+        subtitle = Paragraph("Analytics & Performance Report", styles['Heading2'])
+        story.append(title)
+        story.append(subtitle)
         story.append(Spacer(1, 20))
+        
+        # Report period with better formatting
+        period_text = f"📅 Report Period: {start_date.strftime('%B %d, %Y')} to {end_date.strftime('%B %d, %Y')}"
+        period_style = styles['Normal']
+        period_style.fontSize = 12
+        period_style.textColor = colors.HexColor('#6b7280')
+        period = Paragraph(period_text, period_style)
+        story.append(period)
+        story.append(Spacer(1, 30))
         
         # Summary data
         summary_data = [
@@ -1238,16 +1273,28 @@ def _export_pdf_report(rides, drivers, passengers, start_date, end_date):
             ['Average Rating', str(round(sum(r.feedback.rating for r in rides if r.feedback and r.feedback.rating) / len([r for r in rides if r.feedback and r.feedback.rating]), 2) if any(r.feedback and r.feedback.rating for r in rides) else 0) + "/5.0"]
         ]
         
+        # Add section header
+        section_header = Paragraph("📊 Key Performance Indicators", heading_style)
+        story.append(section_header)
+        story.append(Spacer(1, 12))
+        
         summary_table = Table(summary_data)
         summary_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            # Header styling
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#3b82f6')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ('FONTSIZE', (0, 0), (-1, 0), 14),
             ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+            ('TOPPADDING', (0, 0), (-1, 0), 12),
+            # Data rows styling
+            ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#f8fafc')),
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 11),
+            ('TEXTCOLOR', (0, 1), (-1, -1), colors.HexColor('#374151')),
+            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#e5e7eb')),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f9fafb')])
         ]))
         
         story.append(summary_table)

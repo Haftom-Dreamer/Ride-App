@@ -25,3 +25,15 @@ def admin_required(f):
 def dashboard():
     """Main dispatcher dashboard"""
     return render_template('dashboard.html')
+
+@admin.route('/settings')
+@admin_required
+def settings():
+    """Settings page"""
+    return render_template('dashboard.html')
+
+@admin.route('/offline')
+def offline():
+    """Offline page"""
+    return render_template('offline.html')
+
