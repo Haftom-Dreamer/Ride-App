@@ -1317,12 +1317,45 @@ document.addEventListener('DOMContentLoaded', () => {
       function refreshPendingRides() { try { window.refreshPendingRides?.(); } catch (e) { console.warn('refreshPendingRides error', e); } }
       function refreshActiveRides() { try { refreshDashboardData(); } catch (e) { console.warn('refreshActiveRides error', e); } }
 
-      // Assignment handling for pending rides cards
+      // Render compact summary list for dashboard quick-assign
+      function renderPendingRidesSummary() {
+          const container = document.getElementById('pending-rides-summary-list');
+          if (!container) return;
+          container.innerHTML = '';
+          if (!allPendingRides?.length) {
+              container.innerHTML = '<p class="text-gray-500 text-sm p-4 text-center">No pending rides at the moment.</p>';
+              return;
+          }
+          allPendingRides.slice(0, 10).forEach(ride => {
+              const el = document.createElement('div');
+              el.className = 'border-b border-[--border-color] pb-3 p-3';
+              const available = (allDrivers || []).filter(d => d.status === 'Available' && d.vehicle_type === ride.vehicle_type);
+              const driverOptions = available.length > 0
+                  ? ['<option value="" disabled selected>Select...</option>'].concat(available.map(d => `<option value="${d.id}">${d.name}</option>`)).join('')
+                  : '<option disabled>No drivers</option>';
+              el.innerHTML = `
+                  <div class="flex justify-between items-start">
+                      <p class="font-bold text-sm">${ride.user_name} <span class="font-normal text-xs text-secondary">(${ride.user_phone||''})</span></p>
+                      <span class="font-bold text-xs text-[--chart-purple]">${ride.vehicle_type}</span>
+                  </div>
+                  <div class="mt-1 text-xs text-secondary">
+                      <p class="truncate"><span class="font-semibold text-[--text-primary]">From:</span> ${ride.pickup_address || 'N/A'}</p>
+                      <p class="truncate"><span class="font-semibold text-[--text-primary]">To:</span> ${ride.dest_address || 'N/A'}</p>
+                  </div>
+                  <div class="mt-2 flex items-center">
+                      <select id="dash-driver-select-${ride.id}" class="p-1 border rounded text-xs w-full">${driverOptions}</select>
+                      <button class="dash-assign-btn ml-2 px-3 py-1 bg-blue-500 text-white text-xs rounded" data-ride-id="${ride.id}" ${available.length===0?'disabled':''}>Assign</button>
+                  </div>`;
+              container.appendChild(el);
+          });
+      }
+
+      // Assignment handling for pending rides cards and dashboard summary
       document.addEventListener('click', async (e) => {
-          const btn = e.target.closest('.assign-ride-btn');
+          const btn = e.target.closest('.assign-ride-btn') || e.target.closest('.dash-assign-btn');
           if (!btn) return;
           const rideId = btn.dataset.rideId;
-          const select = document.getElementById(`driver-select-${rideId}`);
+          const select = document.getElementById(`driver-select-${rideId}`) || document.getElementById(`dash-driver-select-${rideId}`);
           if (!select) return;
           const raw = (select.value || '').trim();
           if (!raw) { alert('Please select a driver'); return; }
@@ -1893,7 +1926,7 @@ document.addEventListener('DOMContentLoaded', () => {
           
           // Debounce the refresh by 1 second (faster response)
           refreshTimeout = setTimeout(async () => {
-              const [stats, pending, active] = await Promise.all([ 
+          const [stats, pending, active] = await Promise.all([ 
                   fetchData('dashboard-stats'), 
                   fetchData('pending-rides'), 
                 fetchData('active-rides') 
@@ -1901,13 +1934,29 @@ document.addEventListener('DOMContentLoaded', () => {
           if (!stats) return; 
           updateDashboardStats(stats);
           
+          const oldPendingIds = new Set(allPendingRides.map(r => r.id));
           allPendingRides = pending || [];
           allActiveRides = active || [];
           
           updateLiveMap();
           
-          // Render pending rides cards (pane)
+          // Render pending rides card list on dashboard summary and full pane
           renderPendingRideCards();
+          renderPendingRidesSummary();
+
+          // New request notifications
+          const newOnes = allPendingRides.filter(r => !oldPendingIds.has(r.id));
+          if (newOnes.length) {
+              newOnes.forEach(r => recentNotifications.unshift(`New ride from ${r.user_name}`));
+              if (recentNotifications.length > 10) recentNotifications.length = 10;
+              const badge = document.getElementById('notification-badge');
+              if (badge) {
+                  const unreadCount = recentNotifications.length;
+                  badge.textContent = unreadCount;
+                  badge.classList.toggle('hidden', unreadCount === 0);
+              }
+              playNotificationSound?.();
+          }
           updateActiveRidesTable(allActiveRides);
           updateBadges(stats);
           }, 1000); // 1 second debounce

@@ -362,7 +362,14 @@
                 </div>
                 
                 <div class="grid grid-cols-1 lg:grid-cols-5 gap-8 mb-8">
-                    <div class="lg:col-span-5 card p-6 rounded-lg shadow"><h3 class="font-semibold mb-4 text-primary">{{ _('live_rides_map') }}</h3><div id="dashboard-map" class="h-96 w-full rounded"></div></div>
+                    <div class="lg:col-span-3 card p-6 rounded-lg shadow"><h3 class="font-semibold mb-4 text-primary">{{ _('live_rides_map') }}</h3><div id="dashboard-map" class="h-96 w-full rounded"></div></div>
+                    <div class="lg:col-span-2 card p-6 rounded-lg shadow">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-semibold text-primary">{{ _('pending_rides') }}</h3>
+                            <a href="#" class="text-sm text-indigo-600 font-semibold hover:underline" onclick="showPane('pending-rides'); return false;">{{ _('view_all') }}</a>
+                        </div>
+                        <div id="pending-rides-summary-list" class="space-y-3 overflow-y-auto h-96"></div>
+                    </div>
                 </div>
             </div>
 
