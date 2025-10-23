@@ -1324,8 +1324,8 @@ document.addEventListener('DOMContentLoaded', () => {
           container.innerHTML = '';
           if (!allPendingRides?.length) {
               container.innerHTML = '<p class="text-gray-500 text-sm p-4 text-center">No pending rides at the moment.</p>';
-              return;
-          }
+                          return;
+                      }
           allPendingRides.slice(0, 10).forEach(ride => {
               const el = document.createElement('div');
               el.className = 'border-b border-[--border-color] pb-3 p-3';

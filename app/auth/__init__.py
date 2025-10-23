@@ -106,16 +106,25 @@ def passenger_signup():
     
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
+        email = request.form.get('email', '').strip()
         phone_number_input = request.form.get('phone_number', '').strip()
         password = request.form.get('password', '')
+        verification_code = request.form.get('verification_code', '').strip()
         
         # Validation
-        if not username or not phone_number_input or not password:
+        if not username or not email or not phone_number_input or not password:
             flash('All fields are required.', 'danger')
             return render_template('passenger_signup.html')
         
         if len(password) < 6:
             flash('Password must be at least 6 characters long.', 'danger')
+            return render_template('passenger_signup.html')
+        
+        # Validate email format
+        import re
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_pattern, email):
+            flash('Invalid email format.', 'danger')
             return render_template('passenger_signup.html')
         
         # Sanitize phone number
@@ -130,19 +139,37 @@ def passenger_signup():
             flash('Phone number already registered.', 'danger')
             return redirect(url_for('auth.passenger_signup'))
         
-        # Create new passenger
-        new_passenger = Passenger(
-            username=username,
-            phone_number=phone_number
-        )
-        new_passenger.set_password(password)
-        db.session.add(new_passenger)
-        db.session.flush()
-        new_passenger.passenger_uid = f"PAX-{new_passenger.id:05d}"
-        db.session.commit()
-        
-        flash('Account created successfully! Please log in.', 'success')
-        return redirect(url_for('auth.passenger_login'))
+        # If verification code is provided, verify it
+        if verification_code:
+            from app.utils.email_service import verify_email_code
+            is_verified, message = verify_email_code(email, verification_code)
+            if not is_verified:
+                flash(message, 'danger')
+                return render_template('passenger_signup.html')
+            
+            # Create new passenger
+            new_passenger = Passenger(
+                username=username,
+                phone_number=phone_number
+            )
+            new_passenger.set_password(password)
+            db.session.add(new_passenger)
+            db.session.flush()
+            new_passenger.passenger_uid = f"PAX-{new_passenger.id:05d}"
+            db.session.commit()
+            
+            flash('Account created successfully! Please log in.', 'success')
+            return redirect(url_for('auth.passenger_login'))
+        else:
+            # Send verification email
+            from app.utils.email_service import send_verification_email
+            success, message = send_verification_email(email)
+            if success:
+                flash('Verification email sent! Please check your email and enter the code.', 'info')
+                return render_template('passenger_signup.html', email=email, show_verification=True)
+            else:
+                flash(message, 'danger')
+                return render_template('passenger_signup.html')
     
     return render_template('passenger_signup.html')
 

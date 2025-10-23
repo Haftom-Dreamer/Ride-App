@@ -45,6 +45,10 @@ def create_app(config_name=None):
     # Initialize SocketIO
     socketio.init_app(app)
     
+    # Initialize Flask-Mail
+    from app.utils.email_service import init_mail
+    init_mail(app)
+    
     # Handle CSRF errors
     from werkzeug.exceptions import BadRequest
     

@@ -159,3 +159,17 @@ class Commission(db.Model):
     
     # Ensure one active commission rate per vehicle type
     __table_args__ = (db.UniqueConstraint('vehicle_type', 'effective_date', name='_vehicle_commission_uc'),)
+
+class EmailVerification(db.Model):
+    """Email verification codes for passenger signup"""
+    __tablename__ = 'email_verification'
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(255), nullable=False, index=True)
+    verification_code = db.Column(db.String(6), nullable=False)  # 6-digit code
+    is_verified = db.Column(db.Boolean, default=False, nullable=False)
+    created_at = db.Column(db.DateTime, server_default=db.func.now(), index=True)
+    expires_at = db.Column(db.DateTime, nullable=False, index=True)
+    
+    def is_expired(self):
+        from datetime import datetime
+        return datetime.utcnow() > self.expires_at

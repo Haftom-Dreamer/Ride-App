@@ -39,7 +39,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> _checkAuthStatus() async {
     state = state.copyWith(isLoading: true);
-    
+
     try {
       final isLoggedIn = await _authRepository.isLoggedIn();
       if (isLoggedIn) {
@@ -70,13 +70,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String password,
   }) async {
     state = state.copyWith(isLoading: true, error: null);
-    
+
     try {
       final user = await _authRepository.login(
         email: email,
         password: password,
       );
-      
+
       state = state.copyWith(
         user: user,
         isLoading: false,
@@ -96,17 +96,19 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String email,
     required String phoneNumber,
     required String password,
+    String? verificationCode,
   }) async {
     state = state.copyWith(isLoading: true, error: null);
-    
+
     try {
       final user = await _authRepository.signup(
         username: username,
         email: email,
         phoneNumber: phoneNumber,
         password: password,
+        verificationCode: verificationCode,
       );
-      
+
       state = state.copyWith(
         user: user,
         isLoading: false,
@@ -123,7 +125,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> logout() async {
     state = state.copyWith(isLoading: true);
-    
+
     try {
       await _authRepository.logout();
       state = state.copyWith(
