@@ -101,8 +101,125 @@ def passenger_login():
 @auth.route('/passenger/signup', methods=['GET', 'POST'])
 def passenger_signup():
     """Passenger signup route"""
+    # FIRST LINE - ABSOLUTE FIRST THING TO EXECUTE
+    with open('C:/Users/H.Dreamer/Documents/Adobe/RIDE/FUNCTION_CALLED.txt', 'a') as f:
+        from datetime import datetime
+        f.write(f"{datetime.now()} - passenger_signup() was called! Method: {request.method}\n")
+    
     if current_user.is_authenticated and session.get('user_type') == 'passenger':
         return redirect(url_for('passenger.app'))
+    
+    # Debug: Log ALL POST requests to see what we're receiving
+    if request.method == 'POST':
+        import sys
+        from datetime import datetime
+        
+        # Write to file to PROVE the code is executing
+        with open('debug_signup.log', 'a') as f:
+            f.write(f"\n{datetime.now()} - POST request received\n")
+            f.write(f"Content-Type: {request.headers.get('Content-Type')}\n")
+            f.write(f"Form data: {dict(request.form)}\n")
+        
+        sys.stdout.write("\n" + "="*60 + "\n")
+        sys.stdout.write("📥 POST REQUEST TO /auth/passenger/signup\n")
+        sys.stdout.write("="*60 + "\n")
+        sys.stdout.write(f"Content-Type: {request.headers.get('Content-Type')}\n")
+        sys.stdout.write(f"Accept: {request.headers.get('Accept')}\n")
+        sys.stdout.write(f"User-Agent: {request.headers.get('User-Agent', 'Not provided')[:50]}\n")
+        sys.stdout.write(f"Form data keys: {list(request.form.keys())}\n")
+        sys.stdout.write("="*60 + "\n\n")
+        sys.stdout.flush()
+    
+    # Check if this is an API request (from Flutter app)
+    content_type = request.headers.get('Content-Type', '')
+    if request.method == 'POST' and 'application/x-www-form-urlencoded' in content_type:
+        # This is an API request from Flutter app
+        username = request.form.get('username', '').strip()
+        email = request.form.get('email', '').strip()
+        phone_number_input = request.form.get('phone_number', '').strip()
+        password = request.form.get('password', '')
+        verification_code = request.form.get('verification_code', '').strip()
+        
+        print(f"\n{'='*60}")
+        print(f"🚀 API SIGNUP REQUEST RECEIVED")
+        print(f"{'='*60}")
+        print(f"📧 Email: {email}")
+        print(f"👤 Username: {username}")
+        print(f"📱 Phone: {phone_number_input}")
+        print(f"🔑 Verification code: {verification_code if verification_code else 'Not provided (initial signup)'}")
+        print(f"{'='*60}\n")
+        
+        # Validation
+        if not username or not email or not phone_number_input or not password:
+            return {'error': 'All fields are required.'}, 400
+        
+        if len(password) < 6:
+            return {'error': 'Password must be at least 6 characters long.'}, 400
+        
+        # Validate email format
+        import re
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_pattern, email):
+            return {'error': 'Invalid email format.'}, 400
+        
+        # Sanitize phone number - accept both 9 digits (0912345678) and 10 digits (+251912345678 or 0912345678)
+        if phone_number_input.startswith('+251'):
+            # Already has country code
+            phone_number = phone_number_input
+            phone_digits = phone_number_input[4:]  # Remove +251
+        elif phone_number_input.startswith('251'):
+            # Has country code without +
+            phone_number = '+' + phone_number_input
+            phone_digits = phone_number_input[3:]
+        elif phone_number_input.startswith('0'):
+            # Ethiopian format with leading 0 (e.g., 0912345678)
+            phone_number = "+251" + phone_number_input[1:]  # Remove 0, add +251
+            phone_digits = phone_number_input[1:]
+        else:
+            # Assume it's 9 digits without leading 0
+            phone_number = "+251" + phone_number_input
+            phone_digits = phone_number_input
+        
+        # Validate: should be 9 digits after country code
+        if not phone_digits.isdigit() or len(phone_digits) != 9:
+            return {'error': 'Invalid phone number format. Please enter 9 digits (e.g., 0912345678 or 912345678).'}, 400
+        
+        # Check if passenger exists
+        existing_passenger = Passenger.query.filter_by(phone_number=phone_number).first()
+        if existing_passenger:
+            return {'error': 'Phone number already registered.'}, 400
+        
+        # If verification code is provided, verify it
+        if verification_code:
+            from app.utils.email_service import verify_email_code
+            is_verified, message = verify_email_code(email, verification_code)
+            if not is_verified:
+                return {'error': message}, 400
+            
+            # Create new passenger
+            new_passenger = Passenger(
+                username=username,
+                phone_number=phone_number
+            )
+            new_passenger.set_password(password)
+            db.session.add(new_passenger)
+            db.session.flush()
+            new_passenger.passenger_uid = f"PAX-{new_passenger.id:05d}"
+            db.session.commit()
+            
+            return {'success': 'Account created successfully! Please log in.'}, 200
+        else:
+            # Send verification email
+            print(f"📧 No verification code provided, sending email to {email}...")
+            from app.utils.email_service import send_verification_email
+            success, message = send_verification_email(email)
+            print(f"📧 Email sending result - Success: {success}, Message: {message}")
+            if success:
+                print(f"✅ Returning success response to Flutter app")
+                return {'success': 'Verification email sent! Please check your email and enter the code.'}, 200
+            else:
+                print(f"❌ Returning error response to Flutter app")
+                return {'error': message}, 400
     
     if request.method == 'POST':
         username = request.form.get('username', '').strip()

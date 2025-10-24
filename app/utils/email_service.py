@@ -22,9 +22,29 @@ def generate_verification_code():
 def send_verification_email(email):
     """Send verification email to user"""
     try:
+        print(f"\n{'='*60}")
+        print(f"📧 EMAIL SENDING DEBUG START")
+        print(f"{'='*60}")
         print(f"📧 Attempting to send verification email to: {email}")
         print(f"📧 Mail server: {current_app.config.get('MAIL_SERVER')}")
+        print(f"📧 Mail port: {current_app.config.get('MAIL_PORT')}")
+        print(f"📧 Mail use TLS: {current_app.config.get('MAIL_USE_TLS')}")
         print(f"📧 Mail username: {current_app.config.get('MAIL_USERNAME')}")
+        print(f"📧 Mail password set: {'Yes' if current_app.config.get('MAIL_PASSWORD') else 'NO - THIS IS THE PROBLEM!'}")
+        print(f"📧 Mail default sender: {current_app.config.get('MAIL_DEFAULT_SENDER')}")
+        
+        # Check if mail is configured
+        if not current_app.config.get('MAIL_USERNAME'):
+            error_msg = "❌ MAIL_USERNAME is not configured in .env file!"
+            print(f"📧 ERROR: {error_msg}")
+            print(f"{'='*60}\n")
+            return False, "Email service not configured. Please contact administrator."
+        
+        if not current_app.config.get('MAIL_PASSWORD'):
+            error_msg = "❌ MAIL_PASSWORD is not configured in .env file!"
+            print(f"📧 ERROR: {error_msg}")
+            print(f"{'='*60}\n")
+            return False, "Email service not configured. Please contact administrator."
         
         # Generate verification code
         verification_code = generate_verification_code()
@@ -32,9 +52,13 @@ def send_verification_email(email):
         
         # Set expiration time (10 minutes from now)
         expires_at = datetime.utcnow() + timedelta(minutes=10)
+        print(f"📧 Code expires at: {expires_at}")
         
         # Delete any existing verification codes for this email
-        EmailVerification.query.filter_by(email=email).delete()
+        existing_count = EmailVerification.query.filter_by(email=email).count()
+        if existing_count > 0:
+            print(f"📧 Deleting {existing_count} existing verification code(s) for {email}")
+            EmailVerification.query.filter_by(email=email).delete()
         
         # Create new verification record
         verification = EmailVerification(
@@ -44,11 +68,14 @@ def send_verification_email(email):
         )
         db.session.add(verification)
         db.session.commit()
+        print(f"📧 Verification code saved to database")
         
         # Create email message
+        print(f"📧 Creating email message...")
         msg = Message(
             subject='Verify Your RIDE Account',
             recipients=[email],
+            sender=('Selamawi', 'selamawiride@gmail.com'),
             body=f'''
 Hello!
 
@@ -79,13 +106,27 @@ The RIDE Team
             </html>
             '''
         )
+        print(f"📧 Email message created successfully")
         
         # Send email
+        print(f"📧 Attempting to send email via SMTP...")
         mail.send(msg)
+        print(f"✅ Email sent successfully to {email}!")
+        print(f"{'='*60}\n")
         return True, "Verification email sent successfully"
         
     except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"\n{'='*60}")
+        print(f"❌ EMAIL SENDING ERROR")
+        print(f"{'='*60}")
+        print(f"Error type: {type(e).__name__}")
+        print(f"Error message: {str(e)}")
+        print(f"Full traceback:\n{error_trace}")
+        print(f"{'='*60}\n")
         current_app.logger.error(f"Failed to send verification email: {str(e)}")
+        current_app.logger.error(f"Full trace: {error_trace}")
         return False, f"Failed to send verification email: {str(e)}"
 
 def verify_email_code(email, code):

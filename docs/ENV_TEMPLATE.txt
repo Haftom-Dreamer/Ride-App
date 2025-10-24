@@ -9,6 +9,19 @@ DATABASE_URL=sqlite:///app.db
 # For production, use PostgreSQL:
 # DATABASE_URL=postgresql://user:password@localhost/dbname
 
+# Email Configuration (Gmail)
+MAIL_SERVER=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USE_TLS=true
+MAIL_USERNAME=selamawiride@gmail.com
+MAIL_PASSWORD=your-app-password-here
+MAIL_DEFAULT_SENDER=selamawiride@gmail.com
+
+# Note: For Gmail, you need to:
+# 1. Enable 2-Factor Authentication on your Google Account
+# 2. Generate an "App Password" from Google Account settings (Security > 2-Step Verification > App passwords)
+# 3. Use the 16-character App Password (not your regular Gmail password) in MAIL_PASSWORD above
+
 # File Upload Settings
 MAX_UPLOAD_SIZE=16777216
 # Size in bytes (default: 16MB = 16 * 1024 * 1024)

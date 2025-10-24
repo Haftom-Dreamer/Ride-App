@@ -88,14 +88,22 @@ def create_app(config_name=None):
         enabled=app.config.get('RATELIMIT_ENABLED', True)
     )
     
-    # CSRF exemption for API routes
+    # CSRF exemption for API routes and Flutter app endpoints
     @app.before_request
     def exempt_api_csrf():
-        if request.path.startswith('/api/'):
+        # DEBUG: Log ALL requests
+        import sys
+        sys.stdout.write(f"\n🔍 BEFORE_REQUEST: {request.method} {request.path}\n")
+        sys.stdout.flush()
+        
+        # Exempt API routes and passenger signup (for Flutter app)
+        if request.path.startswith('/api/') or request.path == '/auth/passenger/signup':
+            sys.stdout.write(f"✅ Exempting {request.path} from CSRF\n")
+            sys.stdout.flush()
             try:
                 csrf._exempt_views.add(request.endpoint)
                 setattr(request, 'csrf_exempt', True)
-                app.logger.debug(f"CSRF exempted API endpoint: {request.endpoint}")
+                app.logger.debug(f"CSRF exempted endpoint: {request.endpoint}")
             except Exception as e:
                 app.logger.debug(f"CSRF exemption failed: {e}")
                 pass
@@ -192,7 +200,9 @@ def create_app(config_name=None):
     
     # Exempt specific API routes from CSRF
     csrf.exempt(api)
+    csrf.exempt(auth)  # TEMPORARY: Disable CSRF for ALL auth routes
     
+    # Register blueprints
     app.register_blueprint(auth, url_prefix='/auth')
     app.register_blueprint(api, url_prefix='/api')
     app.register_blueprint(admin)
