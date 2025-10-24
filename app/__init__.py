@@ -13,6 +13,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_wtf.csrf import CSRFProtect
 from flask_socketio import SocketIO, emit, join_room, leave_room
+from flask_cors import CORS
 from config import config
 
 # Create global SocketIO instance
@@ -41,6 +42,9 @@ def create_app(config_name=None):
     migrate = Migrate(app, db)
     ma = Marshmallow(app)
     csrf = CSRFProtect(app)
+    
+    # Initialize CORS
+    CORS(app, origins=["http://127.0.0.1:5000", "http://192.168.137.212:5000", "http://localhost:5000"])
     
     # Initialize SocketIO
     socketio.init_app(app)
@@ -97,7 +101,7 @@ def create_app(config_name=None):
         sys.stdout.flush()
         
         # Exempt API routes and passenger signup (for Flutter app)
-        if request.path.startswith('/api/') or request.path == '/auth/passenger/signup':
+        if request.path.startswith('/api/') or request.path == '/auth/passenger/signup' or request.path == '/auth/passenger/resend-verification':
             sys.stdout.write(f"✅ Exempting {request.path} from CSRF\n")
             sys.stdout.flush()
             try:

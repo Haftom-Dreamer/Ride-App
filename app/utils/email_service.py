@@ -132,27 +132,58 @@ The RIDE Team
 def verify_email_code(email, code):
     """Verify the email code"""
     try:
+        print(f"\n{'='*60}")
+        print(f"🔍 VERIFICATION CODE DEBUG")
+        print(f"{'='*60}")
+        print(f"📧 Email: {email}")
+        print(f"🔑 Code provided: {code}")
+        print(f"🔑 Code type: {type(code)}")
+        print(f"🔑 Code length: {len(str(code))}")
+        
+        # Get all verification codes for this email
+        all_verifications = EmailVerification.query.filter_by(email=email).all()
+        print(f"📊 Total verification records for {email}: {len(all_verifications)}")
+        
+        for i, v in enumerate(all_verifications):
+            print(f"  Record {i+1}: code='{v.verification_code}', verified={v.is_verified}, expired={v.is_expired()}")
+        
         verification = EmailVerification.query.filter_by(
             email=email,
             verification_code=code
         ).first()
         
+        print(f"🔍 Found verification record: {verification is not None}")
+        
         if not verification:
+            print(f"❌ No verification record found for email={email}, code={code}")
             return False, "Invalid verification code"
         
+        print(f"✅ Verification record found!")
+        print(f"📅 Created at: {verification.created_at}")
+        print(f"⏰ Expires at: {verification.expires_at}")
+        print(f"⏰ Is expired: {verification.is_expired()}")
+        print(f"✅ Is verified: {verification.is_verified}")
+        
         if verification.is_expired():
+            print(f"❌ Code has expired")
             return False, "Verification code has expired"
         
         if verification.is_verified:
+            print(f"❌ Code already verified")
             return False, "Email already verified"
         
         # Mark as verified
         verification.is_verified = True
         db.session.commit()
+        print(f"✅ Code verified successfully!")
+        print(f"{'='*60}\n")
         
         return True, "Email verified successfully"
         
     except Exception as e:
+        print(f"❌ Verification failed: {str(e)}")
+        import traceback
+        traceback.print_exc()
         current_app.logger.error(f"Email verification failed: {str(e)}")
         return False, f"Verification failed: {str(e)}"
 

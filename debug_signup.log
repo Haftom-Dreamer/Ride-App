@@ -42,3 +42,27 @@ Form data: {'username': 'Haftom', 'email': 'haftomdreamer@gmail.com', 'phone_num
 2025-10-24 14:27:19.105291 - POST request received
 Content-Type: application/x-www-form-urlencoded
 Form data: {'username': 'Haftom', 'email': 'haftomdreamer@gmail.com', 'phone_number': '0914649974', 'password': '123456', 'verification_code': '061520'}
+
+2025-10-24 14:45:10.158581 - POST request received
+Content-Type: application/x-www-form-urlencoded
+Form data: {'username': 'Haftom', 'email': 'haftomdreamer@gmail.com', 'phone_number': '0914649973', 'password': '123456'}
+
+2025-10-24 14:45:27.525078 - POST request received
+Content-Type: application/x-www-form-urlencoded
+Form data: {'username': 'Haftom', 'email': 'haftomdreamer@gmail.com', 'phone_number': '0914178841', 'password': '123456'}
+
+2025-10-24 14:46:40.807221 - POST request received
+Content-Type: application/x-www-form-urlencoded
+Form data: {'username': 'Haftom', 'email': 'haftomdreamer@gmail.com', 'phone_number': '0914178841', 'password': '123456', 'verification_code': '492845'}
+
+2025-10-24 14:46:52.542854 - POST request received
+Content-Type: application/x-www-form-urlencoded
+Form data: {'username': 'Haftom', 'email': 'haftomdreamer@gmail.com', 'phone_number': '0914178841', 'password': '123456', 'verification_code': '492845'}
+
+2025-10-24 14:47:21.006630 - POST request received
+Content-Type: application/x-www-form-urlencoded
+Form data: {'username': 'Haftom', 'email': 'haftomdreamer@gmail.com', 'phone_number': '0914141414', 'password': '123456'}
+
+2025-10-24 14:47:47.043441 - POST request received
+Content-Type: application/x-www-form-urlencoded
+Form data: {'username': 'Haftom', 'email': 'haftomdreamer@gmail.com', 'phone_number': '0914141414', 'password': '123456', 'verification_code': '128111'}

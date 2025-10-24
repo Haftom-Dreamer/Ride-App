@@ -184,17 +184,17 @@ def passenger_signup():
         if not phone_digits.isdigit() or len(phone_digits) != 9:
             return {'error': 'Invalid phone number format. Please enter 9 digits (e.g., 0912345678 or 912345678).'}, 400
         
-        # Check if passenger exists
-        existing_passenger = Passenger.query.filter_by(phone_number=phone_number).first()
-        if existing_passenger:
-            return {'error': 'Phone number already registered.'}, 400
-        
-        # If verification code is provided, verify it
+        # If verification code is provided, verify it first
         if verification_code:
             from app.utils.email_service import verify_email_code
             is_verified, message = verify_email_code(email, verification_code)
             if not is_verified:
                 return {'error': message}, 400
+            
+            # Check if passenger exists (only after successful verification)
+            existing_passenger = Passenger.query.filter_by(phone_number=phone_number).first()
+            if existing_passenger:
+                return {'error': 'Phone number already registered.'}, 400
             
             # Create new passenger
             new_passenger = Passenger(
@@ -318,3 +318,54 @@ def logout():
         return redirect(url_for('auth.login'))
     else:
         return redirect(url_for('auth.passenger_login'))
+
+
+@auth.route('/passenger/resend-verification', methods=['POST'])
+def resend_verification():
+    """Resend verification email with rate limiting"""
+    try:
+        email = request.form.get('email', '').strip()
+        
+        if not email:
+            return {'error': 'Email is required.'}, 400
+        
+        # Check if email is valid
+        import re
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_pattern, email):
+            return {'error': 'Invalid email format.'}, 400
+        
+        # Rate limiting: Check if user has sent too many requests recently
+        from datetime import datetime, timedelta
+        recent_verifications = EmailVerification.query.filter(
+            EmailVerification.email == email,
+            EmailVerification.created_at >= datetime.utcnow() - timedelta(minutes=1)
+        ).count()
+        
+        if recent_verifications >= 3:  # Max 3 requests per minute
+            return {'error': 'Too many requests. Please wait 1 minute before requesting another code.'}, 429
+        
+        # Check if there's an unverified code that's still valid (not expired)
+        existing_verification = EmailVerification.query.filter_by(
+            email=email,
+            is_verified=False
+        ).filter(
+            EmailVerification.expires_at > datetime.utcnow()
+        ).first()
+        
+        if existing_verification:
+            # Don't send new code if there's still a valid unverified one
+            return {'error': 'A verification code has already been sent. Please check your email or wait for it to expire.'}, 400
+        
+        # Send new verification email
+        from app.utils.email_service import send_verification_email
+        success, message = send_verification_email(email)
+        
+        if success:
+            return {'success': 'Verification code sent successfully!'}, 200
+        else:
+            return {'error': message}, 400
+            
+    except Exception as e:
+        print(f"❌ Resend verification failed: {str(e)}")
+        return {'error': 'Failed to resend verification code.'}, 500
