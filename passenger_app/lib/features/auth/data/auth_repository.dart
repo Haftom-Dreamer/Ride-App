@@ -2,46 +2,59 @@ import 'package:dio/dio.dart';
 import '../../../shared/data/api_client.dart';
 import '../../../shared/domain/models/user.dart';
 import '../../../core/config/app_config.dart';
+import '../../../core/utils/storage_service.dart';
 
 class AuthRepository {
   final ApiClient _apiClient = ApiClient();
 
   Future<User> login({
-    required String email,
+    required String phoneNumber,
     required String password,
   }) async {
     try {
       final response = await _apiClient.post(
         AppConfig.loginEndpoint,
         data: {
-          'phone_number': email, // Backend expects phone_number, not email
+          'phone_number': phoneNumber,
           'password': password,
         },
         options: Options(
           headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-          validateStatus: (status) =>
-              status! < 400, // Accept 200, 201, 302 as success
+          validateStatus: (status) => status! < 400,
         ),
       );
 
-      if (response.statusCode == 200 ||
-          response.statusCode == 201 ||
-          response.statusCode == 302) {
-        // For now, create a mock user since the backend doesn't return JSON
-        final user = User(
-          id: 1,
-          username: 'User',
-          email: email,
-          phoneNumber: email,
-        );
+      if (response.statusCode == 200) {
+        final responseData = response.data;
 
-        // Set a mock token
-        await _apiClient.setAuthToken(
-            'mock_token_${DateTime.now().millisecondsSinceEpoch}');
+        if (responseData['success'] == true && responseData['user'] != null) {
+          final userData = responseData['user'];
 
-        return user;
+          // Create user from backend response
+          final user = User(
+            id: userData['id'],
+            username: userData['username'],
+            email: userData['email'],
+            phoneNumber: userData['phone_number'],
+            passengerUid: userData['passenger_uid'],
+            profilePicture: userData['profile_picture'],
+          );
+
+          // Set auth token and save user data
+          final token = 'auth_token_${DateTime.now().millisecondsSinceEpoch}';
+          await _apiClient.setAuthToken(token);
+          await StorageService.saveToken(token);
+          await StorageService.saveUser(user);
+
+          return user;
+        } else {
+          throw Exception(
+              'Login failed: ${responseData['error'] ?? 'Unknown error'}');
+        }
       } else {
-        throw Exception('Login failed: ${response.data['error']}');
+        final errorData = response.data;
+        throw Exception(
+            'Login failed: ${errorData['error'] ?? 'Invalid credentials'}');
       }
     } catch (e) {
       throw Exception('Login failed: $e');
@@ -141,28 +154,28 @@ class AuthRepository {
 
   Future<void> logout() async {
     try {
-      await _apiClient.post(AppConfig.logoutEndpoint);
+      // Call logout API endpoint
+      await _apiClient.post(
+        AppConfig.logoutEndpoint,
+        options: Options(
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        ),
+      );
     } catch (e) {
-      // Continue with logout even if API call fails
+      // Even if API call fails, clear local data
       print('Logout API call failed: $e');
     } finally {
-      // Clear local token
+      // Always clear local data
       await _apiClient.clearAuthToken();
+      await StorageService.clearAll();
     }
   }
 
   Future<User?> getCurrentUser() async {
-    // For now, return null since we don't have a profile endpoint
-    // In a real app, you'd store user data locally or call a profile endpoint
-    return null;
+    return await StorageService.getUser();
   }
 
   Future<bool> isLoggedIn() async {
-    try {
-      final user = await getCurrentUser();
-      return user != null;
-    } catch (e) {
-      return false;
-    }
+    return await StorageService.isLoggedIn();
   }
 }

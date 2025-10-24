@@ -1,277 +1,415 @@
-"""
-Passenger-specific API endpoints
-"""
+from flask import Blueprint, request, jsonify, current_app
+from flask_login import login_required, current_user
+from app.models import db, Passenger, SavedPlace, PasswordReset, Ride
+from app.utils.email_service import send_verification_email
+from datetime import datetime, timedelta
+import secrets
+import re
 
-from flask import request, jsonify
-from flask_login import current_user
-from app.api import api, passenger_required
-from app.models import db, SupportTicket, SavedPlace, Ride
+passenger_api = Blueprint('passenger_api', __name__, url_prefix='/api/passenger')
 
-
-@api.route('/submit-support-ticket', methods=['POST'])
-@passenger_required
-def submit_support_ticket():
-    """Submit a support ticket"""
+@passenger_api.route('/profile', methods=['GET'])
+@login_required
+def get_profile():
+    """Get current passenger profile"""
     try:
+        if not hasattr(current_user, 'passenger_uid'):
+            return {'error': 'Not a passenger account'}, 403
+        
+        return {
+            'success': True,
+            'user': {
+                'id': current_user.id,
+                'username': current_user.username,
+                'email': current_user.email,
+                'phone_number': current_user.phone_number,
+                'passenger_uid': current_user.passenger_uid,
+                'profile_picture': current_user.profile_picture,
+                'created_at': current_user.created_at.isoformat() if current_user.created_at else None
+            }
+        }, 200
+    except Exception as e:
+        current_app.logger.error(f"Get profile failed: {str(e)}")
+        return {'error': 'Failed to get profile'}, 500
+
+@passenger_api.route('/profile', methods=['PUT'])
+@login_required
+def update_profile():
+    """Update passenger profile"""
+    try:
+        if not hasattr(current_user, 'passenger_uid'):
+            return {'error': 'Not a passenger account'}, 403
+        
         data = request.get_json()
+        if not data:
+            return {'error': 'No data provided'}, 400
         
-        # Validate required fields
-        if not data.get('feedback_type') or not data.get('details'):
-            return jsonify({'error': 'Missing required fields'}), 400
+        # Update username if provided
+        if 'username' in data:
+            new_username = data['username'].strip()
+            if new_username and len(new_username) >= 3:
+                current_user.username = new_username
+            else:
+                return {'error': 'Username must be at least 3 characters'}, 400
         
-        # Create support ticket
-        ticket = SupportTicket(
-            passenger_id=current_user.id,
-            ride_id=data.get('ride_id'),
-            feedback_type=data['feedback_type'],
-            details=data['details'],
-            status='Open'
-        )
+        # Update email if provided
+        if 'email' in data:
+            new_email = data['email'].strip()
+            if new_email:
+                # Validate email format
+                email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+                if not re.match(email_pattern, new_email):
+                    return {'error': 'Invalid email format'}, 400
+                
+                # Check if email is already in use by another user
+                existing_user = Passenger.query.filter(
+                    Passenger.email == new_email,
+                    Passenger.id != current_user.id
+                ).first()
+                if existing_user:
+                    return {'error': 'Email already in use'}, 400
+                
+                current_user.email = new_email
         
-        db.session.add(ticket)
+        # Update phone number if provided
+        if 'phone_number' in data:
+            new_phone = data['phone_number'].strip()
+            if new_phone:
+                # Validate phone format
+                if not new_phone.startswith('+251'):
+                    return {'error': 'Phone number must start with +251'}, 400
+                
+                # Check if phone is already in use by another user
+                existing_user = Passenger.query.filter(
+                    Passenger.phone_number == new_phone,
+                    Passenger.id != current_user.id
+                ).first()
+                if existing_user:
+                    return {'error': 'Phone number already in use'}, 400
+                
+                current_user.phone_number = new_phone
+        
+        # Update profile picture if provided
+        if 'profile_picture' in data:
+            current_user.profile_picture = data['profile_picture']
+        
         db.session.commit()
         
-        return jsonify({
+        return {
             'success': True,
-            'message': 'Support ticket submitted successfully',
-            'ticket_id': ticket.id
-        })
+            'message': 'Profile updated successfully',
+            'user': {
+                'id': current_user.id,
+                'username': current_user.username,
+                'email': current_user.email,
+                'phone_number': current_user.phone_number,
+                'passenger_uid': current_user.passenger_uid,
+                'profile_picture': current_user.profile_picture
+            }
+        }, 200
         
     except Exception as e:
+        current_app.logger.error(f"Update profile failed: {str(e)}")
         db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+        return {'error': 'Failed to update profile'}, 500
 
-
-@api.route('/saved-places', methods=['GET'])
-@passenger_required
-def get_saved_places():
-    """Get all saved places for current passenger"""
+@passenger_api.route('/change-password', methods=['POST'])
+@login_required
+def change_password():
+    """Change passenger password"""
     try:
+        if not hasattr(current_user, 'passenger_uid'):
+            return {'error': 'Not a passenger account'}, 403
+        
+        data = request.get_json()
+        if not data:
+            return {'error': 'No data provided'}, 400
+        
+        current_password = data.get('current_password', '').strip()
+        new_password = data.get('new_password', '').strip()
+        
+        if not current_password or not new_password:
+            return {'error': 'Current password and new password are required'}, 400
+        
+        # Verify current password
+        if not current_user.check_password(current_password):
+            return {'error': 'Current password is incorrect'}, 400
+        
+        # Validate new password
+        if len(new_password) < 6:
+            return {'error': 'New password must be at least 6 characters'}, 400
+        
+        # Set new password
+        current_user.set_password(new_password)
+        db.session.commit()
+        
+        return {'success': True, 'message': 'Password changed successfully'}, 200
+        
+    except Exception as e:
+        current_app.logger.error(f"Change password failed: {str(e)}")
+        db.session.rollback()
+        return {'error': 'Failed to change password'}, 500
+
+@passenger_api.route('/saved-places', methods=['GET'])
+@login_required
+def get_saved_places():
+    """Get passenger's saved places"""
+    try:
+        if not hasattr(current_user, 'passenger_uid'):
+            return {'error': 'Not a passenger account'}, 403
+        
         places = SavedPlace.query.filter_by(passenger_id=current_user.id).all()
         
-        return jsonify([{
-            'id': p.id,
-            'label': p.label,
-            'address': p.address,
-            'latitude': p.latitude,
-            'longitude': p.longitude
-        } for p in places])
+        return {
+            'success': True,
+            'places': [
+                {
+                    'id': place.id,
+                    'label': place.label,
+                    'address': place.address,
+                    'latitude': place.latitude,
+                    'longitude': place.longitude,
+                    'created_at': place.created_at.isoformat()
+                }
+                for place in places
+            ]
+        }, 200
         
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error(f"Get saved places failed: {str(e)}")
+        return {'error': 'Failed to get saved places'}, 500
 
-
-@api.route('/saved-places', methods=['POST'])
-@passenger_required
+@passenger_api.route('/saved-places', methods=['POST'])
+@login_required
 def add_saved_place():
     """Add a new saved place"""
     try:
+        if not hasattr(current_user, 'passenger_uid'):
+            return {'error': 'Not a passenger account'}, 403
+        
         data = request.get_json()
+        if not data:
+            return {'error': 'No data provided'}, 400
         
-        # Validate required fields
-        required = ['label', 'address', 'latitude', 'longitude']
-        if not all(data.get(field) for field in required):
-            return jsonify({'error': 'Missing required fields'}), 400
+        label = data.get('label', '').strip()
+        address = data.get('address', '').strip()
+        latitude = data.get('latitude')
+        longitude = data.get('longitude')
         
-        # Check if label already exists for this passenger
-        existing = SavedPlace.query.filter_by(
+        if not label or not address or latitude is None or longitude is None:
+            return {'error': 'Label, address, latitude, and longitude are required'}, 400
+        
+        # Check if label already exists for this user
+        existing_place = SavedPlace.query.filter_by(
             passenger_id=current_user.id,
-            label=data['label']
+            label=label
         ).first()
-        
-        if existing:
-            return jsonify({'error': 'A place with this label already exists'}), 400
+        if existing_place:
+            return {'error': 'A place with this label already exists'}, 400
         
         # Create new saved place
-        place = SavedPlace(
+        new_place = SavedPlace(
             passenger_id=current_user.id,
-            label=data['label'],
-            address=data['address'],
-            latitude=float(data['latitude']),
-            longitude=float(data['longitude'])
+            label=label,
+            address=address,
+            latitude=latitude,
+            longitude=longitude
         )
         
-        db.session.add(place)
+        db.session.add(new_place)
         db.session.commit()
         
-        return jsonify({
+        return {
             'success': True,
-            'message': 'Place saved successfully',
+            'message': 'Saved place added successfully',
             'place': {
-                'id': place.id,
-                'label': place.label,
-                'address': place.address,
-                'latitude': place.latitude,
-                'longitude': place.longitude
+                'id': new_place.id,
+                'label': new_place.label,
+                'address': new_place.address,
+                'latitude': new_place.latitude,
+                'longitude': new_place.longitude,
+                'created_at': new_place.created_at.isoformat()
             }
-        })
+        }, 201
         
     except Exception as e:
+        current_app.logger.error(f"Add saved place failed: {str(e)}")
         db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+        return {'error': 'Failed to add saved place'}, 500
 
-
-@api.route('/saved-places/<int:place_id>', methods=['DELETE'])
-@passenger_required
+@passenger_api.route('/saved-places/<int:place_id>', methods=['DELETE'])
+@login_required
 def delete_saved_place(place_id):
     """Delete a saved place"""
     try:
+        if not hasattr(current_user, 'passenger_uid'):
+            return {'error': 'Not a passenger account'}, 403
+        
         place = SavedPlace.query.filter_by(
             id=place_id,
             passenger_id=current_user.id
         ).first()
         
         if not place:
-            return jsonify({'error': 'Place not found'}), 404
+            return {'error': 'Saved place not found'}, 404
         
         db.session.delete(place)
         db.session.commit()
         
-        return jsonify({
-            'success': True,
-            'message': 'Place deleted successfully'
-        })
+        return {'success': True, 'message': 'Saved place deleted successfully'}, 200
         
     except Exception as e:
+        current_app.logger.error(f"Delete saved place failed: {str(e)}")
         db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+        return {'error': 'Failed to delete saved place'}, 500
 
-
-@api.route('/saved-places/<int:place_id>', methods=['PUT'])
-@passenger_required
-def update_saved_place(place_id):
-    """Update a saved place"""
+@passenger_api.route('/password-reset/request', methods=['POST'])
+def request_password_reset():
+    """Request password reset code"""
     try:
-        place = SavedPlace.query.filter_by(
-            id=place_id,
-            passenger_id=current_user.id
+        data = request.get_json()
+        if not data:
+            return {'error': 'No data provided'}, 400
+        
+        email = data.get('email', '').strip()
+        if not email:
+            return {'error': 'Email is required'}, 400
+        
+        # Validate email format
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_pattern, email):
+            return {'error': 'Invalid email format'}, 400
+        
+        # Check if user exists
+        passenger = Passenger.query.filter_by(email=email).first()
+        if not passenger:
+            return {'error': 'No account found with this email'}, 404
+        
+        # Check for recent reset requests (rate limiting)
+        recent_resets = PasswordReset.query.filter(
+            PasswordReset.email == email,
+            PasswordReset.created_at >= datetime.utcnow() - timedelta(minutes=5)
+        ).count()
+        
+        if recent_resets >= 3:
+            return {'error': 'Too many reset requests. Please wait 5 minutes.'}, 429
+        
+        # Generate reset code
+        reset_code = secrets.token_hex(4).upper()
+        expires_at = datetime.utcnow() + timedelta(minutes=15)
+        
+        # Create or update reset record
+        existing_reset = PasswordReset.query.filter_by(email=email).first()
+        if existing_reset:
+            existing_reset.reset_code = reset_code
+            existing_reset.expires_at = expires_at
+            existing_reset.is_used = False
+        else:
+            new_reset = PasswordReset(
+                email=email,
+                reset_code=reset_code,
+                expires_at=expires_at
+            )
+            db.session.add(new_reset)
+        
+        db.session.commit()
+        
+        # Send reset email
+        from app.utils.email_service import send_password_reset_email
+        success, message = send_password_reset_email(email, reset_code)
+        
+        if success:
+            return {'success': True, 'message': 'Reset code sent to your email'}, 200
+        else:
+            return {'error': f'Failed to send email: {message}'}, 500
+        
+    except Exception as e:
+        current_app.logger.error(f"Request password reset failed: {str(e)}")
+        db.session.rollback()
+        return {'error': 'Failed to request password reset'}, 500
+
+@passenger_api.route('/password-reset/verify', methods=['POST'])
+def verify_password_reset():
+    """Verify reset code and update password"""
+    try:
+        data = request.get_json()
+        if not data:
+            return {'error': 'No data provided'}, 400
+        
+        email = data.get('email', '').strip()
+        reset_code = data.get('reset_code', '').strip()
+        new_password = data.get('new_password', '').strip()
+        
+        if not email or not reset_code or not new_password:
+            return {'error': 'Email, reset code, and new password are required'}, 400
+        
+        # Validate new password
+        if len(new_password) < 6:
+            return {'error': 'New password must be at least 6 characters'}, 400
+        
+        # Find reset record
+        reset_record = PasswordReset.query.filter_by(
+            email=email,
+            reset_code=reset_code,
+            is_used=False
         ).first()
         
-        if not place:
-            return jsonify({'error': 'Place not found'}), 404
+        if not reset_record:
+            return {'error': 'Invalid or expired reset code'}, 400
         
-        data = request.get_json()
+        # Check if code has expired
+        if reset_record.expires_at < datetime.utcnow():
+            return {'error': 'Reset code has expired'}, 400
         
-        # Update fields if provided
-        if 'label' in data:
-            # Check if new label conflicts with existing
-            existing = SavedPlace.query.filter(
-                SavedPlace.passenger_id == current_user.id,
-                SavedPlace.label == data['label'],
-                SavedPlace.id != place_id
-            ).first()
-            
-            if existing:
-                return jsonify({'error': 'A place with this label already exists'}), 400
-            
-            place.label = data['label']
+        # Find user and update password
+        passenger = Passenger.query.filter_by(email=email).first()
+        if not passenger:
+            return {'error': 'User not found'}, 404
         
-        if 'address' in data:
-            place.address = data['address']
-        if 'latitude' in data:
-            place.latitude = float(data['latitude'])
-        if 'longitude' in data:
-            place.longitude = float(data['longitude'])
+        passenger.set_password(new_password)
+        reset_record.is_used = True
         
         db.session.commit()
         
-        return jsonify({
-            'success': True,
-            'message': 'Place updated successfully',
-            'place': {
-                'id': place.id,
-                'label': place.label,
-                'address': place.address,
-                'latitude': place.latitude,
-                'longitude': place.longitude
-            }
-        })
+        return {'success': True, 'message': 'Password reset successfully'}, 200
         
     except Exception as e:
+        current_app.logger.error(f"Verify password reset failed: {str(e)}")
         db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+        return {'error': 'Failed to reset password'}, 500
 
 
-@api.route('/update-phone-number', methods=['POST'])
-@passenger_required
-def update_phone_number():
-    """Update passenger phone number with verification"""
+@passenger_api.route('/ride-history', methods=['GET'])
+@login_required
+def get_ride_history():
+    """Get passenger's ride history"""
     try:
-        data = request.get_json()
+        if not hasattr(current_user, 'passenger_uid'):
+            return {'error': 'Not a passenger account'}, 403
         
-        # Validate required fields
-        if not data.get('new_phone_number') or not data.get('current_password'):
-            return jsonify({'error': 'Missing required fields'}), 400
+        # Get all rides for this passenger
+        rides = Ride.query.filter_by(passenger_id=current_user.id).order_by(Ride.request_time.desc()).all()
         
-        # Verify current password
-        if not current_user.check_password(data['current_password']):
-            return jsonify({'error': 'Incorrect password'}), 401
-        
-        # Format phone number
-        new_phone = data['new_phone_number'].strip()
-        if not new_phone.startswith('+251'):
-            new_phone = '+251' + new_phone.lstrip('+')
-        
-        # Check if phone number is already in use
-        from app.models import Passenger
-        existing = Passenger.query.filter_by(phone_number=new_phone).first()
-        if existing and existing.id != current_user.id:
-            return jsonify({'error': 'Phone number already in use'}), 400
-        
-        # Update phone number
-        current_user.phone_number = new_phone
-        db.session.commit()
-        
-        return jsonify({
+        return {
             'success': True,
-            'message': 'Phone number updated successfully',
-            'new_phone_number': new_phone
-        })
+            'rides': [
+                {
+                    'id': ride.id,
+                    'pickup_address': ride.pickup_address,
+                    'dest_address': ride.dest_address,
+                    'distance_km': float(ride.distance_km),
+                    'fare': float(ride.fare),
+                    'vehicle_type': ride.vehicle_type,
+                    'status': ride.status,
+                    'request_time': ride.request_time.isoformat(),
+                    'assigned_time': ride.assigned_time.isoformat() if ride.assigned_time else None,
+                    'note': ride.note,
+                    'payment_method': ride.payment_method,
+                }
+                for ride in rides
+            ]
+        }, 200
         
     except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
-
-
-@api.route('/emergency-sos', methods=['POST'])
-@passenger_required
-def emergency_sos():
-    """Handle emergency SOS requests"""
-    try:
-        data = request.get_json()
-        
-        # Get current location
-        latitude = data.get('latitude')
-        longitude = data.get('longitude')
-        ride_id = data.get('ride_id')
-        
-        # Create an urgent support ticket
-        ticket = SupportTicket(
-            passenger_id=current_user.id,
-            ride_id=ride_id,
-            feedback_type='EMERGENCY SOS',
-            details=f'Emergency SOS activated. Location: {latitude}, {longitude}. Additional info: {data.get("message", "No additional message")}',
-            status='Open'
-        )
-        
-        db.session.add(ticket)
-        db.session.commit()
-        
-        # In a production app, this would:
-        # 1. Send SMS to emergency contacts
-        # 2. Alert the dispatcher
-        # 3. Notify local authorities if configured
-        # 4. Track the location in real-time
-        
-        return jsonify({
-            'success': True,
-            'message': 'Emergency alert sent. Help is on the way.',
-            'ticket_id': ticket.id,
-            'emergency_contact': '+251-911',  # Replace with actual emergency number
-            'support_contact': '+251-XXX-XXXX-XXX'
-        })
-        
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
-
+        current_app.logger.error(f"Get ride history failed: {str(e)}")
+        return {'error': 'Failed to get ride history'}, 500

@@ -5,14 +5,14 @@ import 'core/config/app_config.dart';
 import 'shared/data/api_client.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
-import 'features/ride/presentation/screens/home_screen.dart';
+import 'features/ride/presentation/screens/main_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Initialize API client
   await ApiClient().initialize();
-  
+
   runApp(
     const ProviderScope(
       child: MyApp(),
@@ -73,7 +73,7 @@ class AuthWrapper extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
-    
+
     // Show loading screen while checking auth status
     if (authState.isLoading) {
       return const Scaffold(
@@ -82,13 +82,13 @@ class AuthWrapper extends ConsumerWidget {
         ),
       );
     }
-    
+
     // Show login screen if not authenticated
     if (!authState.isAuthenticated) {
       return const LoginScreen();
     }
-    
-    // Show home screen if authenticated
-    return const HomeScreen();
+
+    // Show main screen if authenticated
+    return const MainScreen();
   }
 }

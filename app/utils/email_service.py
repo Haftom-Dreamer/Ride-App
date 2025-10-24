@@ -172,12 +172,10 @@ def verify_email_code(email, code):
             print(f"❌ Code already verified")
             return False, "Email already verified"
         
-        # Mark as verified
-        verification.is_verified = True
-        db.session.commit()
+        # Don't mark as verified yet - just validate the code
         print(f"✅ Code verified successfully!")
         print(f"{'='*60}\n")
-        
+
         return True, "Email verified successfully"
         
     except Exception as e:
@@ -186,4 +184,42 @@ def verify_email_code(email, code):
         traceback.print_exc()
         current_app.logger.error(f"Email verification failed: {str(e)}")
         return False, f"Verification failed: {str(e)}"
+
+
+def send_password_reset_email(email, reset_code):
+    """Send password reset email"""
+    try:
+        print(f"\n{'='*60}")
+        print(f"📧 SENDING PASSWORD RESET EMAIL")
+        print(f"{'='*60}")
+        print(f"📧 Email: {email}")
+        print(f"🔑 Reset code: {reset_code}")
+        
+        # Create message
+        msg = Message(
+            subject='Password Reset - Selamawi Ride',
+            recipients=[email],
+            body=f'Your password reset code is: {reset_code}\n\nThis code will expire in 15 minutes.',
+            sender=('Selamawi', 'selamawiride@gmail.com')
+        )
+        
+        print(f"📧 Message created successfully")
+        print(f"📧 Subject: {msg.subject}")
+        print(f"📧 Recipients: {msg.recipients}")
+        print(f"📧 Sender: {msg.sender}")
+        
+        # Send email
+        mail.send(msg)
+        print(f"✅ Password reset email sent successfully!")
+        print(f"{'='*60}\n")
+        
+        return True, "Password reset email sent successfully"
+        
+    except Exception as e:
+        print(f"❌ Failed to send password reset email: {str(e)}")
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"❌ Error trace: {error_trace}")
+        current_app.logger.error(f"Password reset email sending failed: {str(e)}")
+        return False, f"Failed to send password reset email: {str(e)}"
 

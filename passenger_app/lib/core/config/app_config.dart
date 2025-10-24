@@ -4,6 +4,8 @@ class AppConfig {
     defaultValue: 'http://localhost:5000',
   );
 
+  static const String baseUrl = apiBaseUrl;
+
   static const String gebetaTileUrl = String.fromEnvironment(
     'GEBETA_TILE_URL',
     defaultValue:

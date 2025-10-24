@@ -82,6 +82,46 @@ def passenger_login():
         phone_number_input = request.form.get('phone_number', '').strip()
         password = request.form.get('password', '')
         
+        # Check if this is an API request (from Flutter app)
+        content_type = request.headers.get('Content-Type', '')
+        if 'application/x-www-form-urlencoded' in content_type:
+            # This is an API request from Flutter app
+            if not phone_number_input or not password:
+                return {'error': 'Phone number and password are required.'}, 400
+            
+            # Handle different phone number formats
+            if phone_number_input.startswith('+251'):
+                phone_number = phone_number_input
+            elif phone_number_input.startswith('251'):
+                phone_number = '+' + phone_number_input
+            elif phone_number_input.startswith('0'):
+                phone_number = '+251' + phone_number_input[1:]
+            else:
+                phone_number = '+251' + phone_number_input
+            
+            passenger = Passenger.query.filter_by(phone_number=phone_number).first()
+            
+            if passenger and passenger.check_password(password):
+                login_user(passenger)
+                session['user_type'] = 'passenger'
+                
+                # Return JSON response with user data
+                return {
+                    'success': True,
+                    'message': 'Login successful',
+                    'user': {
+                        'id': passenger.id,
+                        'username': passenger.username,
+                        'email': passenger.email,
+                        'phone_number': passenger.phone_number,
+                        'passenger_uid': passenger.passenger_uid,
+                        'profile_picture': passenger.profile_picture
+                    }
+                }, 200
+            else:
+                return {'error': 'Invalid phone number or password.'}, 401
+        
+        # Regular web form request
         if not phone_number_input or not password:
             flash('Phone number and password are required.', 'danger')
             return render_template('passenger_login.html')
@@ -199,12 +239,16 @@ def passenger_signup():
             # Create new passenger
             new_passenger = Passenger(
                 username=username,
-                phone_number=phone_number
+                phone_number=phone_number,
+                email=email
             )
             new_passenger.set_password(password)
             db.session.add(new_passenger)
             db.session.flush()
             new_passenger.passenger_uid = f"PAX-{new_passenger.id:05d}"
+            
+            # Mark verification as used only after successful account creation
+            verification.is_verified = True
             db.session.commit()
             
             return {'success': 'Account created successfully! Please log in.'}, 200
@@ -310,6 +354,15 @@ def switch_role(role):
 @login_required
 def logout():
     """Logout route for both admin and passenger"""
+    # Check if this is an API request (from Flutter app)
+    content_type = request.headers.get('Content-Type', '')
+    if 'application/x-www-form-urlencoded' in content_type:
+        # This is an API request from Flutter app
+        logout_user()
+        session.clear()
+        return {'success': True, 'message': 'Logged out successfully'}, 200
+    
+    # Regular web request
     user_type = session.get('user_type')
     logout_user()
     session.pop('user_type', None)

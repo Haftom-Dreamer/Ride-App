@@ -44,7 +44,11 @@ def create_app(config_name=None):
     csrf = CSRFProtect(app)
     
     # Initialize CORS
-    CORS(app, origins=["http://127.0.0.1:5000", "http://192.168.137.212:5000", "http://localhost:5000"])
+    CORS(app, 
+         origins=["http://127.0.0.1:5000", "http://192.168.137.212:5000", "http://localhost:5000"],
+         supports_credentials=True,
+         allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
     
     # Initialize SocketIO
     socketio.init_app(app)
@@ -211,6 +215,10 @@ def create_app(config_name=None):
     app.register_blueprint(api, url_prefix='/api')
     app.register_blueprint(admin)
     app.register_blueprint(passenger)
+    
+    # Register passenger API blueprint
+    from app.api.passenger_api import passenger_api
+    app.register_blueprint(passenger_api)
     
     # Root route redirect
     @app.route('/')

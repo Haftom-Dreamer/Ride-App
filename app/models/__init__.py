@@ -173,3 +173,18 @@ class EmailVerification(db.Model):
     def is_expired(self):
         from datetime import datetime
         return datetime.utcnow() > self.expires_at
+
+
+class PasswordReset(db.Model):
+    """Password reset codes for passengers"""
+    __tablename__ = 'password_resets'
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), nullable=False, index=True)
+    reset_code = db.Column(db.String(10), nullable=False)
+    expires_at = db.Column(db.DateTime, nullable=False, index=True)
+    is_used = db.Column(db.Boolean, default=False, nullable=False)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+    
+    def is_expired(self):
+        from datetime import datetime
+        return datetime.utcnow() > self.expires_at

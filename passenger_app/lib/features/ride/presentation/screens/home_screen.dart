@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import 'ride_tracking_screen.dart';
 import '../widgets/map_widget.dart';
 import '../widgets/ride_request_bottom_sheet.dart';
 
@@ -48,7 +49,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               });
             },
           ),
-          
+
           // Top bar
           Positioned(
             top: MediaQuery.of(context).padding.top + 16,
@@ -113,7 +114,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
           ),
-          
+
           // Bottom sheet
           Positioned(
             bottom: 0,
@@ -190,12 +191,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       );
       return;
     }
-    
-    // TODO: Implement ride request logic
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Ride request functionality coming soon!'),
-        backgroundColor: Colors.blue,
+
+    // Navigate to ride tracking screen with ride details
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => RideTrackingScreen(
+          pickupAddress: "Pickup Location", // TODO: Get from location service
+          destinationAddress:
+              "Destination Location", // TODO: Get from location service
+          pickupLat: _pickupLocation!.latitude,
+          pickupLng: _pickupLocation!.longitude,
+          destLat: _destinationLocation!.latitude,
+          destLng: _destinationLocation!.longitude,
+          estimatedFare: 50.0, // TODO: Calculate actual fare
+        ),
       ),
     );
   }
