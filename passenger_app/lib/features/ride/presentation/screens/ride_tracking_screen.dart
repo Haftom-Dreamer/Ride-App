@@ -368,7 +368,7 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
             ),
             Row(
               children: [
-                Icon(Icons.star, color: Colors.amber, size: 16),
+                const Icon(Icons.star, color: Colors.amber, size: 16),
                 const SizedBox(width: 4),
                 Text(
                   driver.rating.toStringAsFixed(1),

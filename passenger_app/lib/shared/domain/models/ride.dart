@@ -1,3 +1,9 @@
+enum RideType {
+  economy,
+  standard,
+  premium,
+}
+
 class Ride {
   final int id;
   final int passengerId;
@@ -63,13 +69,13 @@ class Ride {
       note: json['note'] as String?,
       status: json['status'] as String,
       requestTime: DateTime.parse(json['request_time'] as String),
-      assignedTime: json['assigned_time'] != null 
+      assignedTime: json['assigned_time'] != null
           ? DateTime.parse(json['assigned_time'] as String)
           : null,
-      startTime: json['start_time'] != null 
+      startTime: json['start_time'] != null
           ? DateTime.parse(json['start_time'] as String)
           : null,
-      endTime: json['end_time'] != null 
+      endTime: json['end_time'] != null
           ? DateTime.parse(json['end_time'] as String)
           : null,
       rating: json['rating'] as int?,
@@ -173,4 +179,3 @@ class Ride {
     return 'Ride(id: $id, status: $status, from: $pickupAddress, to: $destAddress)';
   }
 }
-

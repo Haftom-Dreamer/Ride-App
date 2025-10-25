@@ -5,7 +5,7 @@ import 'core/config/app_config.dart';
 import 'shared/data/api_client.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
 import 'features/auth/presentation/screens/signup_screen.dart';
-import 'features/ride/presentation/screens/home_screen.dart';
+import 'features/main/presentation/screens/main_screen.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
 
 void main() async {
@@ -67,7 +67,7 @@ class MyApp extends StatelessWidget {
       routes: {
         '/login': (context) => const LoginScreen(),
         '/signup': (context) => const SignupScreen(),
-        '/home': (context) => const HomeScreen(),
+        '/main': (context) => const MainScreen(),
       },
     );
   }
@@ -80,9 +80,9 @@ class AuthWrapper extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
 
-    // Show home screen if authenticated, otherwise show login
+    // Show main screen with bottom nav if authenticated, otherwise show login
     if (authState.isAuthenticated && authState.user != null) {
-      return const HomeScreen();
+      return const MainScreen();
     } else {
       return const LoginScreen();
     }

@@ -1,11 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/ride_history_repository.dart';
-import '../screens/ride_history_screen.dart';
+import '../../../../shared/domain/models/ride.dart';
 
 // Ride History state
 class RideHistoryState {
-  final List<RideHistory> rides;
-  final List<RideHistory> filteredRides;
+  final List<Ride> rides;
+  final List<Ride> filteredRides;
   final bool isLoading;
   final String? error;
 
@@ -17,8 +17,8 @@ class RideHistoryState {
   });
 
   RideHistoryState copyWith({
-    List<RideHistory>? rides,
-    List<RideHistory>? filteredRides,
+    List<Ride>? rides,
+    List<Ride>? filteredRides,
     bool? isLoading,
     String? error,
   }) {
@@ -60,7 +60,7 @@ class RideHistoryNotifier extends StateNotifier<RideHistoryState> {
   }
 
   void filterRides(String filter) {
-    List<RideHistory> filtered;
+    List<Ride> filtered;
 
     switch (filter) {
       case 'Completed':

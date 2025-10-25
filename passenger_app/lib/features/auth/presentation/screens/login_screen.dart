@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/auth_provider.dart';
-import 'signup_screen.dart';
 import 'forgot_password_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -51,8 +50,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        // Navigate to home screen or main app
-        Navigator.of(context).pushReplacementNamed('/home');
+        // Navigate to main screen with bottom nav
+        Navigator.of(context).pushReplacementNamed('/main');
       });
     }
 

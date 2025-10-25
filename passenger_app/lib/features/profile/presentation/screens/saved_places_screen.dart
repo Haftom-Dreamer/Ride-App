@@ -310,14 +310,18 @@ class _SavedPlacesScreenState extends ConsumerState<SavedPlacesScreen> {
   IconData _getPlaceIcon(String label) {
     final lowerLabel = label.toLowerCase();
     if (lowerLabel.contains('home')) return Icons.home;
-    if (lowerLabel.contains('work') || lowerLabel.contains('office'))
+    if (lowerLabel.contains('work') || lowerLabel.contains('office')) {
       return Icons.work;
-    if (lowerLabel.contains('school') || lowerLabel.contains('university'))
+    }
+    if (lowerLabel.contains('school') || lowerLabel.contains('university')) {
       return Icons.school;
-    if (lowerLabel.contains('hospital') || lowerLabel.contains('clinic'))
+    }
+    if (lowerLabel.contains('hospital') || lowerLabel.contains('clinic')) {
       return Icons.local_hospital;
-    if (lowerLabel.contains('gym') || lowerLabel.contains('fitness'))
+    }
+    if (lowerLabel.contains('gym') || lowerLabel.contains('fitness')) {
       return Icons.fitness_center;
+    }
     return Icons.place;
   }
 

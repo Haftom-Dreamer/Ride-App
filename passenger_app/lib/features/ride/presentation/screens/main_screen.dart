@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'home_screen.dart';
+import 'ride_request_screen.dart';
 import 'ride_history_screen.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
-import '../../../settings/presentation/screens/settings_screen.dart';
 
 class MainScreen extends ConsumerStatefulWidget {
   const MainScreen({super.key});
@@ -16,10 +15,9 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   int _currentIndex = 0;
 
   final List<Widget> _screens = [
-    const HomeScreen(),
+    const RideRequestScreen(),
     const RideHistoryScreen(),
     const ProfileScreen(),
-    const SettingsScreen(),
   ];
 
   final List<BottomNavigationBarItem> _navItems = [
@@ -34,10 +32,6 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     const BottomNavigationBarItem(
       icon: Icon(Icons.person),
       label: 'Profile',
-    ),
-    const BottomNavigationBarItem(
-      icon: Icon(Icons.settings),
-      label: 'Settings',
     ),
   ];
 

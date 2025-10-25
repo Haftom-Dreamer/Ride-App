@@ -1,15 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
+import '../../../../shared/domain/models/ride.dart';
 
 class RideRequestBottomSheet extends StatelessWidget {
   final LatLng? pickupLocation;
   final LatLng? destinationLocation;
+  final RideType selectedRideType;
+  final double? estimatedFare;
+  final bool isRequestingRide;
+  final Function(RideType) onRideTypeChanged;
   final VoidCallback onRequestRide;
 
   const RideRequestBottomSheet({
     super.key,
     this.pickupLocation,
     this.destinationLocation,
+    required this.selectedRideType,
+    this.estimatedFare,
+    this.isRequestingRide = false,
+    required this.onRideTypeChanged,
     required this.onRequestRide,
   });
 
@@ -40,7 +49,7 @@ class RideRequestBottomSheet extends StatelessWidget {
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-          
+
           // Content
           Padding(
             padding: const EdgeInsets.all(20),
@@ -57,9 +66,9 @@ class RideRequestBottomSheet extends StatelessWidget {
                     _showLocationSearch(context, 'pickup');
                   },
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Destination location
                 _buildLocationField(
                   icon: Icons.place,
@@ -70,19 +79,26 @@ class RideRequestBottomSheet extends StatelessWidget {
                     _showLocationSearch(context, 'destination');
                   },
                 ),
-                
+
                 const SizedBox(height: 24),
-                
-                // Vehicle selection
-                _buildVehicleSelection(),
-                
+
+                // Ride type selection
+                _buildRideTypeSelection(),
+
+                const SizedBox(height: 16),
+
+                // Fare estimation
+                if (estimatedFare != null) _buildFareEstimation(),
+
                 const SizedBox(height: 24),
-                
+
                 // Request ride button
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: (pickupLocation != null && destinationLocation != null)
+                    onPressed: (pickupLocation != null &&
+                            destinationLocation != null &&
+                            !isRequestingRide)
                         ? onRequestRide
                         : null,
                     style: ElevatedButton.styleFrom(
@@ -93,13 +109,30 @@ class RideRequestBottomSheet extends StatelessWidget {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: const Text(
-                      'Request Ride',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+                    child: isRequestingRide
+                        ? const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white),
+                                ),
+                              ),
+                              SizedBox(width: 12),
+                              Text('Requesting...'),
+                            ],
+                          )
+                        : const Text(
+                            'Request Ride',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                   ),
                 ),
               ],
@@ -149,7 +182,9 @@ class RideRequestBottomSheet extends StatelessWidget {
                         ? '${location.latitude.toStringAsFixed(4)}, ${location.longitude.toStringAsFixed(4)}'
                         : 'Select $label',
                     style: TextStyle(
-                      color: location != null ? Colors.black : Colors.grey.shade500,
+                      color: location != null
+                          ? Colors.black
+                          : Colors.grey.shade500,
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
                     ),
@@ -170,12 +205,12 @@ class RideRequestBottomSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildVehicleSelection() {
+  Widget _buildRideTypeSelection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Vehicle Type',
+          'Ride Type',
           style: TextStyle(
             color: Colors.grey.shade700,
             fontSize: 14,
@@ -186,20 +221,35 @@ class RideRequestBottomSheet extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: _buildVehicleOption(
+              child: _buildRideTypeOption(
+                rideType: RideType.economy,
                 icon: Icons.motorcycle,
-                label: 'Bajaj',
-                isSelected: true,
-                onTap: () {},
+                label: 'Economy',
+                description: 'Budget-friendly',
+                isSelected: selectedRideType == RideType.economy,
+                onTap: () => onRideTypeChanged(RideType.economy),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: _buildVehicleOption(
+              child: _buildRideTypeOption(
+                rideType: RideType.standard,
                 icon: Icons.directions_car,
-                label: 'Car',
-                isSelected: false,
-                onTap: () {},
+                label: 'Standard',
+                description: 'Comfortable',
+                isSelected: selectedRideType == RideType.standard,
+                onTap: () => onRideTypeChanged(RideType.standard),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildRideTypeOption(
+                rideType: RideType.premium,
+                icon: Icons.directions_car_filled,
+                label: 'Premium',
+                description: 'Luxury',
+                isSelected: selectedRideType == RideType.premium,
+                onTap: () => onRideTypeChanged(RideType.premium),
               ),
             ),
           ],
@@ -208,16 +258,18 @@ class RideRequestBottomSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildVehicleOption({
+  Widget _buildRideTypeOption({
+    required RideType rideType,
     required IconData icon,
     required String label,
+    required String description,
     required bool isSelected,
     required VoidCallback onTap,
   }) {
     return InkWell(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: isSelected ? Colors.blue.shade50 : Colors.grey.shade50,
           border: Border.all(
@@ -231,19 +283,65 @@ class RideRequestBottomSheet extends StatelessWidget {
             Icon(
               icon,
               color: isSelected ? Colors.blue : Colors.grey,
-              size: 24,
+              size: 20,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Text(
               label,
               style: TextStyle(
                 color: isSelected ? Colors.blue : Colors.grey.shade600,
-                fontSize: 12,
+                fontSize: 11,
                 fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              description,
+              style: TextStyle(
+                color: isSelected ? Colors.blue.shade700 : Colors.grey.shade500,
+                fontSize: 9,
+                fontWeight: FontWeight.w400,
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildFareEstimation() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.green.shade50,
+        border: Border.all(color: Colors.green.shade200),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.attach_money,
+            color: Colors.green.shade700,
+            size: 20,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            'Estimated Fare: ',
+            style: TextStyle(
+              color: Colors.green.shade700,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          Text(
+            'ETB ${estimatedFare!.toStringAsFixed(0)}',
+            style: TextStyle(
+              color: Colors.green.shade700,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -291,4 +389,3 @@ class RideRequestBottomSheet extends StatelessWidget {
     );
   }
 }
-

@@ -1,12 +1,12 @@
 import 'package:dio/dio.dart';
 import '../../../shared/data/api_client.dart';
 import '../../../core/config/app_config.dart';
-import '../presentation/screens/ride_history_screen.dart';
+import '../../../shared/domain/models/ride.dart';
 
 class RideHistoryRepository {
   final ApiClient _apiClient = ApiClient();
 
-  Future<List<RideHistory>> getRideHistory() async {
+  Future<List<Ride>> getRideHistory() async {
     try {
       final response = await _apiClient.get(
         '${AppConfig.baseUrl}/api/passenger/ride-history',
@@ -20,9 +20,7 @@ class RideHistoryRepository {
 
         if (responseData['success'] == true && responseData['rides'] != null) {
           final ridesList = responseData['rides'] as List;
-          return ridesList
-              .map((rideData) => RideHistory.fromJson(rideData))
-              .toList();
+          return ridesList.map((rideData) => Ride.fromJson(rideData)).toList();
         } else {
           throw Exception(
               'Get ride history failed: ${responseData['error'] ?? 'Unknown error'}');

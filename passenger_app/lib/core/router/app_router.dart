@@ -4,7 +4,7 @@ import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/signup_screen.dart';
 import '../../features/auth/presentation/screens/forgot_password_screen.dart';
-import '../../features/ride/presentation/screens/home_screen.dart';
+import '../../features/ride/presentation/screens/ride_request_screen.dart';
 import '../../features/ride/presentation/screens/ride_history_screen.dart';
 import '../../features/ride/presentation/screens/ride_tracking_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
@@ -44,7 +44,7 @@ class AppRouter {
 
       case home:
         return MaterialPageRoute(
-          builder: (_) => const HomeScreen(),
+          builder: (_) => const RideRequestScreen(),
           settings: settings,
         );
 

@@ -254,7 +254,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                   const Divider(height: 1),
                   ListTile(
-                    leading: const Icon(Icons.notifications,
+                    leading: const Icon(Icons.notifications_outlined,
                         color: Color(0xFF4F46E5)),
                     title: const Text('Notifications'),
                     trailing: const Icon(Icons.chevron_right),
@@ -319,3 +319,5 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 }
+
+

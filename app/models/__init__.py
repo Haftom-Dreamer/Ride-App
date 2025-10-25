@@ -76,12 +76,15 @@ class Ride(db.Model):
     status = db.Column(db.String(20), default='Requested', nullable=False, index=True)
     request_time = db.Column(db.DateTime, server_default=db.func.now(), index=True)
     assigned_time = db.Column(db.DateTime, nullable=True)
+    start_time = db.Column(db.DateTime, nullable=True)  # When driver starts the trip
+    end_time = db.Column(db.DateTime, nullable=True)  # When trip is completed
     note = db.Column(db.String(255), nullable=True)
     payment_method = db.Column(db.String(20), nullable=False, default='Cash')
+    rating = db.Column(db.Integer, nullable=True)  # Passenger rating (1-5)
+    feedback = db.Column(db.String(500), nullable=True)  # Passenger feedback text
 
     passenger = db.relationship('Passenger', backref=db.backref('rides', lazy=True))
     driver = db.relationship('Driver', backref=db.backref('rides', lazy=True))
-    feedback = db.relationship('Feedback', backref='ride', uselist=False, cascade="all, delete-orphan")
 
 class Feedback(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -175,6 +178,21 @@ class EmailVerification(db.Model):
         from datetime import datetime
         return datetime.utcnow() > self.expires_at
 
+class EmergencyAlert(db.Model):
+    """Emergency SOS alerts from passengers"""
+    __tablename__ = 'emergency_alert'
+    id = db.Column(db.Integer, primary_key=True)
+    passenger_id = db.Column(db.Integer, db.ForeignKey('passenger.id'), nullable=False, index=True)
+    ride_id = db.Column(db.Integer, db.ForeignKey('ride.id'), nullable=True, index=True)
+    latitude = db.Column(db.Float, nullable=True)
+    longitude = db.Column(db.Float, nullable=True)
+    message = db.Column(db.String(500), nullable=True)
+    alert_time = db.Column(db.DateTime, server_default=db.func.now(), index=True)
+    is_resolved = db.Column(db.Boolean, default=False, nullable=False)
+    resolved_at = db.Column(db.DateTime, nullable=True)
+    
+    passenger = db.relationship('Passenger', backref=db.backref('emergency_alerts', lazy=True))
+    ride = db.relationship('Ride', backref=db.backref('emergency_alerts', lazy=True))
 
 class PasswordReset(db.Model):
     """Password reset codes for passengers"""

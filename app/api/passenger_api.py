@@ -1,415 +1,402 @@
-from flask import Blueprint, request, jsonify, current_app
+"""
+Passenger API Routes
+Handles all passenger-related API endpoints for the mobile app
+"""
+
+from flask import Blueprint, request, jsonify, session
 from flask_login import login_required, current_user
-from app.models import db, Passenger, SavedPlace, PasswordReset, Ride
-from app.utils.email_service import send_verification_email
+from app.models import db, Passenger, Ride, Driver, SavedPlace, EmergencyAlert
 from datetime import datetime, timedelta
-import secrets
-import re
+from sqlalchemy import or_, desc
+import math
 
-passenger_api = Blueprint('passenger_api', __name__, url_prefix='/api/passenger')
+passenger_api = Blueprint('passenger_api', __name__)
 
-@passenger_api.route('/profile', methods=['GET'])
-@login_required
-def get_profile():
-    """Get current passenger profile"""
+@passenger_api.route('/test', methods=['GET'])
+def test_route():
+    """Test route to verify blueprint is working"""
+    return jsonify({'message': 'Passenger API is working!', 'status': 'success'})
+
+def calculate_distance(lat1, lon1, lat2, lon2):
+    """Calculate distance between two points using Haversine formula"""
+    R = 6371  # Earth's radius in kilometers
+    
+    lat1_rad = math.radians(lat1)
+    lat2_rad = math.radians(lat2)
+    delta_lat = math.radians(lat2 - lat1)
+    delta_lon = math.radians(lon2 - lon1)
+    
+    a = math.sin(delta_lat/2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(delta_lon/2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+    
+    return R * c
+
+def calculate_fare(distance_km, vehicle_type='Bajaj'):
+    """Calculate fare based on distance and vehicle type"""
+    base_fare = 50.0 if vehicle_type == 'Bajaj' else 80.0
+    rate_per_km = 15.0 if vehicle_type == 'Bajaj' else 25.0
+    
+    fare = base_fare + (distance_km * rate_per_km)
+    return round(fare, 2)
+
+@passenger_api.route('/fare-estimate', methods=['POST'])
+def estimate_fare():
+    """Calculate fare estimate for a ride"""
     try:
-        if not hasattr(current_user, 'passenger_uid'):
-            return {'error': 'Not a passenger account'}, 403
-        
-        return {
-            'success': True,
-            'user': {
-                'id': current_user.id,
-                'username': current_user.username,
-                'email': current_user.email,
-                'phone_number': current_user.phone_number,
-                'passenger_uid': current_user.passenger_uid,
-                'profile_picture': current_user.profile_picture,
-                'created_at': current_user.created_at.isoformat() if current_user.created_at else None
-            }
-        }, 200
-    except Exception as e:
-        current_app.logger.error(f"Get profile failed: {str(e)}")
-        return {'error': 'Failed to get profile'}, 500
-
-@passenger_api.route('/profile', methods=['PUT'])
-@login_required
-def update_profile():
-    """Update passenger profile"""
-    try:
-        if not hasattr(current_user, 'passenger_uid'):
-            return {'error': 'Not a passenger account'}, 403
-        
         data = request.get_json()
-        if not data:
-            return {'error': 'No data provided'}, 400
         
-        # Update username if provided
-        if 'username' in data:
-            new_username = data['username'].strip()
-            if new_username and len(new_username) >= 3:
-                current_user.username = new_username
-            else:
-                return {'error': 'Username must be at least 3 characters'}, 400
+        pickup_lat = float(data.get('pickup_lat'))
+        pickup_lon = float(data.get('pickup_lon'))
+        dest_lat = float(data.get('dest_lat'))
+        dest_lon = float(data.get('dest_lon'))
+        vehicle_type = data.get('vehicle_type', 'Bajaj')
         
-        # Update email if provided
-        if 'email' in data:
-            new_email = data['email'].strip()
-            if new_email:
-                # Validate email format
-                email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-                if not re.match(email_pattern, new_email):
-                    return {'error': 'Invalid email format'}, 400
-                
-                # Check if email is already in use by another user
-                existing_user = Passenger.query.filter(
-                    Passenger.email == new_email,
-                    Passenger.id != current_user.id
-                ).first()
-                if existing_user:
-                    return {'error': 'Email already in use'}, 400
-                
-                current_user.email = new_email
+        # Calculate distance
+        distance_km = calculate_distance(pickup_lat, pickup_lon, dest_lat, dest_lon)
         
-        # Update phone number if provided
-        if 'phone_number' in data:
-            new_phone = data['phone_number'].strip()
-            if new_phone:
-                # Validate phone format
-                if not new_phone.startswith('+251'):
-                    return {'error': 'Phone number must start with +251'}, 400
-                
-                # Check if phone is already in use by another user
-                existing_user = Passenger.query.filter(
-                    Passenger.phone_number == new_phone,
-                    Passenger.id != current_user.id
-                ).first()
-                if existing_user:
-                    return {'error': 'Phone number already in use'}, 400
-                
-                current_user.phone_number = new_phone
+        # Calculate fare
+        estimated_fare = calculate_fare(distance_km, vehicle_type)
         
-        # Update profile picture if provided
-        if 'profile_picture' in data:
-            current_user.profile_picture = data['profile_picture']
+        return jsonify({
+            'distance_km': round(distance_km, 2),
+            'estimated_fare': estimated_fare,
+            'vehicle_type': vehicle_type
+        }), 200
         
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+@passenger_api.route('/ride-request', methods=['POST'])
+@login_required
+def request_ride():
+    """Submit a new ride request"""
+    try:
+        data = request.get_json()
+        
+        # Create new ride
+        new_ride = Ride(
+            passenger_id=current_user.id,
+            pickup_address=data.get('pickup_address', ''),
+            pickup_lat=float(data.get('pickup_lat')),
+            pickup_lon=float(data.get('pickup_lon')),
+            dest_address=data.get('dest_address'),
+            dest_lat=float(data.get('dest_lat')),
+            dest_lon=float(data.get('dest_lon')),
+            distance_km=float(data.get('distance_km', 0)),
+            fare=float(data.get('fare', 0)),
+            vehicle_type=data.get('vehicle_type', 'Bajaj'),
+            payment_method=data.get('payment_method', 'Cash'),
+            note=data.get('note'),
+            status='Requested',
+            request_time=datetime.utcnow()
+        )
+        
+        db.session.add(new_ride)
         db.session.commit()
         
-        return {
-            'success': True,
-            'message': 'Profile updated successfully',
-            'user': {
-                'id': current_user.id,
-                'username': current_user.username,
-                'email': current_user.email,
-                'phone_number': current_user.phone_number,
-                'passenger_uid': current_user.passenger_uid,
-                'profile_picture': current_user.profile_picture
-            }
-        }, 200
+        return jsonify({
+            'ride_id': new_ride.id,
+            'status': 'Requested',
+            'message': 'Ride requested successfully'
+        }), 201
         
     except Exception as e:
-        current_app.logger.error(f"Update profile failed: {str(e)}")
         db.session.rollback()
-        return {'error': 'Failed to update profile'}, 500
+        return jsonify({'error': str(e)}), 400
 
-@passenger_api.route('/change-password', methods=['POST'])
+@passenger_api.route('/ride-status/<int:ride_id>', methods=['GET'])
 @login_required
-def change_password():
-    """Change passenger password"""
+def get_ride_status(ride_id):
+    """Get current status of a ride"""
     try:
-        if not hasattr(current_user, 'passenger_uid'):
-            return {'error': 'Not a passenger account'}, 403
+        ride = Ride.query.filter_by(id=ride_id, passenger_id=current_user.id).first()
         
+        if not ride:
+            return jsonify({'error': 'Ride not found'}), 404
+        
+        response = {
+            'ride_id': ride.id,
+            'status': ride.status,
+            'pickup_address': ride.pickup_address,
+            'dest_address': ride.dest_address,
+            'fare': ride.fare,
+            'vehicle_type': ride.vehicle_type
+        }
+        
+        # If driver is assigned, include driver info
+        if ride.driver_id and ride.status in ['Assigned', 'On Trip']:
+            driver = Driver.query.get(ride.driver_id)
+            if driver:
+                response['driver'] = {
+                    'name': driver.name,
+                    'phone_number': driver.phone_number,
+                    'vehicle_details': f"{driver.vehicle_type} - {driver.vehicle_plate_number}",
+                    'rating': driver.rating if hasattr(driver, 'rating') else 4.5
+                }
+        
+        # If ride is completed, include details
+        if ride.status == 'Completed':
+            response['ride_details'] = {
+                'dest_address': ride.dest_address,
+                'fare': ride.fare,
+                'start_time': ride.start_time.isoformat() if ride.start_time else None,
+                'end_time': ride.end_time.isoformat() if ride.end_time else None
+            }
+        
+        return jsonify(response), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+@passenger_api.route('/cancel-ride', methods=['POST'])
+@login_required
+def cancel_ride():
+    """Cancel a pending ride"""
+    try:
         data = request.get_json()
-        if not data:
-            return {'error': 'No data provided'}, 400
+        ride_id = data.get('ride_id')
         
-        current_password = data.get('current_password', '').strip()
-        new_password = data.get('new_password', '').strip()
+        ride = Ride.query.filter_by(id=ride_id, passenger_id=current_user.id).first()
         
-        if not current_password or not new_password:
-            return {'error': 'Current password and new password are required'}, 400
+        if not ride:
+            return jsonify({'error': 'Ride not found'}), 404
         
-        # Verify current password
-        if not current_user.check_password(current_password):
-            return {'error': 'Current password is incorrect'}, 400
+        if ride.status not in ['Requested', 'Assigned']:
+            return jsonify({'error': 'Cannot cancel ride in current status'}), 400
         
-        # Validate new password
-        if len(new_password) < 6:
-            return {'error': 'New password must be at least 6 characters'}, 400
-        
-        # Set new password
-        current_user.set_password(new_password)
+        ride.status = 'Cancelled'
         db.session.commit()
         
-        return {'success': True, 'message': 'Password changed successfully'}, 200
+        return jsonify({'message': 'Ride cancelled successfully'}), 200
         
     except Exception as e:
-        current_app.logger.error(f"Change password failed: {str(e)}")
         db.session.rollback()
-        return {'error': 'Failed to change password'}, 500
+        return jsonify({'error': str(e)}), 400
+
+@passenger_api.route('/rate-ride', methods=['POST'])
+@login_required
+def rate_ride():
+    """Submit rating and feedback for a completed ride"""
+    try:
+        data = request.get_json()
+        ride_id = data.get('ride_id')
+        rating = int(data.get('rating'))
+        comment = data.get('comment', '')
+        
+        ride = Ride.query.filter_by(id=ride_id, passenger_id=current_user.id).first()
+        
+        if not ride:
+            return jsonify({'error': 'Ride not found'}), 404
+        
+        if ride.status != 'Completed':
+            return jsonify({'error': 'Can only rate completed rides'}), 400
+        
+        ride.rating = rating
+        ride.feedback = comment
+        db.session.commit()
+        
+        return jsonify({'message': 'Rating submitted successfully'}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
 
 @passenger_api.route('/saved-places', methods=['GET'])
 @login_required
 def get_saved_places():
-    """Get passenger's saved places"""
+    """Get all saved places for current user"""
     try:
-        if not hasattr(current_user, 'passenger_uid'):
-            return {'error': 'Not a passenger account'}, 403
-        
         places = SavedPlace.query.filter_by(passenger_id=current_user.id).all()
         
-        return {
-            'success': True,
-            'places': [
-                {
+        return jsonify([{
                     'id': place.id,
                     'label': place.label,
                     'address': place.address,
                     'latitude': place.latitude,
-                    'longitude': place.longitude,
-                    'created_at': place.created_at.isoformat()
-                }
-                for place in places
-            ]
-        }, 200
+            'longitude': place.longitude
+        } for place in places]), 200
         
     except Exception as e:
-        current_app.logger.error(f"Get saved places failed: {str(e)}")
-        return {'error': 'Failed to get saved places'}, 500
+        return jsonify({'error': str(e)}), 400
 
 @passenger_api.route('/saved-places', methods=['POST'])
 @login_required
 def add_saved_place():
-    """Add a new saved place"""
+    """Add or update a saved place"""
     try:
-        if not hasattr(current_user, 'passenger_uid'):
-            return {'error': 'Not a passenger account'}, 403
-        
         data = request.get_json()
-        if not data:
-            return {'error': 'No data provided'}, 400
         
-        label = data.get('label', '').strip()
-        address = data.get('address', '').strip()
-        latitude = data.get('latitude')
-        longitude = data.get('longitude')
+        place_id = data.get('id')
         
-        if not label or not address or latitude is None or longitude is None:
-            return {'error': 'Label, address, latitude, and longitude are required'}, 400
-        
-        # Check if label already exists for this user
-        existing_place = SavedPlace.query.filter_by(
+        if place_id:
+            # Update existing place
+            place = SavedPlace.query.filter_by(id=place_id, passenger_id=current_user.id).first()
+            if not place:
+                return jsonify({'error': 'Place not found'}), 404
+            
+            place.label = data.get('label', place.label)
+            place.address = data.get('address', place.address)
+            place.latitude = float(data.get('latitude', place.latitude))
+            place.longitude = float(data.get('longitude', place.longitude))
+        else:
+            # Create new place
+            place = SavedPlace(
             passenger_id=current_user.id,
-            label=label
-        ).first()
-        if existing_place:
-            return {'error': 'A place with this label already exists'}, 400
+                label=data.get('label'),
+                address=data.get('address'),
+                latitude=float(data.get('latitude')),
+                longitude=float(data.get('longitude'))
+            )
+            db.session.add(place)
         
-        # Create new saved place
-        new_place = SavedPlace(
-            passenger_id=current_user.id,
-            label=label,
-            address=address,
-            latitude=latitude,
-            longitude=longitude
-        )
-        
-        db.session.add(new_place)
         db.session.commit()
         
-        return {
-            'success': True,
-            'message': 'Saved place added successfully',
-            'place': {
-                'id': new_place.id,
-                'label': new_place.label,
-                'address': new_place.address,
-                'latitude': new_place.latitude,
-                'longitude': new_place.longitude,
-                'created_at': new_place.created_at.isoformat()
-            }
-        }, 201
+        return jsonify({
+            'id': place.id,
+            'label': place.label,
+            'address': place.address,
+            'latitude': place.latitude,
+            'longitude': place.longitude
+        }), 201
         
     except Exception as e:
-        current_app.logger.error(f"Add saved place failed: {str(e)}")
         db.session.rollback()
-        return {'error': 'Failed to add saved place'}, 500
+        return jsonify({'error': str(e)}), 400
 
 @passenger_api.route('/saved-places/<int:place_id>', methods=['DELETE'])
 @login_required
 def delete_saved_place(place_id):
     """Delete a saved place"""
     try:
-        if not hasattr(current_user, 'passenger_uid'):
-            return {'error': 'Not a passenger account'}, 403
-        
-        place = SavedPlace.query.filter_by(
-            id=place_id,
-            passenger_id=current_user.id
-        ).first()
+        place = SavedPlace.query.filter_by(id=place_id, passenger_id=current_user.id).first()
         
         if not place:
-            return {'error': 'Saved place not found'}, 404
+            return jsonify({'error': 'Place not found'}), 404
         
         db.session.delete(place)
         db.session.commit()
         
-        return {'success': True, 'message': 'Saved place deleted successfully'}, 200
+        return jsonify({'message': 'Place deleted successfully'}), 200
         
     except Exception as e:
-        current_app.logger.error(f"Delete saved place failed: {str(e)}")
         db.session.rollback()
-        return {'error': 'Failed to delete saved place'}, 500
+        return jsonify({'error': str(e)}), 400
 
-@passenger_api.route('/password-reset/request', methods=['POST'])
-def request_password_reset():
-    """Request password reset code"""
+@passenger_api.route('/emergency-sos', methods=['POST'])
+@login_required
+def emergency_sos():
+    """Handle emergency SOS alert"""
     try:
         data = request.get_json()
-        if not data:
-            return {'error': 'No data provided'}, 400
         
-        email = data.get('email', '').strip()
-        if not email:
-            return {'error': 'Email is required'}, 400
+        alert = EmergencyAlert(
+            passenger_id=current_user.id,
+            ride_id=data.get('ride_id'),
+            latitude=float(data.get('latitude', 0)),
+            longitude=float(data.get('longitude', 0)),
+            message=data.get('message', 'Emergency SOS activated'),
+            alert_time=datetime.utcnow()
+        )
         
-        # Validate email format
-        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-        if not re.match(email_pattern, email):
-            return {'error': 'Invalid email format'}, 400
-        
-        # Check if user exists
-        passenger = Passenger.query.filter_by(email=email).first()
-        if not passenger:
-            return {'error': 'No account found with this email'}, 404
-        
-        # Check for recent reset requests (rate limiting)
-        recent_resets = PasswordReset.query.filter(
-            PasswordReset.email == email,
-            PasswordReset.created_at >= datetime.utcnow() - timedelta(minutes=5)
-        ).count()
-        
-        if recent_resets >= 3:
-            return {'error': 'Too many reset requests. Please wait 5 minutes.'}, 429
-        
-        # Generate reset code
-        reset_code = secrets.token_hex(4).upper()
-        expires_at = datetime.utcnow() + timedelta(minutes=15)
-        
-        # Create or update reset record
-        existing_reset = PasswordReset.query.filter_by(email=email).first()
-        if existing_reset:
-            existing_reset.reset_code = reset_code
-            existing_reset.expires_at = expires_at
-            existing_reset.is_used = False
-        else:
-            new_reset = PasswordReset(
-                email=email,
-                reset_code=reset_code,
-                expires_at=expires_at
-            )
-            db.session.add(new_reset)
-        
+        db.session.add(alert)
         db.session.commit()
         
-        # Send reset email
-        from app.utils.email_service import send_password_reset_email
-        success, message = send_password_reset_email(email, reset_code)
+        # TODO: Send notifications to admin/support
         
-        if success:
-            return {'success': True, 'message': 'Reset code sent to your email'}, 200
-        else:
-            return {'error': f'Failed to send email: {message}'}, 500
-        
-    except Exception as e:
-        current_app.logger.error(f"Request password reset failed: {str(e)}")
-        db.session.rollback()
-        return {'error': 'Failed to request password reset'}, 500
-
-@passenger_api.route('/password-reset/verify', methods=['POST'])
-def verify_password_reset():
-    """Verify reset code and update password"""
-    try:
-        data = request.get_json()
-        if not data:
-            return {'error': 'No data provided'}, 400
-        
-        email = data.get('email', '').strip()
-        reset_code = data.get('reset_code', '').strip()
-        new_password = data.get('new_password', '').strip()
-        
-        if not email or not reset_code or not new_password:
-            return {'error': 'Email, reset code, and new password are required'}, 400
-        
-        # Validate new password
-        if len(new_password) < 6:
-            return {'error': 'New password must be at least 6 characters'}, 400
-        
-        # Find reset record
-        reset_record = PasswordReset.query.filter_by(
-            email=email,
-            reset_code=reset_code,
-            is_used=False
-        ).first()
-        
-        if not reset_record:
-            return {'error': 'Invalid or expired reset code'}, 400
-        
-        # Check if code has expired
-        if reset_record.expires_at < datetime.utcnow():
-            return {'error': 'Reset code has expired'}, 400
-        
-        # Find user and update password
-        passenger = Passenger.query.filter_by(email=email).first()
-        if not passenger:
-            return {'error': 'User not found'}, 404
-        
-        passenger.set_password(new_password)
-        reset_record.is_used = True
-        
-        db.session.commit()
-        
-        return {'success': True, 'message': 'Password reset successfully'}, 200
+        return jsonify({
+            'message': 'Emergency alert sent',
+            'emergency_contact': '911',
+            'support_contact': '+251-XXX-XXXX'
+        }), 200
         
     except Exception as e:
-        current_app.logger.error(f"Verify password reset failed: {str(e)}")
         db.session.rollback()
-        return {'error': 'Failed to reset password'}, 500
-
+        return jsonify({'error': str(e)}), 400
 
 @passenger_api.route('/ride-history', methods=['GET'])
 @login_required
 def get_ride_history():
-    """Get passenger's ride history"""
+    """Get ride history with pagination"""
     try:
-        if not hasattr(current_user, 'passenger_uid'):
-            return {'error': 'Not a passenger account'}, 403
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        status_filter = request.args.get('status', None)
         
-        # Get all rides for this passenger
-        rides = Ride.query.filter_by(passenger_id=current_user.id).order_by(Ride.request_time.desc()).all()
+        query = Ride.query.filter_by(passenger_id=current_user.id)
         
-        return {
-            'success': True,
-            'rides': [
-                {
+        if status_filter:
+            query = query.filter_by(status=status_filter)
+        
+        query = query.order_by(desc(Ride.request_time))
+        
+        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+        
+        rides = [{
+            'id': ride.id,
+            'pickup_address': ride.pickup_address,
+            'dest_address': ride.dest_address,
+            'fare': ride.fare,
+            'status': ride.status,
+            'vehicle_type': ride.vehicle_type,
+            'request_time': ride.request_time.isoformat(),
+            'end_time': ride.end_time.isoformat() if ride.end_time else None
+        } for ride in pagination.items]
+        
+        return jsonify({
+            'rides': rides,
+            'page': page,
+            'per_page': per_page,
+            'total': pagination.total,
+            'pages': pagination.pages
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+@passenger_api.route('/ride-details/<int:ride_id>', methods=['GET'])
+@login_required
+def get_ride_details(ride_id):
+    """Get detailed information about a specific ride"""
+    try:
+        ride = Ride.query.filter_by(id=ride_id, passenger_id=current_user.id).first()
+        
+        if not ride:
+            return jsonify({'error': 'Ride not found'}), 404
+        
+        details = {
                     'id': ride.id,
                     'pickup_address': ride.pickup_address,
+            'pickup_lat': ride.pickup_lat,
+            'pickup_lon': ride.pickup_lon,
                     'dest_address': ride.dest_address,
-                    'distance_km': float(ride.distance_km),
-                    'fare': float(ride.fare),
+            'dest_lat': ride.dest_lat,
+            'dest_lon': ride.dest_lon,
+            'distance_km': ride.distance_km,
+            'fare': ride.fare,
                     'vehicle_type': ride.vehicle_type,
+            'payment_method': ride.payment_method,
+            'note': ride.note,
                     'status': ride.status,
                     'request_time': ride.request_time.isoformat(),
                     'assigned_time': ride.assigned_time.isoformat() if ride.assigned_time else None,
-                    'note': ride.note,
-                    'payment_method': ride.payment_method,
+            'start_time': ride.start_time.isoformat() if ride.start_time else None,
+            'end_time': ride.end_time.isoformat() if ride.end_time else None,
+            'rating': ride.rating,
+            'feedback': ride.feedback
+        }
+        
+        # Include driver info if available
+        if ride.driver_id:
+            driver = Driver.query.get(ride.driver_id)
+            if driver:
+                details['driver'] = {
+                    'name': driver.name,
+                    'phone_number': driver.phone_number,
+                    'vehicle_type': driver.vehicle_type,
+                    'vehicle_plate_number': driver.vehicle_plate_number
                 }
-                for ride in rides
-            ]
-        }, 200
+        
+        return jsonify(details), 200
         
     except Exception as e:
-        current_app.logger.error(f"Get ride history failed: {str(e)}")
-        return {'error': 'Failed to get ride history'}, 500
+        return jsonify({'error': str(e)}), 400
