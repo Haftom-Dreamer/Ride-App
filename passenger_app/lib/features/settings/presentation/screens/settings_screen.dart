@@ -13,7 +13,8 @@ class SettingsScreen extends ConsumerStatefulWidget {
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
-    final user = ref.watch(currentUserProvider);
+    final authState = ref.watch(authProvider);
+    final user = authState.user;
     final settingsState = ref.watch(settingsProvider);
     final settingsNotifier = ref.read(settingsProvider.notifier);
     final authNotifier = ref.read(authProvider.notifier);

@@ -72,23 +72,7 @@ class AuthWrapper extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final authState = ref.watch(authProvider);
-
-    // Show loading screen while checking auth status
-    if (authState.isLoading) {
-      return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
-    }
-
-    // Show login screen if not authenticated
-    if (!authState.isAuthenticated) {
-      return const LoginScreen();
-    }
-
-    // Show main screen if authenticated
-    return const MainScreen();
+    // For now, always show login screen to test
+    return const LoginScreen();
   }
 }

@@ -32,11 +32,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   void _loadUserData() {
-    final user = ref.read(currentUserProvider);
-    if (user != null) {
-      _usernameController.text = user.username;
-      _emailController.text = user.email;
-      _phoneController.text = user.phoneNumber.replaceFirst('+251 ', '');
+    final authState = ref.read(authProvider);
+    if (authState.user != null) {
+      _usernameController.text = authState.user!.username;
+      _emailController.text = authState.user!.email;
+      _phoneController.text = authState.user!.phoneNumber.replaceFirst('+251', '');
     }
   }
 
@@ -53,7 +53,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = ref.watch(currentUserProvider);
+    final authState = ref.watch(authProvider);
+    final user = authState.user;
     final profileState = ref.watch(profileProvider);
     final profileNotifier = ref.read(profileProvider.notifier);
 
