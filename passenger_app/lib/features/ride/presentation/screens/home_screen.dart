@@ -1,210 +1,81 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
-import 'ride_tracking_screen.dart';
-import '../widgets/map_widget.dart';
-import '../widgets/ride_request_bottom_sheet.dart';
 
-class HomeScreen extends ConsumerStatefulWidget {
+class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
-  ConsumerState<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends ConsumerState<HomeScreen> {
-  final MapController _mapController = MapController();
-  LatLng? _currentLocation;
-  LatLng? _pickupLocation;
-  LatLng? _destinationLocation;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
-    final user = authState.user;
+    final authNotifier = ref.read(authProvider.notifier);
 
     return Scaffold(
-      body: Stack(
-        children: [
-          // Map
-          MapWidget(
-            mapController: _mapController,
-            currentLocation: _currentLocation,
-            pickupLocation: _pickupLocation,
-            destinationLocation: _destinationLocation,
-            onLocationUpdate: (location) {
-              setState(() {
-                _currentLocation = location;
-              });
+      appBar: AppBar(
+        title: const Text('RIDE - Passenger'),
+        backgroundColor: Colors.blue,
+        foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () {
+              authNotifier.logout();
+              Navigator.of(context).pushReplacementNamed('/login');
             },
-            onPickupSelected: (location) {
-              setState(() {
-                _pickupLocation = location;
-              });
-            },
-            onDestinationSelected: (location) {
-              setState(() {
-                _destinationLocation = location;
-              });
-            },
-          ),
-
-          // Top bar
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 16,
-            left: 16,
-            right: 16,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 20,
-                    backgroundColor: Colors.blue.shade100,
-                    child: Text(
-                      user?.username.substring(0, 1).toUpperCase() ?? 'U',
-                      style: TextStyle(
-                        color: Colors.blue.shade700,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Hello, ${user?.username ?? 'User'}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                          ),
-                        ),
-                        Text(
-                          'Where would you like to go?',
-                          style: TextStyle(
-                            color: Colors.grey.shade600,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () {
-                      // Show profile or settings
-                      _showProfileMenu(context);
-                    },
-                    icon: const Icon(Icons.menu),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // Bottom sheet
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: RideRequestBottomSheet(
-              pickupLocation: _pickupLocation,
-              destinationLocation: _destinationLocation,
-              onRequestRide: () {
-                // Handle ride request
-                _handleRideRequest();
-              },
-            ),
           ),
         ],
       ),
-    );
-  }
-
-  void _showProfileMenu(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(24),
+      body: Center(
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            ListTile(
-              leading: const Icon(Icons.person),
-              title: const Text('Profile'),
-              onTap: () {
-                Navigator.pop(context);
-                // Navigate to profile
-              },
+            const Icon(
+              Icons.directions_car,
+              size: 100,
+              color: Colors.blue,
             ),
-            ListTile(
-              leading: const Icon(Icons.history),
-              title: const Text('Ride History'),
-              onTap: () {
-                Navigator.pop(context);
-                // Navigate to ride history
-              },
+            const SizedBox(height: 20),
+            Text(
+              'Welcome to RIDE!',
+              style: Theme.of(context).textTheme.headlineMedium,
             ),
-            ListTile(
-              leading: const Icon(Icons.settings),
-              title: const Text('Settings'),
-              onTap: () {
-                Navigator.pop(context);
-                // Navigate to settings
+            const SizedBox(height: 10),
+            if (authState.user != null) ...[
+              Text(
+                'Hello, ${authState.user!.username}!',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 5),
+              Text(
+                'Phone: ${authState.user!.phoneNumber}',
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+              const SizedBox(height: 5),
+              Text(
+                'Email: ${authState.user!.email}',
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+            ],
+            const SizedBox(height: 40),
+            ElevatedButton.icon(
+              onPressed: () {
+                // TODO: Implement ride request functionality
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Ride request feature coming soon!'),
+                  ),
+                );
               },
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text('Logout', style: TextStyle(color: Colors.red)),
-              onTap: () {
-                Navigator.pop(context);
-                ref.read(authProvider.notifier).logout();
-              },
+              icon: const Icon(Icons.add_location),
+              label: const Text('Request Ride'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+              ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  void _handleRideRequest() {
-    if (_pickupLocation == null || _destinationLocation == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select both pickup and destination locations'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    // Navigate to ride tracking screen with ride details
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => RideTrackingScreen(
-          pickupAddress: "Pickup Location", // TODO: Get from location service
-          destinationAddress:
-              "Destination Location", // TODO: Get from location service
-          pickupLat: _pickupLocation!.latitude,
-          pickupLng: _pickupLocation!.longitude,
-          destLat: _destinationLocation!.latitude,
-          destLng: _destinationLocation!.longitude,
-          estimatedFare: 50.0, // TODO: Calculate actual fare
         ),
       ),
     );

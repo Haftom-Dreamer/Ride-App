@@ -15,8 +15,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   final _verificationController = TextEditingController();
-  
+
   bool _showVerificationStep = false;
   String _userEmail = '';
 
@@ -26,6 +27,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     _emailController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     _verificationController.dispose();
     super.dispose();
   }
@@ -45,6 +47,35 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
           ),
         );
         authNotifier.clearError();
+      });
+    }
+
+    // Handle successful signup
+    if (authState.isAuthenticated && authState.user != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Account created successfully! Please log in.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        // Navigate to login screen after successful signup
+        Navigator.of(context).pushReplacementNamed('/login');
+      });
+    }
+
+    // Handle successful verification (but not yet authenticated)
+    if (!authState.isLoading &&
+        authState.error == null &&
+        _showVerificationStep) {
+      // Show success message for verification
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Verification successful! Creating your account...'),
+            backgroundColor: Colors.green,
+          ),
+        );
       });
     }
 
@@ -77,7 +108,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const SizedBox(height: 20),
-          
+
           // Title
           const Text(
             'Create Account',
@@ -88,9 +119,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             ),
             textAlign: TextAlign.center,
           ),
-          
+
           const SizedBox(height: 8),
-          
+
           const Text(
             'Sign up to start your journey',
             style: TextStyle(
@@ -99,7 +130,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             ),
             textAlign: TextAlign.center,
           ),
-          
+
           const SizedBox(height: 40),
 
           // Username field
@@ -148,7 +179,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
               if (value == null || value.isEmpty) {
                 return 'Please enter your email';
               }
-              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                  .hasMatch(value)) {
                 return 'Please enter a valid email';
               }
               return null;
@@ -215,33 +247,64 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             },
           ),
 
+          const SizedBox(height: 16),
+
+          // Confirm Password field
+          TextFormField(
+            controller: _confirmPasswordController,
+            obscureText: true,
+            decoration: InputDecoration(
+              labelText: 'Confirm Password',
+              prefixIcon: const Icon(Icons.lock_outline),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+            ),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please confirm your password';
+              }
+              if (value != _passwordController.text) {
+                return 'Passwords do not match';
+              }
+              return null;
+            },
+          ),
+
           const SizedBox(height: 32),
 
           // Sign up button
           ElevatedButton(
-            onPressed: authState.isLoading ? null : () {
-              if (_formKey.currentState!.validate()) {
-                authNotifier.signup(
-                  username: _usernameController.text.trim(),
-                  email: _emailController.text.trim(),
-                  phoneNumber: _phoneController.text.trim(),
-                  password: _passwordController.text,
-                );
-                
-                // Show verification step after signup
-                setState(() {
-                  _showVerificationStep = true;
-                  _userEmail = _emailController.text.trim();
-                });
-                
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Verification email sent! Please check your email.'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              }
-            },
+            onPressed: authState.isLoading
+                ? null
+                : () {
+                    if (_formKey.currentState!.validate()) {
+                      authNotifier.signup(
+                        username: _usernameController.text.trim(),
+                        email: _emailController.text.trim(),
+                        phoneNumber: _phoneController.text.trim(),
+                        password: _passwordController.text,
+                      );
+
+                      // Show verification step after signup
+                      setState(() {
+                        _showVerificationStep = true;
+                        _userEmail = _emailController.text.trim();
+                      });
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                              'Verification email sent! Please check your email.'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    }
+                  },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue,
               foregroundColor: Colors.white,
@@ -290,7 +353,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const SizedBox(height: 20),
-          
+
           // Title
           const Text(
             'Verify Your Email',
@@ -301,9 +364,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             ),
             textAlign: TextAlign.center,
           ),
-          
+
           const SizedBox(height: 8),
-          
+
           Text(
             'We sent a verification code to\n$_userEmail',
             style: const TextStyle(
@@ -312,7 +375,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             ),
             textAlign: TextAlign.center,
           ),
-          
+
           const SizedBox(height: 40),
 
           // Verification code field
@@ -345,17 +408,19 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
           // Verify button
           ElevatedButton(
-            onPressed: authState.isLoading ? null : () {
-              if (_formKey.currentState!.validate()) {
-                authNotifier.signup(
-                  username: _usernameController.text.trim(),
-                  email: _emailController.text.trim(),
-                  phoneNumber: _phoneController.text.trim(),
-                  password: _passwordController.text,
-                  verificationCode: _verificationController.text.trim(),
-                );
-              }
-            },
+            onPressed: authState.isLoading
+                ? null
+                : () {
+                    if (_formKey.currentState!.validate()) {
+                      authNotifier.signup(
+                        username: _usernameController.text.trim(),
+                        email: _emailController.text.trim(),
+                        phoneNumber: _phoneController.text.trim(),
+                        password: _passwordController.text,
+                        verificationCode: _verificationController.text.trim(),
+                      );
+                    }
+                  },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue,
               foregroundColor: Colors.white,

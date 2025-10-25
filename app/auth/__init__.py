@@ -224,6 +224,16 @@ def passenger_signup():
         if not phone_digits.isdigit() or len(phone_digits) != 9:
             return {'error': 'Invalid phone number format. Please enter 9 digits (e.g., 0912345678 or 912345678).'}, 400
         
+        # Check if phone number is already registered (before sending verification email)
+        existing_passenger = Passenger.query.filter_by(phone_number=phone_number).first()
+        if existing_passenger:
+            return {'error': 'Phone number already registered.'}, 400
+        
+        # Check if email is already registered (before sending verification email)
+        existing_email = Passenger.query.filter_by(email=email).first()
+        if existing_email:
+            return {'error': 'Email already registered.'}, 400
+        
         # If verification code is provided, verify it first
         if verification_code:
             from app.utils.email_service import verify_email_code
@@ -231,16 +241,13 @@ def passenger_signup():
             if not is_verified:
                 return {'error': message}, 400
             
-            # Check if passenger exists (only after successful verification)
-            existing_passenger = Passenger.query.filter_by(phone_number=phone_number).first()
-            if existing_passenger:
-                return {'error': 'Phone number already registered.'}, 400
+            # Phone number already checked before sending verification email
             
             # Create new passenger
             new_passenger = Passenger(
                 username=username,
-                phone_number=phone_number,
-                email=email
+                email=email,
+                phone_number=phone_number
             )
             new_passenger.set_password(password)
             db.session.add(new_passenger)
@@ -248,7 +255,13 @@ def passenger_signup():
             new_passenger.passenger_uid = f"PAX-{new_passenger.id:05d}"
             
             # Mark verification as used only after successful account creation
-            verification.is_verified = True
+            from app.models import EmailVerification
+            verification_record = EmailVerification.query.filter_by(
+                email=email,
+                verification_code=verification_code
+            ).first()
+            if verification_record:
+                verification_record.is_verified = True
             db.session.commit()
             
             return {'success': 'Account created successfully! Please log in.'}, 200

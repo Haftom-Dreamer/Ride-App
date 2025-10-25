@@ -42,6 +42,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       });
     }
 
+    // Handle successful login
+    if (authState.isAuthenticated && authState.user != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Login successful! Welcome back.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        // Navigate to home screen or main app
+        Navigator.of(context).pushReplacementNamed('/home');
+      });
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -73,10 +87,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     const SizedBox(height: 24),
                     Text(
                       'Welcome Back',
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey.shade800,
-                          ),
+                      style:
+                          Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey.shade800,
+                              ),
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -230,11 +245,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     GestureDetector(
                       onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => const SignupScreen(),
-                          ),
-                        );
+                        Navigator.pushNamed(context, '/signup');
                       },
                       child: Text(
                         'Sign Up',

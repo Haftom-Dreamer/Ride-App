@@ -3,9 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'core/config/app_config.dart';
 import 'shared/data/api_client.dart';
-import 'features/auth/presentation/providers/auth_provider.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
-import 'features/ride/presentation/screens/main_screen.dart';
+import 'features/auth/presentation/screens/signup_screen.dart';
+import 'features/ride/presentation/screens/home_screen.dart';
+import 'features/auth/presentation/providers/auth_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -63,6 +64,11 @@ class MyApp extends StatelessWidget {
         ),
       ),
       home: const AuthWrapper(),
+      routes: {
+        '/login': (context) => const LoginScreen(),
+        '/signup': (context) => const SignupScreen(),
+        '/home': (context) => const HomeScreen(),
+      },
     );
   }
 }
@@ -72,7 +78,13 @@ class AuthWrapper extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // For now, always show login screen to test
-    return const LoginScreen();
+    final authState = ref.watch(authProvider);
+
+    // Show home screen if authenticated, otherwise show login
+    if (authState.isAuthenticated && authState.user != null) {
+      return const HomeScreen();
+    } else {
+      return const LoginScreen();
+    }
   }
 }

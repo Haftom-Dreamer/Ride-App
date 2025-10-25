@@ -25,6 +25,7 @@ class Passenger(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     passenger_uid = db.Column(db.String(20), unique=True, nullable=True, index=True)
     username = db.Column(db.String(80), nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False, index=True)
     phone_number = db.Column(db.String(20), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(200), nullable=False)
     profile_picture = db.Column(db.String(255), nullable=True, default='static/img/default_user.svg')
