@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
+import '../services/route_service.dart';
 
 class MapWidget extends StatefulWidget {
   final MapController mapController;
@@ -11,6 +12,7 @@ class MapWidget extends StatefulWidget {
   final Function(LatLng) onLocationUpdate;
   final Function(LatLng) onPickupSelected;
   final Function(LatLng) onDestinationSelected;
+  final Function(LatLng)? onMapMoved; // Callback for when map moves
 
   const MapWidget({
     super.key,
@@ -21,6 +23,7 @@ class MapWidget extends StatefulWidget {
     required this.onLocationUpdate,
     required this.onPickupSelected,
     required this.onDestinationSelected,
+    this.onMapMoved,
   });
 
   @override
@@ -29,11 +32,41 @@ class MapWidget extends StatefulWidget {
 
 class _MapWidgetState extends State<MapWidget> {
   bool _isLocationPermissionGranted = false;
+  List<LatLng>? _routePoints;
 
   @override
   void initState() {
     super.initState();
     _requestLocationPermission();
+  }
+
+  @override
+  void didUpdateWidget(MapWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // Update route when pickup or destination changes
+    if (widget.pickupLocation != null && widget.destinationLocation != null) {
+      _updateRoute();
+    } else {
+      setState(() {
+        _routePoints = null;
+      });
+    }
+  }
+
+  Future<void> _updateRoute() async {
+    if (widget.pickupLocation != null && widget.destinationLocation != null) {
+      final route = await RouteService.getRoute(
+        widget.pickupLocation!,
+        widget.destinationLocation!,
+      );
+
+      if (mounted) {
+        setState(() {
+          _routePoints = route;
+        });
+      }
+    }
   }
 
   Future<void> _requestLocationPermission() async {
@@ -65,9 +98,9 @@ class _MapWidgetState extends State<MapWidget> {
       );
 
       final location = LatLng(position.latitude, position.longitude);
-      
+
       widget.onLocationUpdate(location);
-      
+
       // Move map to current location
       widget.mapController.move(location, 15.0);
     } catch (e) {
@@ -80,10 +113,21 @@ class _MapWidgetState extends State<MapWidget> {
     return FlutterMap(
       mapController: widget.mapController,
       options: MapOptions(
-        initialCenter: widget.currentLocation ?? const LatLng(9.0192, 38.7525), // Addis Ababa
+        initialCenter: widget.currentLocation ??
+            const LatLng(9.0192, 38.7525), // Addis Ababa
         initialZoom: 12.0,
         minZoom: 8.0,
         maxZoom: 18.0,
+        // Notify parent when map position changes (user pans/zooms)
+        onPositionChanged: (position, hasGesture) {
+          if (position.center != null && widget.onMapMoved != null) {
+            try {
+              widget.onMapMoved!(position.center!);
+            } catch (e) {
+              // swallow errors from callbacks
+            }
+          }
+        },
         onTap: (tapPosition, point) {
           _handleMapTap(point);
         },
@@ -94,7 +138,7 @@ class _MapWidgetState extends State<MapWidget> {
           urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
           userAgentPackageName: 'com.example.passenger_app',
         ),
-        
+
         // Current location marker
         if (widget.currentLocation != null)
           MarkerLayer(
@@ -125,7 +169,7 @@ class _MapWidgetState extends State<MapWidget> {
               ),
             ],
           ),
-        
+
         // Pickup location marker
         if (widget.pickupLocation != null)
           MarkerLayer(
@@ -156,7 +200,7 @@ class _MapWidgetState extends State<MapWidget> {
               ),
             ],
           ),
-        
+
         // Destination location marker
         if (widget.destinationLocation != null)
           MarkerLayer(
@@ -187,13 +231,18 @@ class _MapWidgetState extends State<MapWidget> {
               ),
             ],
           ),
-        
-        // Route polyline (TODO: implement when backend provides route data)
-        // PolylineLayer(
-        //   polylines: [
-        //     // Add route polyline here
-        //   ],
-        // ),
+
+        // Route polyline
+        if (_routePoints != null && _routePoints!.isNotEmpty)
+          PolylineLayer(
+            polylines: [
+              Polyline(
+                points: _routePoints!,
+                color: Colors.blue,
+                strokeWidth: 4.0,
+              ),
+            ],
+          ),
       ],
     );
   }

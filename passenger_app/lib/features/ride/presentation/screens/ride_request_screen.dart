@@ -6,15 +6,17 @@ import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../widgets/map_widget.dart';
-import '../widgets/ride_request_bottom_sheet.dart';
-import '../widgets/location_search_widget.dart';
+import '../widgets/address_autocomplete_widget.dart';
+import '../services/geocoding_service.dart';
 import '../../../../shared/domain/models/ride.dart';
 import '../../../../shared/domain/models/driver.dart';
 
 enum RideStatus {
-  booking,
-  waiting,
-  assigned,
+  home, // New initial state
+  searching, // When user is searching for destination
+  rideConfirmation, // When pickup and destination are set
+  waiting, // Finding driver
+  assigned, // Driver found
   onTrip,
   completed,
   canceled,
@@ -45,12 +47,13 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
   double? _distanceKm;
 
   // Ride state
-  RideStatus _currentStatus = RideStatus.booking;
-  bool _isRequestingRide = false;
+  RideStatus _currentStatus = RideStatus.home;
   Driver? _assignedDriver;
 
   // Polling for ride status
   bool _isPolling = false;
+  // Debounce timer for map center movement to avoid frequent reverse-geocoding
+  Timer? _moveDebounce;
 
   @override
   void initState() {
@@ -61,6 +64,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
   @override
   void dispose() {
     _stopPolling();
+    _moveDebounce?.cancel();
     super.dispose();
   }
 
@@ -92,23 +96,41 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
     }
   }
 
-  void _updatePickupAddress(LatLng location) {
-    // TODO: Implement reverse geocoding to get address
+  Future<void> _updatePickupAddress(LatLng location) async {
+    final address = await GeocodingService.coordinatesToAddress(location);
     setState(() {
-      _pickupAddress = 'Current Location';
+      _pickupAddress = address ?? 'Current Location';
     });
   }
 
-  void _updateDestinationAddress(LatLng location) {
-    // TODO: Implement reverse geocoding to get address
+  Future<void> _updateDestinationAddress(LatLng location) async {
+    final address = await GeocodingService.coordinatesToAddress(location);
     setState(() {
-      _destinationAddress = 'Selected Location';
+      _destinationAddress = address ?? 'Selected Location';
     });
   }
 
   void _onLocationUpdate(LatLng location) {
     setState(() {
       _currentLocation = location;
+    });
+  }
+
+  void _onMapMoved(LatLng center) {
+    // Update pickup location as user pans the map (center-pin UX)
+    setState(() {
+      _pickupLocation = center;
+    });
+
+    // Debounce reverse-geocoding so we only query when user stops moving the map
+    _moveDebounce?.cancel();
+    _moveDebounce = Timer(const Duration(milliseconds: 700), () async {
+      if (!mounted) return;
+      try {
+        await _updatePickupAddress(center);
+      } catch (e) {
+        // ignore geocoding errors silently
+      }
     });
   }
 
@@ -126,6 +148,34 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
     });
     _updateDestinationAddress(location);
     _calculateFare();
+    // Move map to show destination clearly
+    try {
+      _mapController.move(location, 15.0);
+    } catch (e) {
+      // ignore if controller not ready
+    }
+  }
+
+  Future<void> _onDestinationAddressChanged(String address) async {
+    setState(() {
+      _destinationAddress = address;
+    });
+
+    if (address.isNotEmpty) {
+      final coordinates = await GeocodingService.addressToCoordinates(address);
+      if (coordinates != null) {
+        setState(() {
+          _destinationLocation = coordinates;
+        });
+        _calculateFare();
+        // center map on destination so user can see the red pin and route
+        try {
+          _mapController.move(coordinates, 15.0);
+        } catch (e) {
+          // controller may not be ready yet
+        }
+      }
+    }
   }
 
   void _calculateFare() {
@@ -175,10 +225,6 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
       return;
     }
 
-    setState(() {
-      _isRequestingRide = true;
-    });
-
     try {
       // TODO: Implement actual ride request API call
       final rideData = {
@@ -204,7 +250,6 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
       if (mounted) {
         setState(() {
           _currentStatus = RideStatus.waiting;
-          _isRequestingRide = false;
         });
 
         _startPolling();
@@ -224,9 +269,6 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
             backgroundColor: Colors.red,
           ),
         );
-        setState(() {
-          _isRequestingRide = false;
-        });
       }
     }
   }
@@ -366,7 +408,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
 
   void _newRide() {
     setState(() {
-      _currentStatus = RideStatus.booking;
+      _currentStatus = RideStatus.home;
       _assignedDriver = null;
       _pickupLocation = _currentLocation;
       _destinationLocation = null;
@@ -388,9 +430,43 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
         title: Text(_getAppBarTitle()),
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
+        leading: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              margin: const EdgeInsets.only(left: 8),
+              child: Image.asset(
+                'assets/images/Selamawi-logo 1 png.png', // Add your logo path
+                height: 32,
+                width: 32,
+                errorBuilder: (context, error, stackTrace) {
+                  // Fallback to text logo if image not found
+                  return Container(
+                    height: 32,
+                    width: 32,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        'RIDE',
+                        style: TextStyle(
+                          color: Colors.blue,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ],
         ),
       ),
       body: _buildCurrentScreen(),
@@ -399,8 +475,12 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
 
   String _getAppBarTitle() {
     switch (_currentStatus) {
-      case RideStatus.booking:
-        return 'Request Ride';
+      case RideStatus.home:
+        return 'Select Address';
+      case RideStatus.searching:
+        return 'Search Destination';
+      case RideStatus.rideConfirmation:
+        return 'Confirm Ride';
       case RideStatus.waiting:
         return 'Finding Driver...';
       case RideStatus.assigned:
@@ -416,8 +496,12 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
 
   Widget _buildCurrentScreen() {
     switch (_currentStatus) {
-      case RideStatus.booking:
-        return _buildBookingScreen();
+      case RideStatus.home:
+        return _buildHomeScreen();
+      case RideStatus.searching:
+        return _buildSearchingScreen();
+      case RideStatus.rideConfirmation:
+        return _buildRideConfirmationScreen();
       case RideStatus.waiting:
         return _buildWaitingScreen();
       case RideStatus.assigned:
@@ -431,7 +515,88 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
     }
   }
 
-  Widget _buildBookingScreen() {
+  Widget _buildHomeScreen() {
+    return Stack(
+      children: [
+        // Map - 90% of screen
+        MapWidget(
+          mapController: _mapController,
+          currentLocation: _currentLocation,
+          pickupLocation: _pickupLocation,
+          destinationLocation: _destinationLocation,
+          onLocationUpdate: _onLocationUpdate,
+          onPickupSelected: _onPickupSelected,
+          onDestinationSelected: _onDestinationSelected,
+          onMapMoved: _onMapMoved,
+        ),
+
+        // Fixed pickup pin in center
+        Center(
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.green,
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 3),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.green.withOpacity(0.3),
+                  blurRadius: 10,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            child: const Icon(
+              Icons.location_on,
+              color: Colors.white,
+              size: 24,
+            ),
+          ),
+        ),
+
+        // Pickup location text above map
+        Positioned(
+          top: 16,
+          left: 16,
+          right: 16,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Text(
+              _pickupAddress.isEmpty
+                  ? 'Move the map to set pickup'
+                  : _pickupAddress,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ),
+
+        // Initial bottom sheet (25% of screen)
+        Positioned(
+          bottom: 0,
+          left: 0,
+          right: 0,
+          child: _buildInitialBottomSheet(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSearchingScreen() {
     return Stack(
       children: [
         // Map
@@ -445,40 +610,633 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
           onDestinationSelected: _onDestinationSelected,
         ),
 
-        // Top location search bar
-        Positioned(
-          top: 16,
-          left: 16,
-          right: 16,
-          child: LocationSearchWidget(
-            pickupAddress: _pickupAddress,
-            destinationAddress: _destinationAddress,
-            onPickupChanged: (address) {
-              // TODO: Implement geocoding to get coordinates from address
-            },
-            onDestinationChanged: (address) {
-              // TODO: Implement geocoding to get coordinates from address
-            },
-          ),
-        ),
-
-        // Bottom ride details and request button
+        // Expanded bottom sheet covering map
         Positioned(
           bottom: 0,
           left: 0,
           right: 0,
-          child: RideRequestBottomSheet(
-            pickupLocation: _pickupLocation,
-            destinationLocation: _destinationLocation,
-            selectedRideType: _selectedRideType,
-            estimatedFare: _estimatedFare,
-            isRequestingRide: _isRequestingRide,
-            onRideTypeChanged: _onRideTypeChanged,
-            onRequestRide: _requestRide,
-          ),
+          child: _buildSearchBottomSheet(),
         ),
       ],
     );
+  }
+
+  Widget _buildRideConfirmationScreen() {
+    return Stack(
+      children: [
+        // Map with route line
+        MapWidget(
+          mapController: _mapController,
+          currentLocation: _currentLocation,
+          pickupLocation: _pickupLocation,
+          destinationLocation: _destinationLocation,
+          onLocationUpdate: _onLocationUpdate,
+          onPickupSelected: _onPickupSelected,
+          onDestinationSelected: _onDestinationSelected,
+        ),
+
+        // Ride confirmation bottom sheet (50% of screen)
+        Positioned(
+          bottom: 0,
+          left: 0,
+          right: 0,
+          child: _buildRideConfirmationBottomSheet(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInitialBottomSheet() {
+    final screenHeight = MediaQuery.of(context).size.height;
+    return Container(
+      height: screenHeight * 0.25,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 10,
+            offset: Offset(0, -2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Handle bar
+          Container(
+            width: 40,
+            height: 4,
+            margin: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade400,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+
+          // Content
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  // Main search bar
+                  InkWell(
+                    onTap: () {
+                      setState(() {
+                        _currentStatus = RideStatus.searching;
+                      });
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.search,
+                            color: Colors.grey.shade600,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            'Where to?',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Saved Places and Recent Trips
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildShortcutItem(
+                          icon: Icons.home,
+                          title: 'Home',
+                          subtitle: '705 Green Summit',
+                          onTap: () => _useShortcut('705 Green Summit'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildShortcutItem(
+                          icon: Icons.work,
+                          title: 'Work',
+                          subtitle: 'Studio 08 Jake Stream',
+                          onTap: () => _useShortcut('Studio 08 Jake Stream'),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // Recent trips
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildShortcutItem(
+                          icon: Icons.history,
+                          title: 'Recent',
+                          subtitle: 'Studio 65Murphy Islands',
+                          onTap: () => _useShortcut('Studio 65Murphy Islands'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildShortcutItem(
+                          icon: Icons.history,
+                          title: 'Recent',
+                          subtitle: 'Mexicali Ct 13a',
+                          onTap: () => _useShortcut('Mexicali Ct 13a'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShortcutItem({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: Colors.grey.shade600,
+              size: 16,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: Colors.grey.shade500,
+                      fontSize: 10,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSearchBottomSheet() {
+    final screenHeight = MediaQuery.of(context).size.height;
+    return Container(
+      height: screenHeight * 0.8,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 10,
+            offset: Offset(0, -2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Handle bar
+          Container(
+            width: 40,
+            height: 4,
+            margin: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade400,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+
+          // Header
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              children: [
+                IconButton(
+                  onPressed: () {
+                    setState(() {
+                      _currentStatus = RideStatus.home;
+                    });
+                  },
+                  icon: const Icon(Icons.arrow_back),
+                ),
+                const Text(
+                  'Search Destination',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Search fields
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  // FROM field
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 12,
+                          height: 12,
+                          decoration: const BoxDecoration(
+                            color: Colors.green,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            _pickupAddress.isEmpty
+                                ? 'Pickup Location'
+                                : _pickupAddress,
+                            style: TextStyle(
+                              color: _pickupAddress.isEmpty
+                                  ? Colors.grey.shade600
+                                  : Colors.black,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // TO field with autocomplete
+                  Row(
+                    children: [
+                      Expanded(
+                        child: AddressAutocompleteWidget(
+                          hintText: 'Where to?',
+                          initialValue: _destinationAddress,
+                          onAddressSelected: (address) {
+                            setState(() {
+                              _destinationAddress = address;
+                            });
+                            _onDestinationAddressChanged(address);
+                          },
+                        ),
+                      ),
+                      if (_destinationAddress.isNotEmpty) ...[
+                        const SizedBox(width: 8),
+                        IconButton(
+                          onPressed: _resetDestination,
+                          icon: const Icon(Icons.clear, color: Colors.red),
+                          tooltip: 'Clear destination',
+                        ),
+                      ],
+                    ],
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // Search results or Next button
+                  if (_destinationAddress.isNotEmpty)
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          setState(() {
+                            _currentStatus = RideStatus.rideConfirmation;
+                          });
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue.shade700,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'Next',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRideConfirmationBottomSheet() {
+    final screenHeight = MediaQuery.of(context).size.height;
+    return Container(
+      height: screenHeight * 0.5,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 10,
+            offset: Offset(0, -2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Handle bar
+          Container(
+            width: 40,
+            height: 4,
+            margin: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade400,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+
+          // Content
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  // Ride options
+                  Text(
+                    'Choose Vehicle',
+                    style: TextStyle(
+                      color: Colors.grey.shade700,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildVehicleOption(
+                          icon: Icons.motorcycle,
+                          title: 'Bajaj',
+                          price: 'ETB 30-40',
+                          isSelected: _selectedRideType == RideType.economy,
+                          onTap: () => _onRideTypeChanged(RideType.economy),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildVehicleOption(
+                          icon: Icons.directions_car,
+                          title: 'Standard Car',
+                          price: 'ETB 50-60',
+                          isSelected: _selectedRideType == RideType.standard,
+                          onTap: () => _onRideTypeChanged(RideType.standard),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildVehicleOption(
+                          icon: Icons.directions_car_filled,
+                          title: 'Minibus',
+                          price: 'ETB 80-100',
+                          isSelected: _selectedRideType == RideType.premium,
+                          onTap: () => _onRideTypeChanged(RideType.premium),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // Price estimate
+                  if (_estimatedFare != null)
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade50,
+                        border: Border.all(color: Colors.green.shade200),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.attach_money,
+                            color: Colors.green.shade700,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Price Estimate: ',
+                            style: TextStyle(
+                              color: Colors.green.shade700,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          Text(
+                            'ETB ${_estimatedFare!.toStringAsFixed(0)}',
+                            style: TextStyle(
+                              color: Colors.green.shade700,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  const SizedBox(height: 20),
+
+                  // Payment method
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.payment,
+                          color: Colors.grey.shade600,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          'Payment: $_selectedPayment',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const Spacer(),
+                        TextButton(
+                          onPressed: () {
+                            // TODO: Show payment options
+                          },
+                          child: const Text('Change'),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // Confirm booking button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _requestRide,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue.shade700,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Confirm Booking',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVehicleOption({
+    required IconData icon,
+    required String title,
+    required String price,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.blue.shade50 : Colors.grey.shade50,
+          border: Border.all(
+            color: isSelected ? Colors.blue : Colors.grey.shade300,
+            width: isSelected ? 2 : 1,
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? Colors.blue : Colors.grey,
+              size: 24,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              style: TextStyle(
+                color: isSelected ? Colors.blue : Colors.grey.shade600,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              price,
+              style: TextStyle(
+                color: isSelected ? Colors.blue.shade700 : Colors.grey.shade500,
+                fontSize: 10,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _useShortcut(String destination) {
+    setState(() {
+      _destinationAddress = destination;
+      _currentStatus = RideStatus.rideConfirmation;
+    });
+    _onDestinationAddressChanged(destination);
+  }
+
+  void _resetDestination() {
+    setState(() {
+      _destinationAddress = '';
+      _destinationLocation = null;
+      _estimatedFare = null;
+    });
   }
 
   Widget _buildWaitingScreen() {
