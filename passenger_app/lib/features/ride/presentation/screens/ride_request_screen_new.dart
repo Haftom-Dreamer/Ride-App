@@ -10,8 +10,6 @@ import '../widgets/map_widget.dart';
 import '../services/geocoding_service.dart';
 import '../services/route_service.dart';
 import '../../../../shared/domain/models/driver.dart';
-import 'my_trips_screen.dart';
-import 'profile_screen.dart';
 
 enum RideStatus {
   home, // Initial state with bottom sheet
@@ -58,7 +56,8 @@ class RideRequestScreen extends ConsumerStatefulWidget {
   ConsumerState<RideRequestScreen> createState() => _RideRequestScreenState();
 }
 
-class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with TickerProviderStateMixin {
+class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
+    with TickerProviderStateMixin {
   final MapController _mapController = MapController();
 
   // Location data
@@ -113,7 +112,8 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
   ];
 
   // UI Controllers
-  final DraggableScrollableController _sheetController = DraggableScrollableController();
+  final DraggableScrollableController _sheetController =
+      DraggableScrollableController();
   final TextEditingController _searchController = TextEditingController();
   Timer? _searchDebounce;
   List<TigrayLocation> _searchResults = [];
@@ -151,13 +151,15 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
         permission = await Geolocator.requestPermission();
       }
 
-      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
         // Use Mekelle as default
         setState(() {
           _currentLocation = TigrayLocations.defaultCenter;
           _pickupLocation = TigrayLocations.defaultCenter;
         });
-        _mapController.move(TigrayLocations.defaultCenter, TigrayLocations.defaultZoom);
+        _mapController.move(
+            TigrayLocations.defaultCenter, TigrayLocations.defaultZoom);
         await _updatePickupAddress(TigrayLocations.defaultCenter);
         return;
       }
@@ -179,7 +181,8 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
         _currentLocation = TigrayLocations.defaultCenter;
         _pickupLocation = TigrayLocations.defaultCenter;
       });
-      _mapController.move(TigrayLocations.defaultCenter, TigrayLocations.defaultZoom);
+      _mapController.move(
+          TigrayLocations.defaultCenter, TigrayLocations.defaultZoom);
       await _updatePickupAddress(TigrayLocations.defaultCenter);
     }
   }
@@ -190,9 +193,11 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
       final closestLocation = TigrayLocations.findClosestLocation(location);
       if (closestLocation != null) {
         final Distance distance = Distance();
-        final distanceMeters = distance.as(LengthUnit.Meter, location, closestLocation.coordinates);
-        
-        if (distanceMeters < 500) { // Within 500 meters
+        final distanceMeters = distance.as(
+            LengthUnit.Meter, location, closestLocation.coordinates);
+
+        if (distanceMeters < 500) {
+          // Within 500 meters
           setState(() {
             _pickupAddress = closestLocation.name;
           });
@@ -217,7 +222,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
       setState(() {
         _pickupLocation = newCenter;
       });
-      
+
       // Debounce address updates
       _searchDebounce?.cancel();
       _searchDebounce = Timer(const Duration(milliseconds: 500), () {
@@ -270,8 +275,9 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
     if (_pickupLocation == null || _destinationLocation == null) return;
 
     try {
-      final route = await RouteService.getRoute(_pickupLocation!, _destinationLocation!);
-      
+      final route =
+          await RouteService.getRoute(_pickupLocation!, _destinationLocation!);
+
       setState(() {
         _routePoints = route;
       });
@@ -304,9 +310,11 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
   }
 
   double _calculateFare(double distanceKm) {
-    final vehicle = _vehicleOptions.firstWhere((v) => v.type == _selectedVehicle);
+    final vehicle =
+        _vehicleOptions.firstWhere((v) => v.type == _selectedVehicle);
     final baseFare = vehicle.minPrice.toDouble();
-    final perKmRate = (vehicle.maxPrice - vehicle.minPrice) / 10; // Assuming 10km max distance
+    final perKmRate = (vehicle.maxPrice - vehicle.minPrice) /
+        10; // Assuming 10km max distance
     return baseFare + (distanceKm * perKmRate);
   }
 
@@ -316,7 +324,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
         _pickupLocation!,
         _destinationLocation!,
       );
-      
+
       // Add padding
       final centerLat = (bounds.north + bounds.south) / 2;
       final centerLng = (bounds.east + bounds.west) / 2;
@@ -390,21 +398,18 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
         children: [
           // Map Layer
           _buildMap(),
-          
+
           // Top Bar
-          if (_currentStatus != RideStatus.searchingDestination)
-            _buildTopBar(),
-          
+          if (_currentStatus != RideStatus.searchingDestination) _buildTopBar(),
+
           // Fixed Pickup Pin (only in home state)
-          if (_currentStatus == RideStatus.home)
-            _buildFixedPickupPin(),
-          
+          if (_currentStatus == RideStatus.home) _buildFixedPickupPin(),
+
           // Bottom Sheet or Full Screen Content
           _buildBottomContent(),
-          
+
           // Bottom Navigation Bar
-          if (_shouldShowBottomNav())
-            _buildBottomNavigationBar(),
+          if (_shouldShowBottomNav()) _buildBottomNavigationBar(),
         ],
       ),
     );
@@ -414,7 +419,8 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
     return MapWidget(
       mapController: _mapController,
       currentLocation: _currentLocation,
-      pickupLocation: _currentStatus != RideStatus.home ? _pickupLocation : null,
+      pickupLocation:
+          _currentStatus != RideStatus.home ? _pickupLocation : null,
       destinationLocation: _destinationLocation,
       routePoints: _routePoints,
       onLocationUpdate: (location) {},
@@ -448,11 +454,12 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
               CircleAvatar(
                 radius: 20,
                 backgroundColor: AppColors.lightBlue,
-                child: Icon(Icons.person, color: AppColors.primaryBlue, size: 24),
+                child:
+                    Icon(Icons.person, color: AppColors.primaryBlue, size: 24),
               ),
-              
+
               const SizedBox(width: 12),
-              
+
               // Title
               Expanded(
                 child: Text(
@@ -461,9 +468,9 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
                   textAlign: TextAlign.center,
                 ),
               ),
-              
+
               const SizedBox(width: 12),
-              
+
               // Notification Icon
               IconButton(
                 onPressed: () {},
@@ -506,7 +513,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
               ),
             ),
           ),
-          
+
           // Green pickup pin
           Container(
             width: 50,
@@ -529,7 +536,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
               size: 30,
             ),
           ),
-          
+
           // Pin shadow
           Container(
             margin: const EdgeInsets.only(top: 2),
@@ -606,9 +613,9 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
                   ),
                 ),
               ),
-              
+
               const SizedBox(height: 20),
-              
+
               // Where to? Search Bar
               InkWell(
                 onTap: () {
@@ -618,7 +625,8 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
                   });
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                   decoration: BoxDecoration(
                     color: AppColors.gray50,
                     borderRadius: BorderRadius.circular(12),
@@ -639,30 +647,32 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
                   ),
                 ),
               ),
-              
+
               const SizedBox(height: 24),
-              
+
               // Saved Places
               Text(
                 'Saved Places',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
-              
+
               const SizedBox(height: 12),
-              
-              ...SampleSavedPlaces.defaultSavedPlaces.map((place) => _buildSavedPlaceCard(place)),
-              
+
+              ...SampleSavedPlaces.defaultSavedPlaces
+                  .map((place) => _buildSavedPlaceCard(place)),
+
               const SizedBox(height: 24),
-              
+
               // Recent Trips
               Text(
                 'Recent Trips',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
-              
+
               const SizedBox(height: 12),
-              
-              ...SampleRecentTrips.defaultRecentTrips.map((trip) => _buildRecentTripCard(trip)),
+
+              ...SampleRecentTrips.defaultRecentTrips
+                  .map((trip) => _buildRecentTripCard(trip)),
             ],
           ),
         );
@@ -689,18 +699,20 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: place.icon == 'home' ? AppColors.success.withOpacity(0.1) : AppColors.primaryBlue.withOpacity(0.1),
+                  color: place.icon == 'home'
+                      ? AppColors.success.withOpacity(0.1)
+                      : AppColors.primaryBlue.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
                   place.icon == 'home' ? Icons.home : Icons.work,
-                  color: place.icon == 'home' ? AppColors.success : AppColors.primaryBlue,
+                  color: place.icon == 'home'
+                      ? AppColors.success
+                      : AppColors.primaryBlue,
                   size: 20,
                 ),
               ),
-              
               const SizedBox(width: 12),
-              
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -724,7 +736,6 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
                   ],
                 ),
               ),
-              
               Icon(Icons.chevron_right, color: AppColors.gray400),
             ],
           ),
@@ -761,9 +772,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
                   size: 20,
                 ),
               ),
-              
               const SizedBox(width: 12),
-              
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -787,7 +796,6 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
                   ],
                 ),
               ),
-              
               Icon(Icons.chevron_right, color: AppColors.gray400),
             ],
           ),
@@ -824,7 +832,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
                 ],
               ),
             ),
-            
+
             // Search Fields
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -844,7 +852,8 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
                       const SizedBox(width: 12),
                       Expanded(
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
                           decoration: BoxDecoration(
                             color: AppColors.gray50,
                             borderRadius: BorderRadius.circular(8),
@@ -860,9 +869,9 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
                       ),
                     ],
                   ),
-                  
+
                   const SizedBox(height: 12),
-                  
+
                   // TO field
                   Row(
                     children: [
@@ -884,10 +893,12 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
                             filled: true,
                             fillColor: AppColors.gray50,
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.all(Radius.circular(8)),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(8)),
                               borderSide: BorderSide.none,
                             ),
-                            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
                           ),
                           onChanged: _onSearchChanged,
                         ),
@@ -897,10 +908,10 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
                 ],
               ),
             ),
-            
+
             const SizedBox(height: 16),
             const Divider(height: 1),
-            
+
             // Search Results
             Expanded(
               child: ListView.builder(
@@ -921,7 +932,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
   Widget _buildLocationResultCard(TigrayLocation location) {
     IconData icon;
     Color iconColor;
-    
+
     switch (location.category) {
       case 'transport':
         icon = Icons.local_taxi;
@@ -943,7 +954,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
         icon = Icons.place;
         iconColor = AppColors.textSecondary;
     }
-    
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
@@ -962,9 +973,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
                 ),
                 child: Icon(icon, color: iconColor, size: 20),
               ),
-              
               const SizedBox(width: 12),
-              
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1036,9 +1045,9 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
                   ),
                 ),
               ),
-              
+
               const SizedBox(height: 20),
-              
+
               // Trip Summary
               Container(
                 padding: const EdgeInsets.all(16),
@@ -1050,7 +1059,8 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.circle, color: AppColors.pickupGreen, size: 12),
+                        const Icon(Icons.circle,
+                            color: AppColors.pickupGreen, size: 12),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -1065,7 +1075,8 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        const Icon(Icons.circle, color: AppColors.destinationRed, size: 12),
+                        const Icon(Icons.circle,
+                            color: AppColors.destinationRed, size: 12),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -1080,17 +1091,21 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
                     const SizedBox(height: 12),
                     Row(
                       children: [
-                        Icon(Icons.access_time, size: 16, color: AppColors.textSecondary),
+                        Icon(Icons.access_time,
+                            size: 16, color: AppColors.textSecondary),
                         const SizedBox(width: 4),
                         Text(
                           _estimatedDuration ?? '-',
                           style: TextStyle(color: AppColors.textSecondary),
                         ),
                         const SizedBox(width: 16),
-                        Icon(Icons.straighten, size: 16, color: AppColors.textSecondary),
+                        Icon(Icons.straighten,
+                            size: 16, color: AppColors.textSecondary),
                         const SizedBox(width: 4),
                         Text(
-                          _distanceKm != null ? '${_distanceKm!.toStringAsFixed(1)} km' : '-',
+                          _distanceKm != null
+                              ? '${_distanceKm!.toStringAsFixed(1)} km'
+                              : '-',
                           style: TextStyle(color: AppColors.textSecondary),
                         ),
                       ],
@@ -1098,21 +1113,21 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
                   ],
                 ),
               ),
-              
+
               const SizedBox(height: 24),
-              
+
               // Vehicle Selection
               Text(
                 'Select Vehicle',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
-              
+
               const SizedBox(height: 12),
-              
+
               ..._vehicleOptions.map((vehicle) => _buildVehicleCard(vehicle)),
-              
+
               const SizedBox(height: 24),
-              
+
               // Payment Method
               Row(
                 children: [
@@ -1136,9 +1151,9 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
                   ),
                 ],
               ),
-              
+
               const SizedBox(height: 24),
-              
+
               // Request Ride Button
               SizedBox(
                 width: double.infinity,
@@ -1149,7 +1164,8 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
                   ),
                   child: Text(
                     'Request ${_vehicleOptions.firstWhere((v) => v.type == _selectedVehicle).name} - ETB ${_estimatedFare?.toStringAsFixed(0) ?? '0'}',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                 ),
               ),
@@ -1162,7 +1178,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
 
   Widget _buildVehicleCard(VehicleOption vehicle) {
     final isSelected = _selectedVehicle == vehicle.type;
-    
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
@@ -1191,9 +1207,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
                 vehicle.icon,
                 style: const TextStyle(fontSize: 32),
               ),
-              
               const SizedBox(width: 12),
-              
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1217,13 +1231,14 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
                   ],
                 ),
               ),
-              
               Text(
                 'ETB ${vehicle.minPrice}-${vehicle.maxPrice}',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: isSelected ? AppColors.primaryBlue : AppColors.textSecondary,
+                  color: isSelected
+                      ? AppColors.primaryBlue
+                      : AppColors.textSecondary,
                 ),
               ),
             ],
@@ -1260,7 +1275,8 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
                     height: 100 + (_pulseAnimationController.value * 40),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AppColors.primaryBlue.withOpacity(0.1 - (_pulseAnimationController.value * 0.1)),
+                      color: AppColors.primaryBlue.withOpacity(
+                          0.1 - (_pulseAnimationController.value * 0.1)),
                     ),
                   ),
                   // Inner circle
@@ -1281,17 +1297,17 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
               );
             },
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           Text(
             'Finding nearby drivers...',
             style: Theme.of(context).textTheme.displaySmall,
             textAlign: TextAlign.center,
           ),
-          
+
           const SizedBox(height: 8),
-          
+
           Text(
             'This may take a few moments',
             style: TextStyle(
@@ -1300,9 +1316,9 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
             ),
             textAlign: TextAlign.center,
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           TextButton(
             onPressed: _cancelRide,
             child: Text(
@@ -1317,7 +1333,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
 
   Widget _buildDriverAssignedSheet() {
     if (_assignedDriver == null) return const SizedBox.shrink();
-    
+
     return Positioned(
       bottom: 0,
       left: 0,
@@ -1353,17 +1369,17 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
                   ),
                 ),
               ),
-              
+
               const SizedBox(height: 16),
-              
+
               // Status
               Text(
                 'Driver Arriving',
                 style: Theme.of(context).textTheme.displaySmall,
               ),
-              
+
               const SizedBox(height: 8),
-              
+
               Text(
                 'Arriving in 5 min',
                 style: TextStyle(
@@ -1371,9 +1387,9 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
                   color: AppColors.textSecondary,
                 ),
               ),
-              
+
               const SizedBox(height: 20),
-              
+
               // Driver Info
               Row(
                 children: [
@@ -1389,9 +1405,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
                       ),
                     ),
                   ),
-                  
                   const SizedBox(width: 16),
-                  
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1406,7 +1420,8 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            const Icon(Icons.star, color: AppColors.warning, size: 16),
+                            const Icon(Icons.star,
+                                color: AppColors.warning, size: 16),
                             const SizedBox(width: 4),
                             Text(
                               '${_assignedDriver!.rating} • ${_assignedDriver!.totalRides} trips',
@@ -1428,9 +1443,9 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
                       ],
                     ),
                   ),
-                  
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       color: AppColors.gray100,
                       borderRadius: BorderRadius.circular(20),
@@ -1445,9 +1460,9 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
                   ),
                 ],
               ),
-              
+
               const SizedBox(height: 20),
-              
+
               // Action Buttons
               Row(
                 children: [
@@ -1462,9 +1477,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
                       ),
                     ),
                   ),
-                  
                   const SizedBox(width: 12),
-                  
                   Expanded(
                     child: ElevatedButton.icon(
                       onPressed: () {
@@ -1501,16 +1514,16 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
                 color: AppColors.success,
                 size: 80,
               ),
-              
+
               const SizedBox(height: 24),
-              
+
               Text(
                 'Trip Completed!',
                 style: Theme.of(context).textTheme.displayMedium,
               ),
-              
+
               const SizedBox(height: 32),
-              
+
               // Trip Summary
               Container(
                 padding: const EdgeInsets.all(20),
@@ -1549,7 +1562,8 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
                       children: [
                         const Text(
                           'Total Fare',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold),
                         ),
                         Text(
                           'ETB ${_estimatedFare?.toStringAsFixed(0) ?? '0'}',
@@ -1564,17 +1578,17 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
                   ],
                 ),
               ),
-              
+
               const SizedBox(height: 32),
-              
+
               // Rating
               Text(
                 'Rate Your Ride',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
-              
+
               const SizedBox(height: 16),
-              
+
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(5, (index) {
@@ -1586,9 +1600,9 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
                   );
                 }),
               ),
-              
+
               const Spacer(),
-              
+
               // Buttons
               SizedBox(
                 width: double.infinity,
@@ -1606,9 +1620,9 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
                   child: const Text('Done'),
                 ),
               ),
-              
+
               const SizedBox(height: 12),
-              
+
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton(
@@ -1672,33 +1686,13 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
 
   Widget _buildNavItem(IconData icon, String label, int index) {
     final isActive = _currentNavigationIndex == index;
-    
+
     return InkWell(
       onTap: () {
         setState(() {
           _currentNavigationIndex = index;
         });
-        
-        // Navigate to respective screens
-        if (index == 1) {
-          // My Trips
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const MyTripsScreen()),
-          );
-        } else if (index == 2) {
-          // Messages (placeholder for now)
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Messages feature coming soon!')),
-          );
-        } else if (index == 3) {
-          // Profile
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const ProfileScreen()),
-          );
-        }
-        // Index 0 (Home) - do nothing, already on home
+        // TODO: Navigate to respective screens
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -1725,4 +1719,3 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> with Tick
     );
   }
 }
-
