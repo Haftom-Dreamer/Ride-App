@@ -300,10 +300,9 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
   double _calculateFare(double distanceKm) {
     final vehicle =
         _vehicleOptions.firstWhere((v) => v.type == _selectedVehicle);
-    final baseFare = vehicle.minPrice.toDouble();
-    final perKmRate = (vehicle.maxPrice - vehicle.minPrice) /
-        10; // Assuming 10km max distance
-    return baseFare + (distanceKm * perKmRate);
+    // Use average of min and max price for exact fare
+    final avgPrice = (vehicle.minPrice + vehicle.maxPrice) / 2;
+    return avgPrice;
   }
 
   void _fitMapToBounds() {
@@ -417,6 +416,8 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
       onDestinationSelected: (location) {
         setState(() {
           _destinationLocation = location;
+          _destinationAddress = 'Selected Location';
+          _currentStatus = RideStatus.rideConfiguration;
         });
         _calculateRoute();
       },
@@ -1029,7 +1030,18 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
 
               const SizedBox(height: 12),
 
-              ..._vehicleOptions.map((vehicle) => _buildVehicleCard(vehicle)),
+              // Horizontal vehicle selection
+              SizedBox(
+                height: 100,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _vehicleOptions.length,
+                  itemBuilder: (context, index) {
+                    final vehicle = _vehicleOptions[index];
+                    return _buildVehicleCard(vehicle);
+                  },
+                ),
+              ),
 
               const SizedBox(height: 24),
 
@@ -1085,7 +1097,8 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
     final isSelected = _selectedVehicle == vehicle.type;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      width: 140,
+      margin: const EdgeInsets.only(right: 12),
       child: InkWell(
         onTap: () {
           setState(() {
@@ -1097,53 +1110,41 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
         },
         borderRadius: BorderRadius.circular(12),
         child: Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: isSelected ? AppColors.lightBlue : Colors.white,
+            color: isSelected ? AppColors.primaryBlue : Colors.white,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: isSelected ? AppColors.primaryBlue : AppColors.gray200,
               width: isSelected ? 2 : 1,
             ),
           ),
-          child: Row(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
                 vehicle.icon,
                 style: const TextStyle(fontSize: 32),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      vehicle.name,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${vehicle.capacity} seats • ${vehicle.eta} away',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: AppColors.textTertiary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              const SizedBox(height: 8),
               Text(
-                'ETB ${vehicle.minPrice}-${vehicle.maxPrice}',
+                vehicle.name,
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: isSelected
-                      ? AppColors.primaryBlue
-                      : AppColors.textSecondary,
+                  color: isSelected ? Colors.white : AppColors.textPrimary,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'ETB ${((vehicle.minPrice + vehicle.maxPrice) / 2).toStringAsFixed(0)}',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: isSelected ? Colors.white : AppColors.primaryBlue,
                 ),
               ),
             ],
