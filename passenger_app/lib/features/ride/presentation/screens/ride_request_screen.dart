@@ -1166,7 +1166,8 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                               _currentStatus = RideStatus.searchingDestination;
                             });
                           },
-                          icon: Icon(Icons.edit, size: 16, color: AppColors.primaryBlue),
+                          icon: Icon(Icons.edit,
+                              size: 16, color: AppColors.primaryBlue),
                           label: Text(
                             'Change',
                             style: TextStyle(
