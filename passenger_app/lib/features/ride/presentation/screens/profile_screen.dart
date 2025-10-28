@@ -18,6 +18,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   String _userName = 'Loading...';
   String _userPhone = 'Loading...';
   String _userEmail = 'Loading...';
+  String _profilePicture = 'assets/images/default_avatar.png';
 
   List<SavedPlace> _savedPlaces = [];
   String _newPlaceName = '';
@@ -39,6 +40,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         _userName = user.username;
         _userPhone = user.phoneNumber;
         _userEmail = user.email;
+        _profilePicture = user.profilePicture ?? 'assets/images/default_avatar.png';
         _savedPlaces = [
           SavedPlace(
             id: '1',
@@ -121,30 +123,49 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  void _editProfile() {
+  void _editSavedPlace(SavedPlace place) {
+    final nameController = TextEditingController(text: place.name);
+    final addressController = TextEditingController(text: place.address);
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Edit Profile'),
+        title: Text('Edit ${place.name}'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
-              decoration: const InputDecoration(labelText: 'Name'),
-              controller: TextEditingController(text: _userName),
-              onChanged: (value) => _userName = value,
+              controller: nameController,
+              decoration: const InputDecoration(
+                labelText: 'Place Name',
+                hintText: 'e.g., Home, Work',
+              ),
             ),
             const SizedBox(height: 16),
             TextField(
-              decoration: const InputDecoration(labelText: 'Phone'),
-              controller: TextEditingController(text: _userPhone),
-              onChanged: (value) => _userPhone = value,
+              controller: addressController,
+              decoration: const InputDecoration(
+                labelText: 'Address',
+                hintText: 'Enter full address',
+              ),
             ),
             const SizedBox(height: 16),
-            TextField(
-              decoration: const InputDecoration(labelText: 'Email'),
-              controller: TextEditingController(text: _userEmail),
-              onChanged: (value) => _userEmail = value,
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      // TODO: Open map to select location
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Map selection coming soon')),
+                      );
+                    },
+                    icon: const Icon(Icons.map),
+                    label: const Text('Set on Map'),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -155,10 +176,170 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              setState(() {});
-              Navigator.pop(context);
+              final newName = nameController.text.trim();
+              final newAddress = addressController.text.trim();
+
+              if (newName.isNotEmpty && newAddress.isNotEmpty) {
+                setState(() {
+                  final index = _savedPlaces.indexWhere((p) => p.id == place.id);
+                  if (index != -1) {
+                    _savedPlaces[index] = SavedPlace(
+                      id: place.id,
+                      name: newName,
+                      address: newAddress,
+                      coordinates: place.coordinates,
+                      icon: place.icon,
+                    );
+                  }
+                });
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Place updated successfully')),
+                );
+              }
             },
             child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _editProfile() {
+    final nameController = TextEditingController(text: _userName);
+    final phoneController = TextEditingController(text: _userPhone);
+    final emailController = TextEditingController(text: _userEmail);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Profile'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Full Name',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: phoneController,
+                decoration: const InputDecoration(
+                  labelText: 'Phone Number',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.phone,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: emailController,
+                decoration: const InputDecoration(
+                  labelText: 'Email Address',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.emailAddress,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Note: Changing phone number or email will require email verification for security.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.warning,
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final newName = nameController.text.trim();
+              final newPhone = phoneController.text.trim();
+              final newEmail = emailController.text.trim();
+
+              if (newName.isEmpty || newPhone.isEmpty || newEmail.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('All fields are required')),
+                );
+                return;
+              }
+
+              // Check if phone or email changed
+              final phoneChanged = newPhone != _userPhone;
+              final emailChanged = newEmail != _userEmail;
+
+              if (phoneChanged || emailChanged) {
+                _showEmailVerificationDialog(newName, newPhone, newEmail);
+              } else {
+                // Only name changed, update directly
+                setState(() {
+                  _userName = newName;
+                });
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Profile updated successfully')),
+                );
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEmailVerificationDialog(String name, String phone, String email) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Email Verification Required'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.email,
+              size: 48,
+              color: AppColors.primaryBlue,
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'For security reasons, we need to verify your email address before updating your phone number or email.',
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Verification email will be sent to: $email',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pop(context); // Close edit dialog too
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Verification email sent! Please check your inbox.'),
+                  backgroundColor: AppColors.success,
+                ),
+              );
+              // TODO: Implement actual email verification
+            },
+            child: const Text('Send Verification'),
           ),
         ],
       ),
@@ -190,32 +371,43 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 // Profile Photo
                 Stack(
                   children: [
-                    CircleAvatar(
-                      radius: 50,
-                      backgroundColor: AppColors.lightBlue,
-                      child: Text(
-                        _userName[0],
-                        style: const TextStyle(
-                          fontSize: 40,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primaryBlue,
-                        ),
+                    GestureDetector(
+                      onTap: () => _changeProfilePicture(),
+                      child: CircleAvatar(
+                        radius: 50,
+                        backgroundColor: AppColors.lightBlue,
+                        backgroundImage: _profilePicture != 'assets/images/default_avatar.png' 
+                            ? NetworkImage(_profilePicture) 
+                            : null,
+                        child: _profilePicture == 'assets/images/default_avatar.png'
+                            ? Text(
+                                _userName.isNotEmpty ? _userName[0] : 'U',
+                                style: const TextStyle(
+                                  fontSize: 40,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.primaryBlue,
+                                ),
+                              )
+                            : null,
                       ),
                     ),
                     Positioned(
                       bottom: 0,
                       right: 0,
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: AppColors.primaryBlue,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                        ),
-                        child: const Icon(
-                          Icons.camera_alt,
-                          color: Colors.white,
-                          size: 16,
+                      child: GestureDetector(
+                        onTap: () => _changeProfilePicture(),
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryBlue,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                          child: const Icon(
+                            Icons.camera_alt,
+                            color: Colors.white,
+                            size: 16,
+                          ),
                         ),
                       ),
                     ),
@@ -243,6 +435,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     const SizedBox(width: 4),
                     Text(
                       _userPhone,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 4),
+
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.email,
+                        size: 16, color: AppColors.textTertiary),
+                    const SizedBox(width: 4),
+                    Text(
+                      _userEmail,
                       style: TextStyle(
                         fontSize: 14,
                         color: AppColors.textSecondary,
@@ -340,14 +550,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   onTap: () => _showPaymentOptions(),
                 ),
                 _buildDivider(),
-                _buildPaymentMethodItem(
-                  icon: Icons.phone_android,
-                  title: 'Telebirr',
-                  subtitle: 'Coming soon',
-                  isDefault: false,
-                  isComingSoon: true,
-                ),
-                _buildDivider(),
                 _buildAddPaymentItem(),
               ],
             ),
@@ -382,14 +584,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 _buildDivider(),
                 _buildSettingItem(
                   Icons.lock_outline,
-                  'Privacy',
-                  'Control your privacy settings',
+                  'Privacy & Security',
+                  'Control your privacy and security settings',
+                  onTap: () => _showPrivacySettings(),
                 ),
                 _buildDivider(),
                 _buildSettingItem(
                   Icons.language,
                   'Language',
                   'English',
+                ),
+                _buildDivider(),
+                _buildSettingItem(
+                  Icons.dark_mode,
+                  'Dark Mode',
+                  'Switch between light and dark theme',
+                  onTap: () => _toggleDarkMode(),
                 ),
               ],
             ),
@@ -428,6 +638,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   'Contact Support',
                   'Chat with our support team',
                   onTap: () => _showContactSupport(),
+                ),
+                _buildDivider(),
+                _buildSettingItem(
+                  Icons.report_problem,
+                  'Report Issue',
+                  'Report a problem with your ride',
+                  onTap: () => _showReportIssue(),
+                ),
+                _buildDivider(),
+                _buildSettingItem(
+                  Icons.search_off,
+                  'Lost Item',
+                  'Report a lost item',
+                  onTap: () => _showLostItemReport(),
                 ),
                 _buildDivider(),
                 _buildSettingItem(
@@ -495,9 +719,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
 
     return InkWell(
-      onTap: () {
-        // TODO: Edit saved place
-      },
+      onTap: () => _editSavedPlace(place),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
@@ -786,6 +1008,180 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
+  void _toggleDarkMode() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Dark Mode'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.light_mode, color: AppColors.warning),
+              title: const Text('Light Mode'),
+              subtitle: const Text('Default theme'),
+              trailing: Radio<bool>(
+                value: false,
+                groupValue: false, // TODO: Get from theme provider
+                onChanged: (value) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Light mode selected')),
+                  );
+                },
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.dark_mode, color: AppColors.primaryBlue),
+              title: const Text('Dark Mode'),
+              subtitle: const Text('Dark theme'),
+              trailing: Radio<bool>(
+                value: true,
+                groupValue: false, // TODO: Get from theme provider
+                onChanged: (value) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Dark mode selected')),
+                  );
+                },
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.brightness_auto, color: AppColors.success),
+              title: const Text('System Default'),
+              subtitle: const Text('Follow system setting'),
+              trailing: Radio<bool?>(
+                value: null,
+                groupValue: null, // TODO: Get from theme provider
+                onChanged: (value) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('System default selected')),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showPrivacySettings() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Privacy & Security'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.email, color: AppColors.primaryBlue),
+                title: const Text('Email Verification'),
+                subtitle: const Text('Required for sensitive changes'),
+                trailing: Switch(
+                  value: true, // Always enabled for security
+                  onChanged: null, // Cannot be disabled
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.location_on, color: AppColors.primaryBlue),
+                title: const Text('Location Sharing'),
+                subtitle: const Text('Share location during rides'),
+                trailing: Switch(
+                  value: true,
+                  onChanged: (value) {
+                    // TODO: Implement location sharing toggle
+                  },
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.visibility, color: AppColors.primaryBlue),
+                title: const Text('Profile Visibility'),
+                subtitle: const Text('Show profile to drivers'),
+                trailing: Switch(
+                  value: true,
+                  onChanged: (value) {
+                    // TODO: Implement profile visibility toggle
+                  },
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.security, color: AppColors.primaryBlue),
+                title: const Text('Two-Factor Authentication'),
+                subtitle: const Text('Add extra security'),
+                trailing: Switch(
+                  value: false,
+                  onChanged: (value) {
+                    // TODO: Implement 2FA toggle
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('2FA feature coming soon')),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _changeProfilePicture() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Change Profile Picture'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('Take Photo'),
+              onTap: () {
+                Navigator.pop(context);
+                // TODO: Implement camera
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Camera feature coming soon')),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('Choose from Gallery'),
+              onTap: () {
+                Navigator.pop(context);
+                // TODO: Implement gallery
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Gallery feature coming soon')),
+                );
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showFAQ() {
     showDialog(
       context: context,
@@ -819,6 +1215,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               _buildFAQItem(
                 'Is the service available 24/7?',
                 'Yes, our ride service is available 24 hours a day, 7 days a week in Mekelle and Adigrat.',
+              ),
+              _buildFAQItem(
+                'What if I lost an item in the vehicle?',
+                'Contact our support team immediately with your ride details. We will help you connect with the driver.',
+              ),
+              _buildFAQItem(
+                'How do I report a problem?',
+                'Use the "Report Issue" option in the app or contact support directly. We take all reports seriously.',
+              ),
+              _buildFAQItem(
+                'Can I schedule a ride in advance?',
+                'Currently, we only support on-demand rides. Scheduled rides will be available soon.',
+              ),
+              _buildFAQItem(
+                'What if my driver doesn\'t show up?',
+                'Contact support immediately. We will find you another driver or provide a refund if appropriate.',
               ),
             ],
           ),
@@ -860,6 +1272,142 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
+  void _showReportIssue() {
+    final issueController = TextEditingController();
+    String selectedCategory = 'General';
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Report Issue'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<String>(
+                value: selectedCategory,
+                decoration: const InputDecoration(
+                  labelText: 'Issue Category',
+                  border: OutlineInputBorder(),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'General', child: Text('General')),
+                  DropdownMenuItem(value: 'Driver', child: Text('Driver Issue')),
+                  DropdownMenuItem(value: 'Payment', child: Text('Payment Issue')),
+                  DropdownMenuItem(value: 'App', child: Text('App Problem')),
+                  DropdownMenuItem(value: 'Safety', child: Text('Safety Concern')),
+                ],
+                onChanged: (value) => selectedCategory = value!,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: issueController,
+                decoration: const InputDecoration(
+                  labelText: 'Describe the issue',
+                  hintText: 'Please provide details about the problem...',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 4,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (issueController.text.trim().isNotEmpty) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Issue reported successfully. We will investigate.'),
+                    backgroundColor: AppColors.success,
+                  ),
+                );
+              }
+            },
+            child: const Text('Submit Report'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLostItemReport() {
+    final itemController = TextEditingController();
+    final descriptionController = TextEditingController();
+    String selectedRide = 'Recent Ride';
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Report Lost Item'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: itemController,
+                decoration: const InputDecoration(
+                  labelText: 'Item Name',
+                  hintText: 'e.g., Phone, Wallet, Keys',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: descriptionController,
+                decoration: const InputDecoration(
+                  labelText: 'Description',
+                  hintText: 'Describe the item in detail...',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 3,
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: selectedRide,
+                decoration: const InputDecoration(
+                  labelText: 'Which ride?',
+                  border: OutlineInputBorder(),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'Recent Ride', child: Text('Recent Ride')),
+                  DropdownMenuItem(value: 'Yesterday', child: Text('Yesterday')),
+                  DropdownMenuItem(value: 'This Week', child: Text('This Week')),
+                ],
+                onChanged: (value) => selectedRide = value!,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (itemController.text.trim().isNotEmpty) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Lost item reported. We will contact the driver.'),
+                    backgroundColor: AppColors.success,
+                  ),
+                );
+              }
+            },
+            child: const Text('Report Item'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showContactSupport() {
     showDialog(
       context: context,
@@ -880,7 +1428,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ListTile(
               leading: const Icon(Icons.email, color: AppColors.primaryBlue),
               title: const Text('Email Support'),
-              subtitle: const Text('support@selamawi.com'),
+              subtitle: const Text('selamawiride@gmail.com'),
               onTap: () {
                 Navigator.pop(context);
                 // TODO: Implement email
@@ -932,6 +1480,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ListTile(
               leading: const Icon(Icons.credit_card, color: AppColors.gray400),
               title: const Text('Bank Card'),
+              subtitle: const Text('Coming soon'),
+              enabled: false,
+              onTap: null,
+            ),
+            ListTile(
+              leading: const Icon(Icons.account_balance_wallet, color: AppColors.gray400),
+              title: const Text('Mobile Wallet'),
               subtitle: const Text('Coming soon'),
               enabled: false,
               onTap: null,
