@@ -1102,9 +1102,10 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
   Widget _buildRideConfigurationSheet() {
     return DraggableScrollableSheet(
       initialChildSize: 0.75,
-      minChildSize: 0.6,
+      minChildSize: 0.15, // Allow dragging to see map
       maxChildSize: 0.9,
       snap: true,
+      snapSizes: const [0.15, 0.4, 0.75, 0.9], // Better snap points
       builder: (context, scrollController) {
         return Container(
           decoration: const BoxDecoration(
@@ -1139,7 +1140,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
 
               const SizedBox(height: 20),
 
-              // Trip Summary
+              // Trip Summary with Change Destination Option
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -1148,6 +1149,36 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                 ),
                 child: Column(
                   children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Trip Details',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        TextButton.icon(
+                          onPressed: () {
+                            setState(() {
+                              _currentStatus = RideStatus.searchingDestination;
+                            });
+                          },
+                          icon: Icon(Icons.edit, size: 16, color: AppColors.primaryBlue),
+                          label: Text(
+                            'Change',
+                            style: TextStyle(
+                              color: AppColors.primaryBlue,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
                     Row(
                       children: [
                         const Icon(Icons.circle,

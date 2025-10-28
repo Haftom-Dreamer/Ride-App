@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/data/tigray_locations.dart';
 
@@ -16,6 +17,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _userEmail = 'Loading...';
 
   List<SavedPlace> _savedPlaces = [];
+  String _newPlaceName = '';
+  String _newPlaceAddress = '';
 
   @override
   void initState() {
@@ -24,14 +27,126 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadUserData() async {
-    // TODO: Replace with real API calls when backend is fixed
-    // For now, show loading state
+    // Load user data - for now using sample data
     setState(() {
-      _userName = 'User Profile';
-      _userPhone = 'Phone number';
-      _userEmail = 'Email address';
-      _savedPlaces = []; // Empty until API is connected
+      _userName = 'Mekdes Tesfay';
+      _userPhone = '+251 912 345 678';
+      _userEmail = 'mekdes.tesfay@example.com';
+      _savedPlaces = [
+        SavedPlace(
+          id: '1',
+          name: 'Home',
+          address: 'Ayder, Mekelle',
+          coordinates: const LatLng(13.4967, 39.4753),
+          icon: 'home',
+        ),
+        SavedPlace(
+          id: '2',
+          name: 'Work',
+          address: 'Mekelle University',
+          coordinates: const LatLng(13.488, 39.482),
+          icon: 'work',
+        ),
+      ];
     });
+  }
+
+  void _addSavedPlace() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add Saved Place'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              decoration: const InputDecoration(
+                labelText: 'Place Name',
+                hintText: 'e.g., Home, Work',
+              ),
+              onChanged: (value) => _newPlaceName = value,
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              decoration: const InputDecoration(
+                labelText: 'Address',
+                hintText: 'Enter full address',
+              ),
+              onChanged: (value) => _newPlaceAddress = value,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (_newPlaceName.isNotEmpty && _newPlaceAddress.isNotEmpty) {
+                setState(() {
+                  _savedPlaces.add(SavedPlace(
+                    id: DateTime.now().millisecondsSinceEpoch.toString(),
+                    name: _newPlaceName,
+                    address: _newPlaceAddress,
+                    coordinates: const LatLng(13.4967, 39.4753), // Default coordinates
+                    icon: 'location_on',
+                  ));
+                });
+                Navigator.pop(context);
+                _newPlaceName = '';
+                _newPlaceAddress = '';
+              }
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _editProfile() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Profile'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              decoration: const InputDecoration(labelText: 'Name'),
+              controller: TextEditingController(text: _userName),
+              onChanged: (value) => _userName = value,
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              decoration: const InputDecoration(labelText: 'Phone'),
+              controller: TextEditingController(text: _userPhone),
+              onChanged: (value) => _userPhone = value,
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              decoration: const InputDecoration(labelText: 'Email'),
+              controller: TextEditingController(text: _userEmail),
+              onChanged: (value) => _userEmail = value,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              setState(() {});
+              Navigator.pop(context);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -141,9 +256,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 20),
 
                 ElevatedButton.icon(
-                  onPressed: () {
-                    // TODO: Navigate to edit profile
-                  },
+                  onPressed: _editProfile,
                   icon: const Icon(Icons.edit, size: 18),
                   label: const Text('Edit Profile'),
                   style: ElevatedButton.styleFrom(
@@ -411,9 +524,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildAddPlaceItem() {
     return InkWell(
-      onTap: () {
-        // TODO: Add new saved place
-      },
+      onTap: _addSavedPlace,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
