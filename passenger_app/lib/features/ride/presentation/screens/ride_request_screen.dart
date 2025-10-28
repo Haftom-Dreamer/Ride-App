@@ -10,47 +10,10 @@ import '../widgets/map_widget.dart';
 import '../services/geocoding_service.dart';
 import '../services/route_service.dart';
 import '../../../../shared/domain/models/driver.dart';
+import '../../../../shared/domain/models/ride_models.dart';
 import 'my_trips_screen.dart';
 import 'profile_screen.dart';
 import '../../data/ride_api_service.dart';
-
-enum RideStatus {
-  home, // Initial state with bottom sheet
-  searchingDestination, // User is searching for destination
-  rideConfiguration, // Pickup and destination set, selecting vehicle
-  findingDriver, // Searching for available driver
-  driverAssigned, // Driver found and assigned
-  driverArriving, // Driver on the way to pickup
-  onTrip, // Trip in progress
-  tripCompleted, // Trip finished, show rating
-  canceled, // Ride was canceled
-}
-
-enum VehicleType {
-  economy, // Bajaj
-  standard, // Standard Car
-  premium, // SUV
-}
-
-class VehicleOption {
-  final VehicleType type;
-  final String name;
-  final String icon;
-  final int minPrice;
-  final int maxPrice;
-  final int capacity;
-  final String eta;
-
-  const VehicleOption({
-    required this.type,
-    required this.name,
-    required this.icon,
-    required this.minPrice,
-    required this.maxPrice,
-    required this.capacity,
-    required this.eta,
-  });
-}
 
 class RideRequestScreen extends ConsumerStatefulWidget {
   const RideRequestScreen({super.key});

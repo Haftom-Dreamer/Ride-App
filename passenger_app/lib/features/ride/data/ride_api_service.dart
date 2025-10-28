@@ -1,3 +1,4 @@
+import 'dart:developer';
 import '../../../shared/data/api_client.dart';
 
 class RideApiService {
@@ -33,8 +34,8 @@ class RideApiService {
 
       return response.data as Map<String, dynamic>;
     } catch (e) {
-      print('Error requesting ride: $e');
-      rethrow;
+      log('Error requesting ride: $e', name: 'RideApiService');
+      throw RideApiException('Failed to request ride: ${e.toString()}');
     }
   }
 
@@ -44,8 +45,8 @@ class RideApiService {
       final response = await _apiClient.get('/api/ride-status/$rideId');
       return response.data as Map<String, dynamic>;
     } catch (e) {
-      print('Error getting ride status: $e');
-      rethrow;
+      log('Error getting ride status: $e', name: 'RideApiService');
+      throw RideApiException('Failed to get ride status: ${e.toString()}');
     }
   }
 
@@ -60,8 +61,8 @@ class RideApiService {
         },
       );
     } catch (e) {
-      print('Error cancelling ride: $e');
-      rethrow;
+      log('Error cancelling ride: $e', name: 'RideApiService');
+      throw RideApiException('Failed to cancel ride: ${e.toString()}');
     }
   }
 
@@ -83,8 +84,17 @@ class RideApiService {
         },
       );
     } catch (e) {
-      print('Error rating ride: $e');
-      rethrow;
+      log('Error rating ride: $e', name: 'RideApiService');
+      throw RideApiException('Failed to rate ride: ${e.toString()}');
     }
   }
+}
+
+/// Custom exception for ride API errors
+class RideApiException implements Exception {
+  final String message;
+  RideApiException(this.message);
+
+  @override
+  String toString() => 'RideApiException: $message';
 }
