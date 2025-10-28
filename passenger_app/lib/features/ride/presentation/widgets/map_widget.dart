@@ -89,6 +89,7 @@ class _MapWidgetState extends State<MapWidget> {
         initialZoom: 12.0,
         minZoom: 8.0,
         maxZoom: 18.0,
+        rotationThreshold: 0.0, // Disable rotation
         // Notify parent when map position changes (user pans/zooms)
         onPositionChanged: (position, hasGesture) {
           if (position.center != null && widget.onMapMoved != null) {

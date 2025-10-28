@@ -12,6 +12,7 @@ import '../services/route_service.dart';
 import '../../../../shared/domain/models/driver.dart';
 import 'my_trips_screen.dart';
 import 'profile_screen.dart';
+import '../../data/ride_api_service.dart';
 
 enum RideStatus {
   home, // Initial state with bottom sheet
@@ -123,6 +124,10 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
   // Animation controllers
   late AnimationController _pulseAnimationController;
 
+  // API Service
+  final RideApiService _rideApiService = RideApiService();
+  int? _currentRideId;
+
   @override
   void initState() {
     super.initState();
@@ -232,13 +237,15 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
     });
   }
 
-  void _selectDestination(TigrayLocation location) {
+  void _selectDestination(TigrayLocation location) async {
     setState(() {
       _destinationLocation = location.coordinates;
       _destinationAddress = location.name;
+    });
+    await _calculateRoute();
+    setState(() {
       _currentStatus = RideStatus.rideConfiguration;
     });
-    _calculateRoute();
   }
 
   void _selectSavedPlace(SavedPlace place) {
@@ -307,43 +314,148 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
 
   void _fitMapToBounds() {
     if (_pickupLocation != null && _destinationLocation != null) {
-      final bounds = LatLngBounds(
+      final Distance distance = Distance();
+      final distanceMeters = distance.as(
+        LengthUnit.Meter,
         _pickupLocation!,
         _destinationLocation!,
       );
 
-      // Add padding
-      final centerLat = (bounds.north + bounds.south) / 2;
-      final centerLng = (bounds.east + bounds.west) / 2;
-      _mapController.move(LatLng(centerLat, centerLng), 12.0);
+      // Calculate center point
+      final centerLat =
+          (_pickupLocation!.latitude + _destinationLocation!.latitude) / 2;
+      final centerLng =
+          (_pickupLocation!.longitude + _destinationLocation!.longitude) / 2;
+
+      // Calculate appropriate zoom level based on distance
+      double zoom;
+      if (distanceMeters < 500) {
+        zoom = 15.0; // Very close
+      } else if (distanceMeters < 1000) {
+        zoom = 14.5; // Close
+      } else if (distanceMeters < 2000) {
+        zoom = 14.0; // Medium
+      } else if (distanceMeters < 5000) {
+        zoom = 13.0; // Far
+      } else {
+        zoom = 12.0; // Very far
+      }
+
+      _mapController.move(LatLng(centerLat, centerLng), zoom);
     }
   }
 
-  void _requestRide() {
+  Future<void> _requestRide() async {
+    if (_pickupLocation == null || _destinationLocation == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select pickup and destination')),
+      );
+      return;
+    }
+
     setState(() {
       _currentStatus = RideStatus.findingDriver;
     });
 
-    // Simulate finding driver after 3 seconds
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted && _currentStatus == RideStatus.findingDriver) {
+    try {
+      // Convert vehicle type enum to string
+      String vehicleTypeStr;
+      switch (_selectedVehicle) {
+        case VehicleType.economy:
+          vehicleTypeStr = 'Bajaj';
+          break;
+        case VehicleType.standard:
+          vehicleTypeStr = 'Car';
+          break;
+        case VehicleType.premium:
+          vehicleTypeStr = 'SUV';
+          break;
+      }
+
+      // Request ride from backend
+      final response = await _rideApiService.requestRide(
+        pickupLat: _pickupLocation!.latitude,
+        pickupLon: _pickupLocation!.longitude,
+        pickupAddress: _pickupAddress,
+        destLat: _destinationLocation!.latitude,
+        destLon: _destinationLocation!.longitude,
+        destAddress: _destinationAddress,
+        vehicleType: vehicleTypeStr,
+        estimatedFare: _estimatedFare ?? 0.0,
+        paymentMethod: _selectedPayment,
+      );
+
+      // Save ride ID
+      _currentRideId = response['ride_id'] as int?;
+
+      // Poll for driver assignment
+      _pollForDriverAssignment();
+    } catch (e) {
+      print('Error requesting ride: $e');
+      if (mounted) {
         setState(() {
-          _assignedDriver = Driver(
-            id: 1,
-            name: 'Tekle Haile',
-            phoneNumber: '+251912345678',
-            vehicleType: 'Bajaj',
-            vehicleDetails: 'RE Auto',
-            vehiclePlateNumber: 'ት-12345',
-            profilePicture: null,
-            currentLat: _pickupLocation?.latitude ?? 13.4967,
-            currentLon: _pickupLocation?.longitude ?? 39.4753,
-            status: 'Available',
-            rating: 4.8,
-            totalRides: 1234,
-          );
-          _currentStatus = RideStatus.driverAssigned;
+          _currentStatus = RideStatus.rideConfiguration;
         });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to request ride: $e')),
+        );
+      }
+    }
+  }
+
+  void _pollForDriverAssignment() {
+    if (_currentRideId == null) return;
+
+    // Poll every 3 seconds for driver assignment
+    Timer.periodic(const Duration(seconds: 3), (timer) async {
+      if (!mounted || _currentStatus != RideStatus.findingDriver) {
+        timer.cancel();
+        return;
+      }
+
+      try {
+        final status = await _rideApiService.getRideStatus(_currentRideId!);
+
+        // Check if driver is assigned
+        if (status['status'] == 'Assigned' && status['driver'] != null) {
+          timer.cancel();
+
+          final driverData = status['driver'];
+          if (mounted) {
+            setState(() {
+              _assignedDriver = Driver(
+                id: driverData['id'],
+                name: driverData['name'],
+                phoneNumber: driverData['phone_number'],
+                vehicleType: driverData['vehicle_type'],
+                vehicleDetails: driverData['vehicle_details'] ?? '',
+                vehiclePlateNumber: driverData['vehicle_plate_number'] ?? '',
+                profilePicture: driverData['profile_picture'],
+                currentLat:
+                    driverData['current_lat'] ?? _pickupLocation!.latitude,
+                currentLon:
+                    driverData['current_lon'] ?? _pickupLocation!.longitude,
+                status: driverData['status'] ?? 'Available',
+                rating: (driverData['rating'] ?? 4.5).toDouble(),
+                totalRides: driverData['total_rides'] ?? 0,
+              );
+              _currentStatus = RideStatus.driverAssigned;
+            });
+          }
+        } else if (status['status'] == 'Cancelled') {
+          timer.cancel();
+          if (mounted) {
+            setState(() {
+              _currentStatus = RideStatus.home;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Ride was cancelled')),
+            );
+          }
+        }
+      } catch (e) {
+        print('Error polling ride status: $e');
+        // Continue polling even if there's an error
       }
     });
   }
@@ -381,13 +493,16 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: _shouldShowAppBar() ? _buildAppBar() : null,
       body: Stack(
         children: [
           // Map Layer
           _buildMap(),
 
           // Top Bar
-          if (_currentStatus != RideStatus.searchingDestination) _buildTopBar(),
+          if (_currentStatus != RideStatus.searchingDestination &&
+              !_shouldShowAppBar())
+            _buildTopBar(),
 
           // Bottom Sheet or Full Screen Content
           _buildBottomContent(),
@@ -425,6 +540,76 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
     );
   }
 
+  bool _shouldShowAppBar() {
+    return _currentStatus == RideStatus.searchingDestination ||
+        _currentStatus == RideStatus.rideConfiguration ||
+        _currentStatus == RideStatus.findingDriver ||
+        _currentStatus == RideStatus.driverAssigned ||
+        _currentStatus == RideStatus.driverArriving ||
+        _currentStatus == RideStatus.onTrip;
+  }
+
+  AppBar _buildAppBar() {
+    return AppBar(
+      leading: IconButton(
+        icon: Icon(Icons.arrow_back, color: Colors.white),
+        onPressed: _goBack,
+      ),
+      title: Text(
+        _getScreenTitle(),
+        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+      ),
+      backgroundColor: AppColors.primaryBlue,
+      elevation: 0,
+    );
+  }
+
+  String _getScreenTitle() {
+    switch (_currentStatus) {
+      case RideStatus.searchingDestination:
+        return 'Select Destination';
+      case RideStatus.rideConfiguration:
+        return 'Choose Vehicle';
+      case RideStatus.findingDriver:
+        return 'Finding Driver';
+      case RideStatus.driverAssigned:
+        return 'Driver Assigned';
+      case RideStatus.driverArriving:
+        return 'Driver Arriving';
+      case RideStatus.onTrip:
+        return 'On Trip';
+      default:
+        return 'Ride';
+    }
+  }
+
+  void _goBack() {
+    switch (_currentStatus) {
+      case RideStatus.searchingDestination:
+        setState(() {
+          _currentStatus = RideStatus.home;
+        });
+        break;
+      case RideStatus.rideConfiguration:
+        setState(() {
+          _currentStatus = RideStatus.searchingDestination;
+        });
+        break;
+      case RideStatus.findingDriver:
+        setState(() {
+          _currentStatus = RideStatus.rideConfiguration;
+        });
+        break;
+      case RideStatus.driverAssigned:
+      case RideStatus.driverArriving:
+      case RideStatus.onTrip:
+        // Can't go back during active ride
+        break;
+      default:
+        Navigator.of(context).pop();
+    }
+  }
+
   Widget _buildTopBar() {
     return Positioned(
       top: 0,
@@ -444,11 +629,11 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
         child: SafeArea(
           bottom: false,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Center(
               child: Image.asset(
                 'assets/images/Selamawi-logo 1 png.png',
-                height: 45,
+                height: 36,
                 fit: BoxFit.contain,
               ),
             ),
@@ -484,10 +669,10 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
     return DraggableScrollableSheet(
       controller: _sheetController,
       initialChildSize: 0.3,
-      minChildSize: 0.3,
+      minChildSize: 0.15, // Allow dragging to see more map
       maxChildSize: 0.9,
       snap: true,
-      snapSizes: const [0.3, 0.5, 0.9],
+      snapSizes: const [0.15, 0.3, 0.6, 0.9], // Better snap points
       builder: (context, scrollController) {
         return Container(
           decoration: const BoxDecoration(
@@ -916,8 +1101,8 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
 
   Widget _buildRideConfigurationSheet() {
     return DraggableScrollableSheet(
-      initialChildSize: 0.7,
-      minChildSize: 0.5,
+      initialChildSize: 0.75,
+      minChildSize: 0.6,
       maxChildSize: 0.9,
       snap: true,
       builder: (context, scrollController) {
@@ -1032,7 +1217,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
 
               // Horizontal vehicle selection
               SizedBox(
-                height: 100,
+                height: 110,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
                   itemCount: _vehicleOptions.length,
@@ -1043,46 +1228,135 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                 ),
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
 
-              // Payment Method
-              Row(
-                children: [
-                  Icon(Icons.payment, color: AppColors.textSecondary),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Payment: ',
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
-                  Text(
-                    _selectedPayment,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primaryBlue,
+              // Payment Method - Fancier Card
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.gray50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.gray200),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryBlue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        Icons.account_balance_wallet,
+                        color: AppColors.primaryBlue,
+                        size: 20,
+                      ),
                     ),
-                  ),
-                  const Spacer(),
-                  TextButton(
-                    onPressed: () {},
-                    child: const Text('Change'),
-                  ),
-                ],
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Payment Method',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textTertiary,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Row(
+                            children: [
+                              Icon(
+                                _selectedPayment == 'Cash'
+                                    ? Icons.money
+                                    : Icons.phone_android,
+                                size: 16,
+                                color: AppColors.textPrimary,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                _selectedPayment,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.chevron_right, color: AppColors.gray400),
+                  ],
+                ),
               ),
 
               const SizedBox(height: 24),
 
-              // Request Ride Button
-              SizedBox(
+              // Request Ride Button - Fancier with gradient and icon
+              Container(
                 width: double.infinity,
+                height: 56,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [AppColors.primaryBlue, AppColors.darkBlue],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primaryBlue.withOpacity(0.4),
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
                 child: ElevatedButton(
                   onPressed: _requestRide,
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
-                  child: Text(
-                    'Request ${_vehicleOptions.firstWhere((v) => v.type == _selectedVehicle).name} - ETB ${_estimatedFare?.toStringAsFixed(0) ?? '0'}',
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.w600),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.local_taxi,
+                          size: 24, color: Colors.white),
+                      const SizedBox(width: 12),
+                      Text(
+                        'Request Ride',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          'ETB ${_estimatedFare?.toStringAsFixed(0) ?? '0'}',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -1097,7 +1371,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
     final isSelected = _selectedVehicle == vehicle.type;
 
     return Container(
-      width: 140,
+      width: 130,
       margin: const EdgeInsets.only(right: 12),
       child: InkWell(
         onTap: () {
@@ -1110,7 +1384,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
         },
         borderRadius: BorderRadius.circular(12),
         child: Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             color: isSelected ? AppColors.primaryBlue : Colors.white,
             borderRadius: BorderRadius.circular(12),
@@ -1118,32 +1392,42 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
               color: isSelected ? AppColors.primaryBlue : AppColors.gray200,
               width: isSelected ? 2 : 1,
             ),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: AppColors.primaryBlue.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : [],
           ),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
                 vehicle.icon,
-                style: const TextStyle(fontSize: 32),
+                style: const TextStyle(fontSize: 28),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Text(
                 vehicle.name,
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: isSelected ? Colors.white : AppColors.textPrimary,
                 ),
                 textAlign: TextAlign.center,
-                maxLines: 1,
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 4),
               Text(
                 'ETB ${((vehicle.minPrice + vehicle.maxPrice) / 2).toStringAsFixed(0)}',
                 style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
                   color: isSelected ? Colors.white : AppColors.primaryBlue,
                 ),
               ),
@@ -1163,76 +1447,79 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
           topRight: Radius.circular(24),
         ),
       ),
-      padding: const EdgeInsets.all(32),
-      height: MediaQuery.of(context).size.height * 0.4,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Animated pulse indicator
-          AnimatedBuilder(
-            animation: _pulseAnimationController,
-            builder: (context, child) {
-              return Stack(
-                alignment: Alignment.center,
-                children: [
-                  // Outer pulse
-                  Container(
-                    width: 100 + (_pulseAnimationController.value * 40),
-                    height: 100 + (_pulseAnimationController.value * 40),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.primaryBlue.withOpacity(
-                          0.1 - (_pulseAnimationController.value * 0.1)),
+      padding: const EdgeInsets.all(24),
+      height: MediaQuery.of(context).size.height * 0.45,
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Animated pulse indicator
+            AnimatedBuilder(
+              animation: _pulseAnimationController,
+              builder: (context, child) {
+                return Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Outer pulse
+                    Container(
+                      width: 100 + (_pulseAnimationController.value * 40),
+                      height: 100 + (_pulseAnimationController.value * 40),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.primaryBlue.withOpacity(
+                            0.1 - (_pulseAnimationController.value * 0.1)),
+                      ),
                     ),
-                  ),
-                  // Inner circle
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.primaryBlue,
+                    // Inner circle
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.primaryBlue,
+                      ),
+                      child: const Icon(
+                        Icons.search,
+                        color: Colors.white,
+                        size: 40,
+                      ),
                     ),
-                    child: const Icon(
-                      Icons.search,
-                      color: Colors.white,
-                      size: 40,
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-
-          const SizedBox(height: 24),
-
-          Text(
-            'Finding nearby drivers...',
-            style: Theme.of(context).textTheme.displaySmall,
-            textAlign: TextAlign.center,
-          ),
-
-          const SizedBox(height: 8),
-
-          Text(
-            'This may take a few moments',
-            style: TextStyle(
-              fontSize: 14,
-              color: AppColors.textTertiary,
+                  ],
+                );
+              },
             ),
-            textAlign: TextAlign.center,
-          ),
 
-          const SizedBox(height: 24),
+            const SizedBox(height: 24),
 
-          TextButton(
-            onPressed: _cancelRide,
-            child: Text(
-              'Cancel Request',
-              style: TextStyle(color: AppColors.error),
+            Text(
+              'Finding nearby drivers...',
+              style: Theme.of(context).textTheme.displaySmall,
+              textAlign: TextAlign.center,
             ),
-          ),
-        ],
+
+            const SizedBox(height: 8),
+
+            Text(
+              'This may take a few moments',
+              style: TextStyle(
+                fontSize: 14,
+                color: AppColors.textTertiary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+
+            const SizedBox(height: 24),
+
+            TextButton(
+              onPressed: _cancelRide,
+              child: Text(
+                'Cancel Request',
+                style: TextStyle(color: AppColors.error),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

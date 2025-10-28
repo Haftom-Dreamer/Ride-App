@@ -10,12 +10,29 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  // Sample user data
-  final String _userName = 'Mekdes Tesfay';
-  final String _userPhone = '+251 912 345 678';
-  final String _userEmail = 'mekdes.tesfay@example.com';
-  
-  final List<SavedPlace> _savedPlaces = SampleSavedPlaces.defaultSavedPlaces;
+  // Real user data - will be loaded from API
+  String _userName = 'Loading...';
+  String _userPhone = 'Loading...';
+  String _userEmail = 'Loading...';
+
+  List<SavedPlace> _savedPlaces = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    // TODO: Replace with real API calls when backend is fixed
+    // For now, show loading state
+    setState(() {
+      _userName = 'User Profile';
+      _userPhone = 'Phone number';
+      _userEmail = 'Email address';
+      _savedPlaces = []; // Empty until API is connected
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -73,9 +90,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ],
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 Text(
                   _userName,
                   style: const TextStyle(
@@ -84,13 +101,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     color: AppColors.textPrimary,
                   ),
                 ),
-                
+
                 const SizedBox(height: 8),
-                
+
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.phone, size: 16, color: AppColors.textTertiary),
+                    const Icon(Icons.phone,
+                        size: 16, color: AppColors.textTertiary),
                     const SizedBox(width: 4),
                     Text(
                       _userPhone,
@@ -101,13 +119,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ],
                 ),
-                
+
                 const SizedBox(height: 4),
-                
+
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.email, size: 16, color: AppColors.textTertiary),
+                    const Icon(Icons.email,
+                        size: 16, color: AppColors.textTertiary),
                     const SizedBox(width: 4),
                     Text(
                       _userEmail,
@@ -118,9 +137,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ],
                 ),
-                
+
                 const SizedBox(height: 20),
-                
+
                 ElevatedButton.icon(
                   onPressed: () {
                     // TODO: Navigate to edit profile
@@ -128,15 +147,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   icon: const Icon(Icons.edit, size: 18),
                   label: const Text('Edit Profile'),
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 12),
                   ),
                 ),
               ],
             ),
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           // Saved Places Section
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -145,9 +165,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               style: Theme.of(context).textTheme.titleLarge,
             ),
           ),
-          
+
           const SizedBox(height: 12),
-          
+
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
@@ -161,9 +181,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           // Payment Methods Section
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -172,9 +192,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               style: Theme.of(context).textTheme.titleLarge,
             ),
           ),
-          
+
           const SizedBox(height: 12),
-          
+
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
@@ -201,9 +221,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           // Settings Section
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -212,9 +232,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               style: Theme.of(context).textTheme.titleLarge,
             ),
           ),
-          
+
           const SizedBox(height: 12),
-          
+
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
@@ -243,9 +263,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           // Support Section
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -254,9 +274,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               style: Theme.of(context).textTheme.titleLarge,
             ),
           ),
-          
+
           const SizedBox(height: 12),
-          
+
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
@@ -286,9 +306,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
           ),
-          
+
           const SizedBox(height: 32),
-          
+
           // Logout Button
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -297,7 +317,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 _showLogoutDialog();
               },
               icon: const Icon(Icons.logout, color: AppColors.error),
-              label: const Text('Logout', style: TextStyle(color: AppColors.error)),
+              label: const Text('Logout',
+                  style: TextStyle(color: AppColors.error)),
               style: OutlinedButton.styleFrom(
                 side: const BorderSide(color: AppColors.error),
                 padding: const EdgeInsets.symmetric(vertical: 16),
@@ -305,9 +326,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           // App Version
           Center(
             child: Text(
@@ -318,7 +339,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
           ),
-          
+
           const SizedBox(height: 16),
         ],
       ),
@@ -328,7 +349,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildSavedPlaceItem(SavedPlace place) {
     IconData icon;
     Color iconColor;
-    
+
     if (place.icon == 'home') {
       icon = Icons.home;
       iconColor = AppColors.success;
@@ -339,7 +360,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       icon = Icons.place;
       iconColor = AppColors.warning;
     }
-    
+
     return InkWell(
       onTap: () {
         // TODO: Edit saved place
@@ -404,7 +425,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 color: AppColors.gray100,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.add, color: AppColors.primaryBlue, size: 20),
+              child:
+                  const Icon(Icons.add, color: AppColors.primaryBlue, size: 20),
             ),
             const SizedBox(width: 12),
             const Text(
@@ -462,7 +484,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       if (isDefault) ...[
                         const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
                             color: AppColors.success.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(4),
@@ -513,7 +536,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 color: AppColors.gray100,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.add, color: AppColors.primaryBlue, size: 20),
+              child:
+                  const Icon(Icons.add, color: AppColors.primaryBlue, size: 20),
             ),
             const SizedBox(width: 12),
             const Text(
@@ -530,7 +554,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildSettingItem(IconData icon, String title, String subtitle, {Color? iconColor}) {
+  Widget _buildSettingItem(IconData icon, String title, String subtitle,
+      {Color? iconColor}) {
     return InkWell(
       onTap: () {
         // TODO: Navigate to setting screen
@@ -597,11 +622,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SnackBar(content: Text('Logged out successfully')),
               );
             },
-            child: const Text('Logout', style: TextStyle(color: AppColors.error)),
+            child:
+                const Text('Logout', style: TextStyle(color: AppColors.error)),
           ),
         ],
       ),
     );
   }
 }
-

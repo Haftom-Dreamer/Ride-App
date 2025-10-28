@@ -129,48 +129,48 @@ class _RideRequestBottomSheetState extends State<RideRequestBottomSheet> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: (widget.pickupLocation != null &&
-                                  widget.destinationLocation != null &&
-                                  !widget.isRequestingRide)
-                              ? widget.onRequestRide
-                              : null,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue.shade700,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: (widget.pickupLocation != null &&
+                                widget.destinationLocation != null &&
+                                !widget.isRequestingRide)
+                            ? widget.onRequestRide
+                            : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue.shade700,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          child: widget.isRequestingRide
-                              ? const Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
+                        ),
+                        child: widget.isRequestingRide
+                            ? const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
                                         valueColor:
                                             AlwaysStoppedAnimation<Color>(
-                                                Colors.white),
-                                      ),
+                                          Colors.white),
                                     ),
-                                    SizedBox(width: 12),
-                                    Text('Requesting...'),
-                                  ],
-                                )
-                              : const Text(
-                                  'Request Ride',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
                                   ),
+                                  SizedBox(width: 12),
+                                  Text('Requesting...'),
+                                ],
+                              )
+                            : const Text(
+                                'Request Ride',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
                                 ),
-                        ),
+                              ),
                       ),
+                    ),
                     ),
 
                     const SizedBox(height: 20),
@@ -443,13 +443,13 @@ class _RideRequestBottomSheetState extends State<RideRequestBottomSheet> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Text(
+                  Text(
                         timeDistance,
-                        style: TextStyle(
+                    style: TextStyle(
                           color: Colors.grey.shade500,
-                          fontSize: 12,
+                      fontSize: 12,
                         ),
-                      ),
+                    ),
                     ],
                   ),
                   const SizedBox(height: 2),
@@ -543,7 +543,7 @@ class _RideRequestBottomSheetState extends State<RideRequestBottomSheet> {
                   fontWeight: FontWeight.w500,
                 ),
               ),
-            ),
+              ),
           ],
         ),
       ),
