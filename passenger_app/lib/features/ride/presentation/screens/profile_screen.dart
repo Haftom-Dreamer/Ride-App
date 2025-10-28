@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/data/tigray_locations.dart';
 import '../../../auth/presentation/screens/login_screen.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 
-class ProfileScreen extends StatefulWidget {
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   // Real user data - will be loaded from API
   String _userName = 'Loading...';
   String _userPhone = 'Loading...';
@@ -751,13 +752,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       );
 
-      // Clear stored authentication data
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('auth_token');
-      await prefs.remove('user_id');
-      await prefs.remove('user_name');
-      await prefs.remove('user_email');
-      await prefs.remove('user_phone');
+      // Use the auth provider to logout properly
+      final authNotifier = ref.read(authProvider.notifier);
+      await authNotifier.logout();
 
       // Close loading dialog
       if (mounted) Navigator.pop(context);
