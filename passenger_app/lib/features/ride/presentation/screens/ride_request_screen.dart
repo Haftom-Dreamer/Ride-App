@@ -430,51 +430,26 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
       left: 0,
       right: 0,
       child: Container(
-        color: Colors.white,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              AppColors.primaryBlue,
+              AppColors.darkBlue,
+            ],
+          ),
+        ),
         child: SafeArea(
           bottom: false,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                // Logo
-                Image.asset(
-                  'assets/images/Selamawi-logo 1 png.png',
-                  height: 40,
-                  fit: BoxFit.contain,
-                ),
-
-                const SizedBox(width: 12),
-
-                // Title
-                Text(
-                  'Ride',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primaryBlue,
-                  ),
-                ),
-
-                const Spacer(),
-
-                // Notification Icon
-                IconButton(
-                  onPressed: () {},
-                  icon: const Icon(Icons.notifications_outlined),
-                  color: AppColors.primaryBlue,
-                ),
-              ],
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: Center(
+              child: Image.asset(
+                'assets/images/Selamawi-logo 1 png.png',
+                height: 45,
+                fit: BoxFit.contain,
+              ),
             ),
           ),
         ),
