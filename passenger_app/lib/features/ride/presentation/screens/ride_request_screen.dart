@@ -10,6 +10,8 @@ import '../widgets/map_widget.dart';
 import '../services/geocoding_service.dart';
 import '../services/route_service.dart';
 import '../../../../shared/domain/models/driver.dart';
+import 'my_trips_screen.dart';
+import 'profile_screen.dart';
 
 enum RideStatus {
   home, // Initial state with bottom sheet
@@ -78,6 +80,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
   // Ride state
   RideStatus _currentStatus = RideStatus.home;
   Driver? _assignedDriver;
+  int _currentNavigationIndex = 0;
 
   // Vehicle options (ETB - Ethiopian Birr)
   final List<VehicleOption> _vehicleOptions = const [
@@ -389,6 +392,9 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
 
           // Bottom Sheet or Full Screen Content
           _buildBottomContent(),
+
+          // Bottom Navigation Bar
+          if (_shouldShowBottomNav()) _buildBottomNavigationBar(),
         ],
       ),
     );
@@ -441,32 +447,32 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
             ),
             child: Row(
               children: [
-                // Profile Avatar
-                CircleAvatar(
-                  radius: 20,
-                  backgroundColor: AppColors.lightBlue,
-                  child: Icon(Icons.person,
-                      color: AppColors.primaryBlue, size: 24),
+                // Logo
+                Image.asset(
+                  'assets/images/Selamawi-logo 1 png.png',
+                  height: 40,
+                  fit: BoxFit.contain,
                 ),
 
                 const SizedBox(width: 12),
 
                 // Title
-                Expanded(
-                  child: Text(
-                    'Ride',
-                    style: Theme.of(context).textTheme.headlineMedium,
-                    textAlign: TextAlign.center,
+                Text(
+                  'Ride',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primaryBlue,
                   ),
                 ),
 
-                const SizedBox(width: 12),
+                const Spacer(),
 
                 // Notification Icon
                 IconButton(
                   onPressed: () {},
                   icon: const Icon(Icons.notifications_outlined),
-                  color: AppColors.textSecondary,
+                  color: AppColors.primaryBlue,
                 ),
               ],
             ),
@@ -1565,6 +1571,99 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  bool _shouldShowBottomNav() {
+    return _currentStatus == RideStatus.home;
+  }
+
+  Widget _buildBottomNavigationBar() {
+    return Positioned(
+      bottom: 0,
+      left: 0,
+      right: 0,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, -5),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildNavItem(Icons.home, 'Home', 0),
+                _buildNavItem(Icons.receipt_long, 'My Trips', 1),
+                _buildNavItem(Icons.message, 'Messages', 2),
+                _buildNavItem(Icons.person, 'Profile', 3),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem(IconData icon, String label, int index) {
+    final isActive = _currentNavigationIndex == index;
+
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _currentNavigationIndex = index;
+        });
+
+        // Navigate to respective screens
+        if (index == 1) {
+          // My Trips
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const MyTripsScreen()),
+          );
+        } else if (index == 2) {
+          // Messages (placeholder for now)
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Messages feature coming soon!')),
+          );
+        } else if (index == 3) {
+          // Profile
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const ProfileScreen()),
+          );
+        }
+        // Index 0 (Home) - do nothing, already on home
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              color: isActive ? AppColors.primaryBlue : AppColors.gray400,
+              size: 24,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+                color: isActive ? AppColors.primaryBlue : AppColors.gray400,
+              ),
+            ),
+          ],
         ),
       ),
     );
