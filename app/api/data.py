@@ -198,70 +198,183 @@ def get_active_rides():
 @admin_required
 def get_all_rides_data():
     """Get all ride data for management"""
-    rides = Ride.query.options(
-        db.joinedload(Ride.passenger),
-        db.joinedload(Ride.driver),
-        db.joinedload(Ride.feedback)
-    ).order_by(Ride.request_time.desc()).all()
-    
-    rides_data = []
-    for ride in rides:
-        rides_data.append({
-            'id': ride.id,
-            'user_name': ride.passenger.username,
-            'user_phone': ride.passenger.phone_number,
-            'driver_name': ride.driver.name if ride.driver else "N/A",
-            'fare': float(ride.fare),
-            'status': ride.status,
-            'rating': ride.feedback.rating if ride.feedback else None,
-            'request_time': to_eat(ride.request_time).strftime('%Y-%m-%d %H:%M')
-        })
-    
-    return jsonify(rides_data)
+    try:
+        rides = Ride.query.options(
+            db.joinedload(Ride.passenger),
+            db.joinedload(Ride.driver)
+        ).order_by(Ride.request_time.desc()).all()
+        
+        # Get all feedbacks in one query for efficiency
+        ride_ids = [ride.id for ride in rides]
+        feedbacks_dict = {}
+        if ride_ids:
+            feedbacks = Feedback.query.filter(Feedback.ride_id.in_(ride_ids)).all()
+            feedbacks_dict = {fb.ride_id: fb for fb in feedbacks}
+        
+        rides_data = []
+        for ride in rides:
+            try:
+                # Safely access passenger data
+                user_name = "N/A"
+                user_phone = "N/A"
+                if ride.passenger_id and ride.passenger:
+                    user_name = ride.passenger.username if ride.passenger.username else "N/A"
+                    user_phone = ride.passenger.phone_number if ride.passenger.phone_number else "N/A"
+                
+                # Safely access driver data
+                driver_name = "N/A"
+                if ride.driver_id and ride.driver:
+                    driver_name = ride.driver.name if ride.driver.name else "N/A"
+                
+                # Safely access fare
+                try:
+                    fare = float(ride.fare) if ride.fare is not None else 0.0
+                except (ValueError, TypeError):
+                    fare = 0.0
+                
+                # Safely access status
+                status = ride.status if ride.status else "Unknown"
+                
+                # Safely access rating from Feedback model (not the string column)
+                rating = None
+                feedback_obj = feedbacks_dict.get(ride.id)
+                if feedback_obj and feedback_obj.rating is not None:
+                    try:
+                        rating = int(feedback_obj.rating)
+                    except (ValueError, TypeError):
+                        rating = None
+                
+                # Safely format request_time
+                request_time_str = "N/A"
+                if ride.request_time:
+                    try:
+                        request_time_str = to_eat(ride.request_time).strftime('%Y-%m-%d %H:%M')
+                    except (AttributeError, ValueError, TypeError) as e:
+                        current_app.logger.warning(f"Error formatting request_time for ride {ride.id}: {e}")
+                        request_time_str = "N/A"
+                
+                rides_data.append({
+                    'id': ride.id,
+                    'user_name': user_name,
+                    'user_phone': user_phone,
+                    'driver_name': driver_name,
+                    'fare': fare,
+                    'status': status,
+                    'rating': rating,
+                    'request_time': request_time_str
+                })
+            except Exception as ride_error:
+                # Log error for this specific ride but continue processing others
+                import traceback
+                error_trace = traceback.format_exc()
+                current_app.logger.error(f"Error processing ride {ride.id} at line 215-258: {str(ride_error)}\n{error_trace}")
+                # Still add the ride with minimal data
+                rides_data.append({
+                    'id': ride.id,
+                    'user_name': "Error",
+                    'user_phone': "N/A",
+                    'driver_name': "N/A",
+                    'fare': 0.0,
+                    'status': ride.status if ride.status else "Unknown",
+                    'rating': None,
+                    'request_time': "N/A"
+                })
+        
+        current_app.logger.info(f"Successfully processed {len(rides_data)} rides")
+        return jsonify(rides_data)
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        error_line = error_trace.split('\n')[-3] if len(error_trace.split('\n')) > 3 else "Unknown"
+        current_app.logger.error(f"Error getting all rides data at line 201-279: {str(e)}\nLine: {error_line}\nFull trace: {error_trace}")
+        return jsonify({'error': f'Internal server error: {str(e)}', 'line': error_line}), 500
 
 @api.route('/ride-details/<int:ride_id>')
 @admin_required
 def get_ride_details(ride_id):
     """Get detailed information about a specific ride"""
-    ride = Ride.query.options(
-        db.joinedload(Ride.passenger),
-        db.joinedload(Ride.driver),
-        db.joinedload(Ride.feedback)
-    ).get_or_404(ride_id)
+    try:
+        ride = Ride.query.options(
+            db.joinedload(Ride.passenger),
+            db.joinedload(Ride.driver)
+        ).get_or_404(ride_id)
 
-    return jsonify({
-        'trip_info': {
-            'id': ride.id,
-            'status': ride.status,
-            'fare': float(ride.fare),
-            'distance': float(ride.distance_km),
-            'payment_method': ride.payment_method,
-            'vehicle_type': ride.vehicle_type,
-            'pickup_address': ride.pickup_address,
-            'dest_address': ride.dest_address,
-            'pickup_coords': {'lat': ride.pickup_lat, 'lon': ride.pickup_lon},
-            'dest_coords': {'lat': ride.dest_lat, 'lon': ride.dest_lon},
-        },
-        'passenger': {
-            'name': ride.passenger.username,
-            'avatar': ride.passenger.profile_picture,
-            'phone': ride.passenger.phone_number
-        },
-        'driver': {
-            'name': ride.driver.name if ride.driver else 'N/A',
-            'avatar': ride.driver.profile_picture if ride.driver else 'static/img/default_user.svg',
-            'phone': ride.driver.phone_number if ride.driver else 'N/A',
-            'vehicle': ride.driver.vehicle_details if ride.driver else 'N/A'
-        },
-        'timestamps': {
-            'requested': to_eat(ride.request_time).strftime('%b %d, %Y at %I:%M %p'),
-            'assigned': to_eat(ride.assigned_time).strftime('%I:%M %p') if ride.assigned_time else 'N/A',
-        },
-        'feedback': {
-            'rating': ride.feedback.rating if ride.feedback else None,
-            'comment': ride.feedback.comment if ride.feedback else None
-        }
-    })
+        # Query feedback separately (Ride.feedback is a string column, not a relationship)
+        feedback_obj = Feedback.query.filter_by(ride_id=ride_id).first()
+
+        # Safely access passenger data
+        passenger_name = "N/A"
+        passenger_avatar = "static/img/default_user.svg"
+        passenger_phone = "N/A"
+        if ride.passenger:
+            passenger_name = ride.passenger.username if ride.passenger.username else "N/A"
+            passenger_avatar = ride.passenger.profile_picture if ride.passenger.profile_picture else "static/img/default_user.svg"
+            passenger_phone = ride.passenger.phone_number if ride.passenger.phone_number else "N/A"
+
+        # Safely access driver data
+        driver_name = 'N/A'
+        driver_avatar = 'static/img/default_user.svg'
+        driver_phone = 'N/A'
+        driver_vehicle = 'N/A'
+        if ride.driver:
+            driver_name = ride.driver.name if ride.driver.name else 'N/A'
+            driver_avatar = ride.driver.profile_picture if ride.driver.profile_picture else 'static/img/default_user.svg'
+            driver_phone = ride.driver.phone_number if ride.driver.phone_number else 'N/A'
+            driver_vehicle = ride.driver.vehicle_details if ride.driver.vehicle_details else 'N/A'
+
+        # Safely format timestamps
+        requested_str = "N/A"
+        if ride.request_time:
+            try:
+                requested_str = to_eat(ride.request_time).strftime('%b %d, %Y at %I:%M %p')
+            except Exception:
+                requested_str = "N/A"
+
+        assigned_str = 'N/A'
+        if ride.assigned_time:
+            try:
+                assigned_str = to_eat(ride.assigned_time).strftime('%I:%M %p')
+            except Exception:
+                assigned_str = 'N/A'
+
+        return jsonify({
+            'trip_info': {
+                'id': ride.id,
+                'status': ride.status if ride.status else "Unknown",
+                'fare': float(ride.fare) if ride.fare else 0.0,
+                'distance': float(ride.distance_km) if ride.distance_km else 0.0,
+                'payment_method': ride.payment_method if ride.payment_method else 'Cash',
+                'vehicle_type': ride.vehicle_type if ride.vehicle_type else 'Bajaj',
+                'pickup_address': ride.pickup_address if ride.pickup_address else 'N/A',
+                'dest_address': ride.dest_address if ride.dest_address else 'N/A',
+                'pickup_coords': {'lat': ride.pickup_lat, 'lon': ride.pickup_lon},
+                'dest_coords': {'lat': ride.dest_lat, 'lon': ride.dest_lon} if ride.dest_lat and ride.dest_lon else {'lat': ride.pickup_lat, 'lon': ride.pickup_lon},
+            },
+            'passenger': {
+                'name': passenger_name,
+                'avatar': passenger_avatar,
+                'phone': passenger_phone
+            },
+            'driver': {
+                'name': driver_name,
+                'avatar': driver_avatar,
+                'phone': driver_phone,
+                'vehicle': driver_vehicle
+            },
+            'timestamps': {
+                'requested': requested_str,
+                'assigned': assigned_str,
+            },
+            'feedback': {
+                'rating': feedback_obj.rating if feedback_obj and feedback_obj.rating else None,
+                'comment': feedback_obj.comment if feedback_obj and feedback_obj.comment else None
+            }
+        })
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        current_app.logger.error(f"Error getting ride details for {ride_id}: {str(e)}\n{error_trace}")
+        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
 
 # --- Passenger Data ---
 @api.route('/passengers')
@@ -309,10 +422,17 @@ def get_passenger_details(passenger_id):
         'avg_rating_given': round(float(avg_rating_given), 2) if avg_rating_given else 0
     }
 
-    # Get ride history
+    # Get ride history - fix the feedback relationship issue
     history = Ride.query.filter_by(passenger_id=passenger_id)\
-        .options(db.joinedload(Ride.driver), db.joinedload(Ride.feedback))\
+        .options(db.joinedload(Ride.driver))\
         .order_by(Ride.request_time.desc()).limit(20).all()
+
+    # Get feedback separately for each ride
+    ride_ids = [ride.id for ride in history]
+    feedbacks_dict = {}
+    if ride_ids:
+        feedbacks = Feedback.query.filter(Feedback.ride_id.in_(ride_ids)).all()
+        feedbacks_dict = {fb.ride_id: fb for fb in feedbacks}
 
     return jsonify({
         'profile': {
@@ -330,12 +450,12 @@ def get_passenger_details(passenger_id):
         'history': [{
             'id': ride.id,
             'status': ride.status,
-            'fare': float(ride.fare),
-            'date': to_eat(ride.request_time).strftime('%Y-%m-%d %H:%M'),
-            'driver_name': ride.driver.name if ride.driver else 'N/A',
-            'pickup_address': ride.pickup_address,
-            'dest_address': ride.dest_address,
-            'rating_given': ride.feedback.rating if ride.feedback and ride.feedback.rating is not None else 'N/A'
+            'fare': float(ride.fare) if ride.fare else 0.0,
+            'date': to_eat(ride.request_time).strftime('%Y-%m-%d %H:%M') if ride.request_time else 'N/A',
+            'driver_name': ride.driver.name if ride.driver and ride.driver.name else 'N/A',
+            'pickup_address': ride.pickup_address if ride.pickup_address else 'N/A',
+            'dest_address': ride.dest_address if ride.dest_address else 'N/A',
+            'rating_given': feedbacks_dict.get(ride.id).rating if feedbacks_dict.get(ride.id) and feedbacks_dict.get(ride.id).rating is not None else 'N/A'
         } for ride in history]
     })
 
@@ -343,26 +463,30 @@ def get_passenger_details(passenger_id):
 @passenger_required
 def api_passenger_history():
     """Get ride history for logged-in passenger"""
-    from flask_login import current_user
-    
-    rides = Ride.query.filter_by(passenger_id=current_user.id)\
-        .options(db.joinedload(Ride.feedback), db.joinedload(Ride.driver))\
-        .order_by(Ride.request_time.desc()).all()
-    
-    rides_data = []
-    for ride in rides:
-        rides_data.append({
-            'id': ride.id,
-            'driver_name': ride.driver.name if ride.driver else "N/A",
-            'dest_address': ride.dest_address,
-            'fare': float(ride.fare),
-            'status': ride.status,
-            'request_time': to_eat(ride.request_time).strftime('%b %d, %Y at %I:%M %p'),
-            'rating': ride.feedback.rating if ride.feedback else None,
-            'comment': ride.feedback.comment if ride.feedback else None
-        })
-    
-    return jsonify(rides_data)
+    try:
+        from flask_login import current_user
+        
+        rides = Ride.query.filter_by(passenger_id=current_user.id)\
+            .options(db.joinedload(Ride.feedback), db.joinedload(Ride.driver))\
+            .order_by(Ride.request_time.desc()).all()
+        
+        rides_data = []
+        for ride in rides:
+            rides_data.append({
+                'id': ride.id,
+                'driver_name': ride.driver.name if ride.driver else "N/A",
+                'dest_address': ride.dest_address or "N/A",
+                'fare': float(ride.fare) if ride.fare else 0.0,
+                'status': ride.status or "Unknown",
+                'request_time': to_eat(ride.request_time).strftime('%b %d, %Y at %I:%M %p') if ride.request_time else "N/A",
+                'rating': ride.feedback.rating if ride.feedback and ride.feedback.rating else None,
+                'comment': ride.feedback.comment if ride.feedback and ride.feedback.comment else None
+            })
+        
+        return jsonify(rides_data)
+    except Exception as e:
+        current_app.logger.error(f"Error getting passenger ride history: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 # --- Feedback and Rating Endpoints ---
 @api.route('/rate-ride', methods=['POST'])

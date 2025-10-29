@@ -126,3 +126,131 @@ def update_admin_profile():
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+@api.route('/admins')
+@admin_required
+def get_admins():
+    """Get all admin users"""
+    try:
+        admins = Admin.query.all()
+        admins_data = [
+            {
+                'id': admin.id,
+                'username': admin.username,
+                'email': admin.email,
+                'created_at': admin.created_at.isoformat() if admin.created_at else None,
+                'profile_picture': admin.profile_picture
+            }
+            for admin in admins
+        ]
+        return jsonify(admins_data)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@api.route('/admins/add', methods=['POST'])
+@admin_required
+def add_admin():
+    """Add a new admin user"""
+    try:
+        data = request.get_json()
+        username = data.get('username', '').strip()
+        password = data.get('password', '').strip()
+        
+        if not username or not password:
+            return jsonify({'error': 'Username and password are required'}), 400
+        
+        # Check if username already exists
+        existing_admin = Admin.query.filter_by(username=username).first()
+        if existing_admin:
+            return jsonify({'error': 'Username already exists'}), 409
+        
+        # Create new admin
+        admin = Admin(
+            username=username,
+            email=f"{username}@admin.local"  # Default email
+        )
+        admin.set_password(password)
+        
+        db.session.add(admin)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Admin added successfully',
+            'admin': {
+                'id': admin.id,
+                'username': admin.username,
+                'email': admin.email
+            }
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@api.route('/admins/delete', methods=['POST'])
+@admin_required
+def delete_admin():
+    """Delete an admin user"""
+    try:
+        data = request.get_json()
+        admin_id = data.get('admin_id')
+        
+        if not admin_id:
+            return jsonify({'error': 'Admin ID is required'}), 400
+        
+        # Prevent deleting self
+        if admin_id == current_user.id:
+            return jsonify({'error': 'Cannot delete your own account'}), 400
+        
+        admin = Admin.query.get(admin_id)
+        if not admin:
+            return jsonify({'error': 'Admin not found'}), 404
+        
+        db.session.delete(admin)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Admin deleted successfully'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@api.route('/admins/change-password', methods=['POST'])
+@admin_required
+def change_admin_password():
+    """Change admin password"""
+    try:
+        data = request.get_json()
+        current_password = data.get('current_password', '').strip()
+        new_password = data.get('new_password', '').strip()
+        confirm_password = data.get('confirm_password', '').strip()
+        
+        if not current_password or not new_password or not confirm_password:
+            return jsonify({'error': 'All password fields are required'}), 400
+        
+        if new_password != confirm_password:
+            return jsonify({'error': 'New passwords do not match'}), 400
+        
+        if len(new_password) < 6:
+            return jsonify({'error': 'New password must be at least 6 characters long'}), 400
+        
+        # Verify current password
+        if not current_user.check_password(current_password):
+            return jsonify({'error': 'Current password is incorrect'}), 400
+        
+        # Update password
+        current_user.set_password(new_password)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Password changed successfully'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500

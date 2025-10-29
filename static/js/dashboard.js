@@ -272,7 +272,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Smart caching to reduce API calls
     const cache = new Map();
-    const CACHE_DURATION = 5000; // 5 seconds cache for dashboard data
+    const CACHE_DURATION = 30000; // 30 seconds cache for dashboard data - longer to prevent false error notifications
     
     const fetchData = async (endpoint, params = '', useCache = true) => { 
         const key = `${endpoint}?${params}`;
@@ -302,34 +302,55 @@ document.addEventListener('DOMContentLoaded', () => {
         requestQueue.set(key, now);
         
         let r; 
+        let hasCachedData = false;
+        let shouldShowError = false;
         try { 
             // Check if offline
             if (!isOnline) {
+                // Try to use cached data if available
+                if (useCache && cache.has(key)) {
+                    hasCachedData = true;
+                    console.log(`Offline: Using cached data for ${endpoint}`);
+                    return cache.get(key).data;
+                }
                 throw new Error('No internet connection');
             }
             
             r = await fetch(`${API_BASE_URL}/${endpoint}?${params}`, { cache: "no-store", credentials: 'include' }); 
             if (!r.ok) {
+                // Check for cached data BEFORE deciding to show error
+                if (useCache && cache.has(key)) {
+                    hasCachedData = true;
+                    console.warn(`API error ${r.status} for ${endpoint}, using cached data`);
+                    return cache.get(key).data;
+                }
+                
+                // No cached data available, but don't show error yet - check in catch block
                 if (r.status === 429) {
                     console.warn(`Rate limited for ${endpoint}, will retry later`);
                     showWarningNotification('Too many requests. Please wait a moment.');
                     return null; // Don't throw error for rate limiting
                 } else if (r.status >= 500) {
-                    showErrorNotification('Server error. Please try again later.');
+                    // Mark that we should show error, but DON'T show it yet - check cache first in catch block
+                    shouldShowError = true;
                     throw new Error(`Server error ${r.status}`); 
                 } else if (r.status === 404) {
-                    showErrorNotification('Resource not found.');
-                    throw new Error(`Resource not found ${r.status}`); 
+                    // Don't show 404 errors - they're often just missing optional data
+                    console.warn(`Resource not found: ${endpoint} - silently returning null`);
+                    return null;
                 } else if (r.status === 403) {
+                    // 403 is always shown - it's an authentication issue
                     showErrorNotification('Access denied. Please refresh the page.');
                     throw new Error(`Access denied ${r.status}`); 
                 }
+                // Other HTTP errors - check cache before showing error
+                shouldShowError = true;
                 throw new Error(`HTTP error ${r.status}`); 
             }
             const data = await r.json();
             
             // Cache the result for dashboard endpoints
-            if (useCache && ['dashboard-stats', 'pending-rides', 'active-rides', 'available-drivers'].includes(endpoint)) {
+            if (useCache && ['dashboard-stats', 'pending-rides', 'active-rides', 'available-drivers', 'all-rides-data', 'all-feedback', 'support-tickets', 'unread-feedback-count'].includes(endpoint)) {
                 cache.set(key, { data, timestamp: now });
             }
             
@@ -338,14 +359,37 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) { 
             console.error(`Fetch error for ${endpoint}:`, e); 
             
-            // Handle specific error types
-            if (e.message === 'No internet connection') {
-                showErrorNotification('No internet connection. Please check your network.');
-            } else if (e.message.includes('Failed to fetch')) {
-                // Suppress repeated toast; console is enough here
-                console.warn('Suppressed network toast: Failed to fetch');
-            } else if (e.message.includes('Server error')) {
-                showErrorNotification('Server error. Please try again later.');
+            // Try to use cached data if available BEFORE showing any errors
+            if (useCache && cache.has(key) && !hasCachedData) {
+                hasCachedData = true;
+                const cachedData = cache.get(key).data;
+                console.log(`Using cached data as fallback for ${endpoint} - suppressing error notification`);
+                // Return cached data immediately - this prevents any error notification
+                return cachedData;
+            }
+            
+            // Only show error notifications if we truly have no data to show
+            // and this is not a silent failure (like 404)
+            // IMPORTANT: Only show errors if we have NO cached data at all
+            const hasAnyCache = useCache && cache.has(key);
+            if (!hasCachedData && !hasAnyCache && shouldShowError) {
+                if (e.message === 'No internet connection') {
+                    showErrorNotification('No internet connection. Please check your network.');
+                } else if (e.message.includes('Failed to fetch')) {
+                    // Suppress repeated toast; console is enough here
+                    console.warn('Suppressed network toast: Failed to fetch');
+                } else if (e.message.includes('Server error')) {
+                    // Only show server error if we marked it, have no cached data, and this is a real server error
+                    console.error(`Server error for ${endpoint}: ${e.message}`);
+                    showErrorNotification('Server error. Please try again later.');
+                }
+            } else {
+                // We have cached data or this is a non-critical error - just log it
+                if (hasCachedData || hasAnyCache) {
+                    console.warn(`Error fetching ${endpoint}, but using cached data: ${e.message}`);
+                } else {
+                    console.warn(`Error fetching ${endpoint}, but not showing notification (silent failure): ${e.message}`);
+                }
             }
             
             if (r && r.status === 401) { 
@@ -1097,15 +1141,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const updateActiveRidesTable = (rides) => { const tbody = document.getElementById('active-rides-table-body'); tbody.innerHTML = ''; if (!rides?.length) { tbody.innerHTML = '<tr><td colspan="5" class="text-center p-4">No active rides</td></tr>'; return; } rides.forEach(r => { const row = tbody.insertRow(); row.innerHTML = `<td class="p-2">${r.user_name}</td><td>${r.driver_name}</td><td class="text-xs max-w-xs truncate">${r.dest_address}</td><td><span class="status-badge status-${r.status.replace(' ','-')}">${r.status}</span></td><td class="space-x-2"><button class="px-3 py-1 bg-green-500 text-white text-xs rounded complete-ride-btn" data-ride-id="${r.id}">Complete</button><button class="px-3 py-1 bg-yellow-500 text-white text-xs rounded reassign-ride-btn" data-ride-id="${r.id}">Re-assign</button></td>`; }); };
       const updateRideHistoryTable = () => { const tbody = document.getElementById('rides-history-table-body'); tbody.innerHTML = ''; if (!allRidesHistory?.length) { tbody.innerHTML = '<tr><td colspan="8" class="text-center p-4">No ride history.</td></tr>'; return; } const search = document.getElementById('ride-history-search').value.toLowerCase(); const filtered = allRidesHistory.filter(r => r.user_name.toLowerCase().includes(search) || r.driver_name?.toLowerCase().includes(search)); const pageInfo = document.getElementById('ride-history-page-info'); const totalPages = Math.ceil(filtered.length / RIDES_PER_PAGE); rideHistoryPage = Math.min(rideHistoryPage, totalPages) || 1; pageInfo.textContent = `Page ${rideHistoryPage} of ${totalPages}`; const paginated = filtered.slice((rideHistoryPage - 1) * RIDES_PER_PAGE, rideHistoryPage * RIDES_PER_PAGE); paginated.forEach(r => { const row = tbody.insertRow(); row.innerHTML = `<td class="p-2">${r.id}</td><td>${r.user_name}</td><td>${r.driver_name}</td><td>${r.fare} ETB</td><td><span class="status-badge status-${r.status}">${r.status}</span></td><td>${r.rating ? '★'.repeat(r.rating) : 'N/A'}</td><td>${r.request_time}</td><td><button class="action-btn view view-ride-btn" data-ride-id="${r.id}">👁️</button></td>`; }); };
-      const refreshFeedback = async () => { allFeedback = await fetchData('all-feedback') || []; const list = document.getElementById('feedback-list'); list.innerHTML = ''; if(!allFeedback.length) { list.innerHTML = '<p class="text-secondary text-center">No feedback yet.</p>'; return; } allFeedback.forEach(f => { const item = document.createElement('div'); item.className = `border-b pb-3 ${f.is_resolved ? 'opacity-50' : ''}`; item.innerHTML = `<div class="flex justify-between items-center"><p class="font-semibold">Ride #${f.ride_id} - ${f.passenger_name}</p><span class="text-xs text-secondary">${f.date}</span></div><div class="flex items-center mt-1"><span class="text-yellow-500">${f.rating ? '★'.repeat(f.rating) : ''}</span><p class="ml-2 text-sm italic">"${f.comment || 'No comment'}"</p></div><div class="flex justify-between items-center mt-1"><p class="text-xs text-secondary">Driver: ${f.driver_name}</p>${!f.is_resolved ? `<button data-id="${f.id}" class="resolve-feedback-btn px-2 py-1 text-xs bg-green-500 text-white rounded">Mark as Resolved</button>`: '<span class="text-xs text-green-600 font-semibold">Resolved</span>'}</div>`; list.appendChild(item); }); };
+      const refreshFeedback = async () => { 
+          // Don't show errors for empty feedback - it's expected
+          allFeedback = await fetchData('all-feedback', '', false) || []; 
+          const list = document.getElementById('feedback-list'); 
+          list.innerHTML = ''; 
+          if(!allFeedback.length) { 
+              list.innerHTML = '<p class="text-secondary text-center">No feedback yet.</p>'; 
+              return; 
+          } 
+          allFeedback.forEach(f => { 
+              const item = document.createElement('div'); 
+              item.className = `border-b pb-3 ${f.is_resolved ? 'opacity-50' : ''}`; 
+              item.innerHTML = `<div class="flex justify-between items-center"><p class="font-semibold">Ride #${f.ride_id} - ${f.passenger_name}</p><span class="text-xs text-secondary">${f.submitted_at || f.date || 'N/A'}</span></div><div class="flex items-center mt-1"><span class="text-yellow-500">${f.rating ? '★'.repeat(f.rating) : ''}</span><p class="ml-2 text-sm italic">"${f.comment || 'No comment'}"</p></div><div class="flex justify-between items-center mt-1"><p class="text-xs text-secondary">Driver: ${f.driver_name}</p>${!f.is_resolved ? `<button data-id="${f.id}" class="resolve-feedback-btn px-2 py-1 text-xs bg-green-500 text-white rounded">Mark as Resolved</button>`: '<span class="text-xs text-green-600 font-semibold">Resolved</span>'}</div>`; 
+              list.appendChild(item); 
+          }); 
+      };
       
       const refreshSupportTickets = async () => { 
-          const tickets = await fetchData('support-tickets') || []; 
+          // Don't show errors for empty tickets - it's expected
+          const tickets = await fetchData('support-tickets', '', false) || []; 
           const list = document.getElementById('support-tickets-list'); 
           list.innerHTML = ''; 
           
-          // Get ride history for context
-          const rideHistory = await fetchData('all-rides-data') || [];
+          // Get ride history for context (don't show errors if empty)
+          const rideHistory = await fetchData('all-rides-data', '', true) || [];
           
           // Calculate ticket statistics
           const totalTickets = tickets.length;
@@ -1214,15 +1274,15 @@ document.addEventListener('DOMContentLoaded', () => {
       window.viewPassengerDetailsFromTicket = async (passengerName) => {
           try {
               // Find passenger by name in the passengers list
-              const passengers = await fetchData('passengers') || [];
+              const passengers = await fetchData('passengers', '', false) || [];
               const passenger = passengers.find(p => p.username === passengerName);
               
               if (passenger) {
-                  const data = await fetchData(`passenger-details/${passenger.id}`);
-                  if (data) {
+                  const data = await fetchData(`passenger-details/${passenger.id}`, '', false);
+                  if (data && !data.error) {
                       showPassengerDetails(data);
                   } else {
-                      alert('Passenger details not found');
+                      showErrorNotification('Failed to load passenger details');
                   }
               } else {
                   alert('Passenger not found');
@@ -1454,8 +1514,12 @@ document.addEventListener('DOMContentLoaded', () => {
           const btn = e.target.closest('.view-ride-btn');
           if (btn) {
               const id = btn.dataset.rideId;
-              const data = await fetchData(`ride-details/${id}`);
-              if(data) showRideDetails(data);
+              const data = await fetchData(`ride-details/${id}`, '', false);
+              if(data && !data.error) {
+                  showRideDetails(data);
+              } else {
+                  showErrorNotification('Failed to load ride details. Please try again.');
+              }
           }
       });
 
@@ -1463,8 +1527,12 @@ document.addEventListener('DOMContentLoaded', () => {
           const btn = e.target.closest('.view-passenger-btn');
           if (btn) {
               const id = btn.dataset.passengerId;
-              const data = await fetchData(`passenger-details/${id}`);
-              if(data) showPassengerDetails(data);
+              const data = await fetchData(`passenger-details/${id}`, '', false);
+              if(data && !data.error) {
+                  showPassengerDetails(data);
+              } else {
+                  showErrorNotification('Failed to load passenger details. Please try again.');
+              }
           }
       });
 
@@ -1527,12 +1595,16 @@ document.addEventListener('DOMContentLoaded', () => {
       };
 
       const showRideDetails = async (data) => {
+          if (!data || !data.trip_info) {
+              showErrorNotification('Invalid ride data. Please try again.');
+              return;
+          }
           const content = document.getElementById('ride-details-content');
-          const trip = data.trip_info;
-          const passenger = data.passenger;
-          const driver = data.driver;
-          const timestamps = data.timestamps;
-          const feedback = data.feedback;
+          const trip = data.trip_info || {};
+          const passenger = data.passenger || { name: 'N/A', avatar: 'static/img/default_user.svg', phone: 'N/A' };
+          const driver = data.driver || { name: 'N/A', avatar: 'static/img/default_user.svg', phone: 'N/A', vehicle: 'N/A' };
+          const timestamps = data.timestamps || { requested: 'N/A', assigned: 'N/A' };
+          const feedback = data.feedback || { rating: null, comment: null };
 
           content.innerHTML = `
               <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -1970,6 +2042,8 @@ document.addEventListener('DOMContentLoaded', () => {
           allDrivers = drivers || []; 
           allRidesHistory = rides || []; 
           allPassengers = passengers || [];
+          
+          // Update tables - they handle empty data internally
           updateDriversTable(); 
           updatePassengersTable();
           updateRideHistoryTable(); 

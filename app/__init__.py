@@ -197,22 +197,28 @@ def create_app(config_name=None):
     
     # Import API blueprints and all their routes BEFORE registering
     from app.api.passenger_api import passenger_api  # Import passenger API blueprint
+    from app.api import api, init_limiter as api_init_limiter  # Import main API blueprint
     
     # Initialize limiter for blueprints
     from app.auth import init_limiter as auth_init_limiter
     
     auth_init_limiter(app)
     
+    # Initialize limiter for API routes
+    api_init_limiter(limiter)
+    
     # Exempt specific API routes from CSRF
     csrf.exempt(auth)  # TEMPORARY: Disable CSRF for ALL auth routes
     
     # Register blueprints
     app.register_blueprint(auth, url_prefix='/auth')
-    app.register_blueprint(passenger_api, url_prefix='/api')
+    app.register_blueprint(api, url_prefix='/api')  # Register main API blueprint
+    app.register_blueprint(passenger_api, url_prefix='/api')  # Register passenger API blueprint (routes start with /passenger)
     app.register_blueprint(admin)
     app.register_blueprint(passenger)
     
-    # Exempt passenger API from CSRF after registration
+    # Exempt API blueprints from CSRF after registration
+    csrf.exempt(api)
     csrf.exempt(passenger_api)
     
     # Root route redirect
