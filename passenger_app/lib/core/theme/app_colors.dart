@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 
-/// App color palette - Professional blue brand
+/// App color palette - Professional blue brand (Enhanced from HTML prototype)
 class AppColors {
   // Primary Brand Colors
   static const Color primaryBlue = Color(0xFF2563EB);
   static const Color darkBlue = Color(0xFF1E40AF);
   static const Color lightBlue = Color(0xFFDBEAFE);
+
+  // Secondary Colors
+  static const Color secondaryGreen = Color(0xFF10B981);
+  static const Color lightGreen = Color(0xFFA7F3D0);
 
   // Background Colors
   static const Color white = Color(0xFFFFFFFF);
@@ -37,4 +41,29 @@ class AppColors {
   static const Color gray700 = Color(0xFF374151);
   static const Color gray800 = Color(0xFF1F2937);
   static const Color gray900 = Color(0xFF111827);
+
+  // Dark Mode Colors
+  static const Color darkBackground = Color(0xFF1F2937);
+  static const Color darkSurface = Color(0xFF374151);
+  static const Color darkTextPrimary = Color(0xFFF3F4F6);
+  static const Color darkTextSecondary = Color(0xFFD1D5DB);
+  static const Color darkTextTertiary = Color(0xFF9CA3AF);
+
+  // Additional UI Colors from HTML prototype
+  static const Color green100 = Color(0xFFD1FAE5);
+  static const Color green600 = Color(0xFF059669);
+  static const Color red100 = Color(0xFFFEE2E2);
+  static const Color red600 = Color(0xFFDC2626);
+  static const Color blue100 = Color(0xFFDBEAFE);
+  static const Color blue600 = Color(0xFF2563EB);
+  static const Color indigo100 = Color(0xFFE0E7FF);
+  static const Color indigo600 = Color(0xFF4F46E5);
+  static const Color amber100 = Color(0xFFFEF3C7);
+  static const Color amber600 = Color(0xFFD97706);
+
+  // Gradient Colors
+  static const List<Color> primaryGradient = [primaryBlue, darkBlue];
+  static const List<Color> successGradient = [success, Color(0xFF059669)];
+  static const List<Color> warningGradient = [warning, Color(0xFFD97706)];
+  static const List<Color> errorGradient = [error, Color(0xFFDC2626)];
 }

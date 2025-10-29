@@ -211,7 +211,7 @@ class TigrayLocations {
   static TigrayLocation? findClosestLocation(LatLng point) {
     if (allLocations.isEmpty) return null;
 
-    final Distance distance = Distance();
+    const Distance distance = Distance();
     TigrayLocation? closest;
     double minDistance = double.infinity;
 

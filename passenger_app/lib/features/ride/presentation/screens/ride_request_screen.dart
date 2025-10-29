@@ -30,12 +30,13 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
   LatLng? _currentLocation;
   LatLng? _pickupLocation;
   LatLng? _destinationLocation;
+  LatLng? _tempPinLocation; // For map pin selection
   String _pickupAddress = 'Move map to set pickup';
   String _destinationAddress = '';
 
   // Ride configuration
   VehicleType _selectedVehicle = VehicleType.economy;
-  String _selectedPayment = 'Cash';
+  final String _selectedPayment = 'Cash';
   double? _estimatedFare;
   double? _distanceKm;
   String? _estimatedDuration;
@@ -45,6 +46,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
   RideStatus _currentStatus = RideStatus.home;
   Driver? _assignedDriver;
   int _currentNavigationIndex = 0;
+  bool _isMapSelectionMode = false;
 
   // Vehicle options (ETB - Ethiopian Birr)
   final List<VehicleOption> _vehicleOptions = const [
@@ -162,7 +164,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
       // Check if near a known location
       final closestLocation = TigrayLocations.findClosestLocation(location);
       if (closestLocation != null) {
-        final Distance distance = Distance();
+        const Distance distance = Distance();
         final distanceMeters = distance.as(
             LengthUnit.Meter, location, closestLocation.coordinates);
 
@@ -241,7 +243,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
       });
 
       // Calculate distance and fare
-      final Distance distance = Distance();
+      const Distance distance = Distance();
       final distanceMeters = distance.as(
         LengthUnit.Meter,
         _pickupLocation!,
@@ -277,7 +279,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
 
   void _fitMapToBounds() {
     if (_pickupLocation != null && _destinationLocation != null) {
-      final Distance distance = Distance();
+      const Distance distance = Distance();
       final distanceMeters = distance.as(
         LengthUnit.Meter,
         _pickupLocation!,
@@ -478,33 +480,107 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
   }
 
   Widget _buildMap() {
-    return MapWidget(
-      mapController: _mapController,
-      currentLocation: _currentLocation,
-      pickupLocation: _pickupLocation,
-      destinationLocation: _destinationLocation,
-      routePoints: _routePoints,
-      onLocationUpdate: (location) {},
-      onPickupSelected: (location) {
-        setState(() {
-          _pickupLocation = location;
-        });
-        _updatePickupAddress(location);
-      },
-      onDestinationSelected: (location) {
-        setState(() {
-          _destinationLocation = location;
-          _destinationAddress = 'Selected Location';
-          _currentStatus = RideStatus.rideConfiguration;
-        });
-        _calculateRoute();
-      },
-      onMapMoved: null,
+    return Stack(
+      children: [
+        MapWidget(
+          mapController: _mapController,
+          currentLocation: _currentLocation,
+          pickupLocation: _pickupLocation,
+          destinationLocation: _currentStatus == RideStatus.pinDestination
+              ? _tempPinLocation
+              : _destinationLocation,
+          routePoints: _routePoints,
+          onLocationUpdate: (location) {},
+          onPickupSelected: (location) {
+            setState(() {
+              _pickupLocation = location;
+            });
+            _updatePickupAddress(location);
+          },
+          onDestinationSelected: (location) {
+            // Handle map pin selection
+            if (_currentStatus == RideStatus.pinDestination) {
+              setState(() {
+                _tempPinLocation = location;
+              });
+            } else if (_isMapSelectionMode) {
+              setState(() {
+                _destinationLocation = location;
+                _destinationAddress = 'Selected Location';
+                _currentStatus = RideStatus.rideConfiguration;
+                _isMapSelectionMode = false;
+              });
+              _calculateRoute();
+            }
+          },
+          onMapMoved: _currentStatus == RideStatus.pinDestination
+              ? (center) {
+                  // Update pin location when map moves in pin mode
+                  setState(() {
+                    _tempPinLocation = center;
+                  });
+                }
+              : null,
+        ),
+        // Map selection overlay
+        if (_isMapSelectionMode)
+          Container(
+            color: Colors.black.withOpacity(0.1),
+            child: Stack(
+              children: [
+                const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.location_on,
+                        color: AppColors.primaryBlue,
+                        size: 60,
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        'Tap on the map to select destination',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primaryBlue,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Or use the suggestions below',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Cancel button
+                Positioned(
+                  top: 50,
+                  right: 20,
+                  child: SafeArea(
+                    child: FloatingActionButton(
+                      onPressed: _cancelMapSelection,
+                      backgroundColor: Colors.white,
+                      foregroundColor: AppColors.primaryBlue,
+                      mini: true,
+                      child: const Icon(Icons.close),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 
   bool _shouldShowAppBar() {
     return _currentStatus == RideStatus.searchingDestination ||
+        _currentStatus == RideStatus.pinDestination ||
         _currentStatus == RideStatus.rideConfiguration ||
         _currentStatus == RideStatus.findingDriver ||
         _currentStatus == RideStatus.driverAssigned ||
@@ -515,12 +591,13 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
   AppBar _buildAppBar() {
     return AppBar(
       leading: IconButton(
-        icon: Icon(Icons.arrow_back, color: Colors.white),
+        icon: const Icon(Icons.arrow_back, color: Colors.white),
         onPressed: _goBack,
       ),
       title: Text(
         _getScreenTitle(),
-        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        style:
+            const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
       ),
       backgroundColor: AppColors.primaryBlue,
       elevation: 0,
@@ -531,6 +608,8 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
     switch (_currentStatus) {
       case RideStatus.searchingDestination:
         return 'Select Destination';
+      case RideStatus.pinDestination:
+        return 'Pin on Map';
       case RideStatus.rideConfiguration:
         return 'Choose Vehicle';
       case RideStatus.findingDriver:
@@ -553,6 +632,13 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
           _currentStatus = RideStatus.home;
         });
         break;
+      case RideStatus.pinDestination:
+        setState(() {
+          _currentStatus = RideStatus.searchingDestination;
+          _tempPinLocation = null;
+          _isMapSelectionMode = false;
+        });
+        break;
       case RideStatus.rideConfiguration:
         setState(() {
           _currentStatus = RideStatus.searchingDestination;
@@ -573,13 +659,19 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
     }
   }
 
+  void _cancelMapSelection() {
+    setState(() {
+      _isMapSelectionMode = false;
+    });
+  }
+
   Widget _buildTopBar() {
     return Positioned(
       top: 0,
       left: 0,
       right: 0,
       child: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -612,6 +704,8 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
         return _buildHomeBottomSheet();
       case RideStatus.searchingDestination:
         return _buildSearchDestinationScreen();
+      case RideStatus.pinDestination:
+        return _buildPinDestinationScreen();
       case RideStatus.rideConfiguration:
         return _buildRideConfigurationSheet();
       case RideStatus.findingDriver:
@@ -671,7 +765,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
               const SizedBox(height: 20),
 
               // Where to? Search Bar
-              InkWell(
+              GestureDetector(
                 onTap: () {
                   setState(() {
                     _currentStatus = RideStatus.searchingDestination;
@@ -688,15 +782,39 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.search, color: AppColors.textTertiary),
+                      Icon(
+                        Icons.search,
+                        color: AppColors.textTertiary,
+                      ),
                       const SizedBox(width: 12),
-                      Text(
-                        'Where to?',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: AppColors.textTertiary,
+                      Expanded(
+                        child: Text(
+                          _destinationAddress.isEmpty
+                              ? 'Where to?'
+                              : _destinationAddress,
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: _destinationAddress.isEmpty
+                                ? AppColors.textTertiary
+                                : AppColors.textPrimary,
+                          ),
                         ),
                       ),
+                      if (_destinationAddress.isNotEmpty)
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _destinationAddress = '';
+                              _destinationLocation = null;
+                              _routePoints = null;
+                            });
+                          },
+                          child: Icon(
+                            Icons.clear,
+                            color: AppColors.textTertiary,
+                            size: 20,
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -704,10 +822,29 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
 
               const SizedBox(height: 24),
 
+              // Suggestions Section
+              Text(
+                'Suggestions',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // Quick suggestions grid
+              _buildSuggestionsGrid(),
+
+              const SizedBox(height: 24),
+
               // Saved Places
               Text(
                 'Saved Places',
-                style: Theme.of(context).textTheme.titleMedium,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
               ),
 
               const SizedBox(height: 12),
@@ -720,7 +857,10 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
               // Recent Trips
               Text(
                 'Recent Trips',
-                style: Theme.of(context).textTheme.titleMedium,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
               ),
 
               const SizedBox(height: 12),
@@ -782,7 +922,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                     const SizedBox(height: 2),
                     Text(
                       place.address,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 14,
                         color: AppColors.textTertiary,
                       ),
@@ -790,11 +930,119 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right, color: AppColors.gray400),
+              const Icon(Icons.chevron_right, color: AppColors.gray400),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildSuggestionsGrid() {
+    final suggestions = [
+      {
+        'name': 'Home',
+        'address': 'Hawelti, Mekelle',
+        'icon': Icons.home,
+        'color': AppColors.success,
+        'bgColor': AppColors.green100,
+      },
+      {
+        'name': 'Work',
+        'address': 'Kedamay Weyane, Mekelle',
+        'icon': Icons.work,
+        'color': AppColors.primaryBlue,
+        'bgColor': AppColors.blue100,
+      },
+      {
+        'name': 'Ayder Hospital',
+        'address': 'Ayder, Mekelle',
+        'icon': Icons.local_hospital,
+        'color': AppColors.error,
+        'bgColor': AppColors.red100,
+      },
+    ];
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 1,
+        childAspectRatio: 3.5,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+      ),
+      itemCount: suggestions.length,
+      itemBuilder: (context, index) {
+        final suggestion = suggestions[index];
+        return InkWell(
+          onTap: () {
+            // Create a temporary location for the suggestion
+            final location = TigrayLocation(
+              id: 'suggestion_${suggestion['name']}',
+              name: suggestion['name'] as String,
+              city: 'Mekelle',
+              coordinates:
+                  const LatLng(13.4967, 39.4753), // Default coordinates
+              category: 'suggestion',
+              description: suggestion['address'] as String,
+            );
+            _selectDestination(location);
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.gray200),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: suggestion['bgColor'] as Color,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    suggestion['icon'] as IconData,
+                    color: suggestion['color'] as Color,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        suggestion['name'] as String,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        suggestion['address'] as String,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: AppColors.textTertiary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right, color: AppColors.gray400),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -820,7 +1068,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                   color: AppColors.gray100,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(
+                child: const Icon(
                   Icons.schedule,
                   color: AppColors.textSecondary,
                   size: 20,
@@ -842,7 +1090,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                     const SizedBox(height: 2),
                     Text(
                       trip.destinationAddress,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 14,
                         color: AppColors.textTertiary,
                       ),
@@ -850,7 +1098,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right, color: AppColors.gray400),
+              const Icon(Icons.chevron_right, color: AppColors.gray400),
             ],
           ),
         ),
@@ -879,9 +1127,32 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                     icon: const Icon(Icons.arrow_back),
                   ),
                   const SizedBox(width: 8),
-                  Text(
-                    'Select Destination',
-                    style: Theme.of(context).textTheme.headlineMedium,
+                  Expanded(
+                    child: Text(
+                      'Select Destination',
+                      style: Theme.of(context).textTheme.headlineMedium,
+                    ),
+                  ),
+                  // Map Pin Button
+                  IconButton(
+                    onPressed: () {
+                      setState(() {
+                        _isMapSelectionMode = true;
+                        _currentStatus = RideStatus.pinDestination;
+                      });
+                    },
+                    icon: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.secondaryGreen.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.location_on,
+                        color: AppColors.secondaryGreen,
+                      ),
+                    ),
+                    tooltip: 'Pin on Map',
                   ),
                 ],
               ),
@@ -1044,7 +1315,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                       const SizedBox(height: 2),
                       Text(
                         location.description!,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 14,
                           color: AppColors.textTertiary,
                         ),
@@ -1056,6 +1327,107 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPinDestinationScreen() {
+    // Initialize temp pin to map center if not set
+    if (_tempPinLocation == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final center = _mapController.camera.center;
+        setState(() {
+          _tempPinLocation = center;
+        });
+      });
+    }
+
+    return Positioned(
+      bottom: 0,
+      left: 0,
+      right: 0,
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(24),
+            topRight: Radius.circular(24),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 20,
+              offset: Offset(0, -5),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Instructions
+                const Text(
+                  'Tap on the map or move the map to adjust the pin',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: AppColors.textSecondary,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                // Next Button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _tempPinLocation != null
+                        ? () async {
+                            // Get address for the pinned location
+                            try {
+                              final address =
+                                  await GeocodingService.coordinatesToAddress(
+                                      _tempPinLocation!);
+                              setState(() {
+                                _destinationLocation = _tempPinLocation;
+                                _destinationAddress =
+                                    address ?? 'Selected Location';
+                                _tempPinLocation = null;
+                                _currentStatus = RideStatus.rideConfiguration;
+                              });
+                              await _calculateRoute();
+                            } catch (e) {
+                              // If geocoding fails, use generic address
+                              setState(() {
+                                _destinationLocation = _tempPinLocation;
+                                _destinationAddress = 'Selected Location';
+                                _tempPinLocation = null;
+                                _currentStatus = RideStatus.rideConfiguration;
+                              });
+                              await _calculateRoute();
+                            }
+                          }
+                        : null,
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      backgroundColor: _tempPinLocation != null
+                          ? AppColors.primaryBlue
+                          : AppColors.gray300,
+                    ),
+                    child: const Text(
+                      'Next',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -1115,7 +1487,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
+                        const Text(
                           'Trip Details',
                           style: TextStyle(
                             fontSize: 16,
@@ -1129,9 +1501,9 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                               _currentStatus = RideStatus.searchingDestination;
                             });
                           },
-                          icon: Icon(Icons.edit,
+                          icon: const Icon(Icons.edit,
                               size: 16, color: AppColors.primaryBlue),
-                          label: Text(
+                          label: const Text(
                             'Change',
                             style: TextStyle(
                               color: AppColors.primaryBlue,
@@ -1177,22 +1549,24 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                     const SizedBox(height: 12),
                     Row(
                       children: [
-                        Icon(Icons.access_time,
+                        const Icon(Icons.access_time,
                             size: 16, color: AppColors.textSecondary),
                         const SizedBox(width: 4),
                         Text(
                           _estimatedDuration ?? '-',
-                          style: TextStyle(color: AppColors.textSecondary),
+                          style:
+                              const TextStyle(color: AppColors.textSecondary),
                         ),
                         const SizedBox(width: 16),
-                        Icon(Icons.straighten,
+                        const Icon(Icons.straighten,
                             size: 16, color: AppColors.textSecondary),
                         const SizedBox(width: 4),
                         Text(
                           _distanceKm != null
                               ? '${_distanceKm!.toStringAsFixed(1)} km'
                               : '-',
-                          style: TextStyle(color: AppColors.textSecondary),
+                          style:
+                              const TextStyle(color: AppColors.textSecondary),
                         ),
                       ],
                     ),
@@ -1241,7 +1615,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                         color: AppColors.primaryBlue.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Icon(
+                      child: const Icon(
                         Icons.account_balance_wallet,
                         color: AppColors.primaryBlue,
                         size: 20,
@@ -1252,7 +1626,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
+                          const Text(
                             'Payment Method',
                             style: TextStyle(
                               fontSize: 12,
@@ -1283,7 +1657,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                         ],
                       ),
                     ),
-                    Icon(Icons.chevron_right, color: AppColors.gray400),
+                    const Icon(Icons.chevron_right, color: AppColors.gray400),
                   ],
                 ),
               ),
@@ -1295,7 +1669,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                 width: double.infinity,
                 height: 56,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
+                  gradient: const LinearGradient(
                     colors: [AppColors.primaryBlue, AppColors.darkBlue],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -1324,9 +1698,9 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                       const Icon(Icons.local_taxi,
                           size: 24, color: Colors.white),
                       const SizedBox(width: 12),
-                      Text(
+                      const Text(
                         'Request Ride',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
@@ -1436,85 +1810,132 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
   Widget _buildFindingDriverSheet() {
     return Container(
       decoration: const BoxDecoration(
-        color: Colors.white,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: AppColors.primaryGradient,
+        ),
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(24),
           topRight: Radius.circular(24),
         ),
       ),
-      padding: const EdgeInsets.all(24),
-      height: MediaQuery.of(context).size.height * 0.45,
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Animated pulse indicator
-            AnimatedBuilder(
-              animation: _pulseAnimationController,
-              builder: (context, child) {
-                return Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    // Outer pulse
+      padding: const EdgeInsets.all(32),
+      height: MediaQuery.of(context).size.height * 0.5,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Animated pulse indicator with multiple circles
+          AnimatedBuilder(
+            animation: _pulseAnimationController,
+            builder: (context, child) {
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Multiple pulsing circles
+                  for (int i = 0; i < 3; i++)
                     Container(
-                      width: 100 + (_pulseAnimationController.value * 40),
-                      height: 100 + (_pulseAnimationController.value * 40),
+                      width: 120 + (_pulseAnimationController.value * 60),
+                      height: 120 + (_pulseAnimationController.value * 60),
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: AppColors.primaryBlue.withOpacity(
-                            0.1 - (_pulseAnimationController.value * 0.1)),
+                        color: Colors.white.withOpacity(
+                            0.3 - (_pulseAnimationController.value * 0.3)),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.2),
+                          width: 2,
+                        ),
                       ),
                     ),
-                    // Inner circle
-                    Container(
-                      width: 80,
-                      height: 80,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.primaryBlue,
-                      ),
-                      child: const Icon(
-                        Icons.search,
-                        color: Colors.white,
-                        size: 40,
+                  // Inner circle with icon
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white.withOpacity(0.2),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.3),
+                        width: 3,
                       ),
                     ),
-                  ],
-                );
-              },
+                    child: const Icon(
+                      Icons.location_on,
+                      color: Colors.white,
+                      size: 40,
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+
+          const SizedBox(height: 32),
+
+          Text(
+            'Finding nearby drivers...',
+            style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+            textAlign: TextAlign.center,
+          ),
+
+          const SizedBox(height: 12),
+
+          Text(
+            'Connecting you with the closest available ride',
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.white.withOpacity(0.9),
+              fontWeight: FontWeight.w400,
             ),
+            textAlign: TextAlign.center,
+          ),
 
-            const SizedBox(height: 24),
+          const SizedBox(height: 40),
 
-            Text(
-              'Finding nearby drivers...',
-              style: Theme.of(context).textTheme.displaySmall,
-              textAlign: TextAlign.center,
-            ),
-
-            const SizedBox(height: 8),
-
-            Text(
-              'This may take a few moments',
-              style: TextStyle(
-                fontSize: 14,
-                color: AppColors.textTertiary,
+          // Cancel button with better styling
+          Container(
+            width: double.infinity,
+            height: 50,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.3),
+                width: 1,
               ),
-              textAlign: TextAlign.center,
             ),
-
-            const SizedBox(height: 24),
-
-            TextButton(
+            child: TextButton(
               onPressed: _cancelRide,
-              child: Text(
-                'Cancel Request',
-                style: TextStyle(color: AppColors.error),
+              style: TextButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.close,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Cancel Request',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -1568,7 +1989,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
 
               const SizedBox(height: 8),
 
-              Text(
+              const Text(
                 'Arriving in 5 min',
                 style: TextStyle(
                   fontSize: 16,
@@ -1613,7 +2034,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                             const SizedBox(width: 4),
                             Text(
                               '${_assignedDriver!.rating} • ${_assignedDriver!.totalRides} trips',
-                              style: TextStyle(
+                              style: const TextStyle(
                                 fontSize: 14,
                                 color: AppColors.textSecondary,
                               ),
@@ -1623,7 +2044,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                         const SizedBox(height: 4),
                         Text(
                           '${_assignedDriver!.vehicleType} ${_assignedDriver!.vehicleDetails} • ${_assignedDriver!.vehiclePlateNumber}',
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 14,
                             color: AppColors.textTertiary,
                           ),
@@ -1689,148 +2110,257 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
   }
 
   Widget _buildTripCompletedScreen() {
-    return Container(
-      color: Colors.white,
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.check_circle,
-                color: AppColors.success,
-                size: 80,
-              ),
+    int selectedRating = 0;
+    bool isRatingSubmitted = false;
 
-              const SizedBox(height: 24),
-
-              Text(
-                'Trip Completed!',
-                style: Theme.of(context).textTheme.displayMedium,
-              ),
-
-              const SizedBox(height: 32),
-
-              // Trip Summary
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: AppColors.gray50,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Distance'),
-                        Text(
-                          '${_distanceKm?.toStringAsFixed(1) ?? '0'} km',
-                          style: const TextStyle(fontWeight: FontWeight.w600),
+    return StatefulBuilder(
+      builder: (context, setState) {
+        return Container(
+          color: Colors.white,
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Success animation
+                  TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0.0, end: 1.0),
+                    duration: const Duration(milliseconds: 800),
+                    curve: Curves.elasticOut,
+                    builder: (context, value, child) {
+                      return Transform.scale(
+                        scale: value,
+                        child: const Icon(
+                          Icons.check_circle,
+                          color: AppColors.success,
+                          size: 80,
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Duration'),
-                        Text(
-                          _estimatedDuration ?? '-',
-                          style: const TextStyle(fontWeight: FontWeight.w600),
+                      );
+                    },
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  Text(
+                    'Trip Completed!',
+                    style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
                         ),
-                      ],
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  // Trip Summary with better styling
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: AppColors.gray50,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.gray200),
                     ),
-                    const SizedBox(height: 12),
-                    const Divider(),
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    child: Column(
                       children: [
-                        const Text(
+                        Text(
                           'Total Fare',
-                          style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold),
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
                         ),
+                        const SizedBox(height: 8),
                         Text(
                           'ETB ${_estimatedFare?.toStringAsFixed(0) ?? '0'}',
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primaryBlue,
-                          ),
+                          style: Theme.of(context)
+                              .textTheme
+                              .displayLarge
+                              ?.copyWith(
+                                color: AppColors.primaryBlue,
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Paid with Cash',
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: AppColors.textTertiary,
+                                  ),
                         ),
                       ],
                     ),
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  // Rating Section
+                  if (!isRatingSubmitted) ...[
+                    Text(
+                      'Rate Your Ride',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'with ${_assignedDriver?.name ?? 'Driver'}',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Star Rating
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(5, (index) {
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              selectedRating = index + 1;
+                            });
+                          },
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            child: Icon(
+                              index < selectedRating
+                                  ? Icons.star
+                                  : Icons.star_border,
+                              size: 40,
+                              color: AppColors.warning,
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    // Submit Rating Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: selectedRating > 0
+                            ? () {
+                                setState(() {
+                                  isRatingSubmitted = true;
+                                });
+                                // Show success message
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                        'Thank you for rating ${selectedRating} stars!'),
+                                    backgroundColor: AppColors.success,
+                                  ),
+                                );
+                              }
+                            : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: selectedRating > 0
+                              ? AppColors.primaryBlue
+                              : AppColors.gray300,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        child: Text(
+                          selectedRating > 0
+                              ? 'Submit Rating'
+                              : 'Select a rating',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ] else ...[
+                    // Rating submitted state
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.success.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                            color: AppColors.success.withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.check_circle,
+                            color: AppColors.success,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Thank you for your feedback!',
+                            style: TextStyle(
+                              color: AppColors.success,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 32),
                   ],
-                ),
+
+                  const Spacer(),
+
+                  // Action Buttons
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        setState(() {
+                          _currentStatus = RideStatus.home;
+                          _destinationLocation = null;
+                          _destinationAddress = '';
+                          _routePoints = null;
+                          _estimatedFare = null;
+                          _assignedDriver = null;
+                        });
+                      },
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                      child: const Text(
+                        'Done',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: () {
+                        setState(() {
+                          _currentStatus = RideStatus.home;
+                          _destinationLocation = null;
+                          _destinationAddress = '';
+                          _routePoints = null;
+                          _estimatedFare = null;
+                          _assignedDriver = null;
+                        });
+                      },
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                      child: const Text('Request Another Ride'),
+                    ),
+                  ),
+                ],
               ),
-
-              const SizedBox(height: 32),
-
-              // Rating
-              Text(
-                'Rate Your Ride',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-
-              const SizedBox(height: 16),
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(5, (index) {
-                  return IconButton(
-                    onPressed: () {},
-                    icon: const Icon(Icons.star_border),
-                    iconSize: 40,
-                    color: AppColors.warning,
-                  );
-                }),
-              ),
-
-              const Spacer(),
-
-              // Buttons
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      _currentStatus = RideStatus.home;
-                      _destinationLocation = null;
-                      _destinationAddress = '';
-                      _routePoints = null;
-                      _estimatedFare = null;
-                      _assignedDriver = null;
-                    });
-                  },
-                  child: const Text('Done'),
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: () {
-                    setState(() {
-                      _currentStatus = RideStatus.home;
-                      _destinationLocation = null;
-                      _destinationAddress = '';
-                      _routePoints = null;
-                      _estimatedFare = null;
-                      _assignedDriver = null;
-                    });
-                  },
-                  child: const Text('Request Another Ride'),
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 

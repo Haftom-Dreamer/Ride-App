@@ -2,6 +2,7 @@
 enum RideStatus {
   home, // Initial state with bottom sheet
   searchingDestination, // User is searching for destination
+  pinDestination, // User is pinning destination on map
   rideConfiguration, // Pickup and destination set, selecting vehicle
   findingDriver, // Searching for available driver
   driverAssigned, // Driver found and assigned
