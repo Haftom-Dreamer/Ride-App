@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:latlong2/latlong.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/data/tigray_locations.dart';
+
+import '../../../../shared/domain/models/saved_place.dart';
+import '../../../../features/profile/data/saved_places_repository.dart';
+
 import '../../../auth/presentation/screens/login_screen.dart';
+
 import '../../../auth/presentation/providers/auth_provider.dart';
+
 import '../../../support/presentation/screens/support_center_screen.dart';
+import '../../../settings/presentation/screens/settings_screen.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -16,24 +23,39 @@ class ProfileScreen extends ConsumerStatefulWidget {
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   // Real user data - will be loaded from API
+
   String _userName = 'Loading...';
+
   String _userPhone = 'Loading...';
+
   String _userEmail = 'Loading...';
+
   String _profilePicture = 'assets/images/default_avatar.png';
 
   List<SavedPlace> _savedPlaces = [];
+  final SavedPlacesRepository _savedPlacesRepository = SavedPlacesRepository();
+
   String _newPlaceName = '';
+
   String _newPlaceAddress = '';
+
+  // Stats
+  int _totalTrips = 0;
+  DateTime? _memberSince;
 
   @override
   void initState() {
     super.initState();
+
     _loadUserData();
+    _fetchSavedPlaces();
   }
 
   Future<void> _loadUserData() async {
     // Load actual user data from auth provider
+
     final authState = ref.read(authProvider);
+
     final user = authState.user;
 
     if (user != null) {
@@ -43,31 +65,33 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         _userEmail = user.email;
         _profilePicture =
             user.profilePicture ?? 'assets/images/default_avatar.png';
-        _savedPlaces = [
-          const SavedPlace(
-            id: '1',
-            name: 'Home',
-            address: 'Ayder, Mekelle',
-            coordinates: LatLng(13.4967, 39.4753),
-            icon: 'home',
-          ),
-          const SavedPlace(
-            id: '2',
-            name: 'Work',
-            address: 'Mekelle University',
-            coordinates: LatLng(13.488, 39.482),
-            icon: 'work',
-          ),
-        ];
+        _memberSince = user.createdAt;
       });
     } else {
       // Fallback if no user data
+
       setState(() {
         _userName = 'Guest User';
+
         _userPhone = 'No phone number';
+
         _userEmail = 'No email provided';
+
         _savedPlaces = [];
       });
+    }
+  }
+
+  Future<void> _fetchSavedPlaces() async {
+    try {
+      final places = await _savedPlacesRepository.getSavedPlaces();
+      if (mounted) {
+        setState(() {
+          _savedPlaces = places;
+        });
+      }
+    } catch (_) {
+      // Silently ignore for now; UI shows empty list
     }
   }
 
@@ -104,18 +128,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ElevatedButton(
             onPressed: () {
               if (_newPlaceName.isNotEmpty && _newPlaceAddress.isNotEmpty) {
+                // For now, add locally; backend add can be wired with real coords
                 setState(() {
                   _savedPlaces.add(SavedPlace(
-                    id: DateTime.now().millisecondsSinceEpoch.toString(),
-                    name: _newPlaceName,
+                    label: _newPlaceName,
                     address: _newPlaceAddress,
-                    coordinates:
-                        const LatLng(13.4967, 39.4753), // Default coordinates
-                    icon: 'location_on',
+                    latitude: 0.0,
+                    longitude: 0.0,
                   ));
                 });
+
                 Navigator.pop(context);
+
                 _newPlaceName = '';
+
                 _newPlaceAddress = '';
               }
             },
@@ -127,13 +153,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   void _editSavedPlace(SavedPlace place) {
-    final nameController = TextEditingController(text: place.name);
+    final nameController = TextEditingController(text: place.label);
+
     final addressController = TextEditingController(text: place.address);
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Edit ${place.name}'),
+        title: Text('Edit ${place.label}'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -159,7 +186,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   child: OutlinedButton.icon(
                     onPressed: () {
                       Navigator.pop(context);
+
                       // TODO: Open map to select location
+
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                             content: Text('Map selection coming soon')),
@@ -181,6 +210,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ElevatedButton(
             onPressed: () {
               final newName = nameController.text.trim();
+
               final newAddress = addressController.text.trim();
 
               if (newName.isNotEmpty && newAddress.isNotEmpty) {
@@ -190,14 +220,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   if (index != -1) {
                     _savedPlaces[index] = SavedPlace(
                       id: place.id,
-                      name: newName,
+                      label: newName,
                       address: newAddress,
-                      coordinates: place.coordinates,
-                      icon: place.icon,
+                      latitude: place.latitude,
+                      longitude: place.longitude,
                     );
                   }
                 });
+
                 Navigator.pop(context);
+
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Place updated successfully')),
                 );
@@ -212,7 +244,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   void _editProfile() {
     final nameController = TextEditingController(text: _userName);
+
     final phoneController = TextEditingController(text: _userPhone);
+
     final emailController = TextEditingController(text: _userEmail);
 
     showDialog(
@@ -267,28 +301,36 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ElevatedButton(
             onPressed: () {
               final newName = nameController.text.trim();
+
               final newPhone = phoneController.text.trim();
+
               final newEmail = emailController.text.trim();
 
               if (newName.isEmpty || newPhone.isEmpty || newEmail.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('All fields are required')),
                 );
+
                 return;
               }
 
               // Check if phone or email changed
+
               final phoneChanged = newPhone != _userPhone;
+
               final emailChanged = newEmail != _userEmail;
 
               if (phoneChanged || emailChanged) {
                 _showEmailVerificationDialog(newName, newPhone, newEmail);
               } else {
                 // Only name changed, update directly
+
                 setState(() {
                   _userName = newName;
                 });
+
                 Navigator.pop(context);
+
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Profile updated successfully')),
                 );
@@ -335,7 +377,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
+
               Navigator.pop(context); // Close edit dialog too
+
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content:
@@ -343,6 +387,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   backgroundColor: AppColors.success,
                 ),
               );
+
               // TODO: Implement actual email verification
             },
             child: const Text('Send Verification'),
@@ -360,18 +405,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         slivers: [
           // App Bar with gradient
           SliverAppBar(
-            expandedHeight: 200,
+            expandedHeight: 240,
             floating: false,
             pinned: true,
             backgroundColor: AppColors.primaryBlue,
-            flexibleSpace: FlexibleSpaceBar(
-              title: const Text(
-                'Profile',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
+            centerTitle: false,
+            title: const Text(
+              'Profile',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
               ),
+            ),
+            flexibleSpace: FlexibleSpaceBar(
+              // Remove title here to avoid overlap with header content
               background: Container(
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
@@ -433,7 +480,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 16),
+
+                        const SizedBox(height: 8),
+
                         // Name
                         Text(
                           _userName,
@@ -443,7 +492,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             color: Colors.white,
                           ),
                         ),
-                        const SizedBox(height: 8),
+
+                        const SizedBox(height: 4),
+
                         // Phone
                         Text(
                           _userPhone,
@@ -483,9 +534,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        _buildQuickStat('Trips', '24', Icons.directions_car),
-                        _buildQuickStat('Rating', '4.8', Icons.star),
-                        _buildQuickStat('Member', '2y', Icons.calendar_today),
+                        _buildQuickStat(
+                            'Trips', '$_totalTrips', Icons.directions_car),
+                        _buildQuickStat(
+                          'Member',
+                          _memberSince == null
+                              ? '—'
+                              : '${_memberSince!.year}-${_memberSince!.month.toString().padLeft(2, '0')}',
+                          Icons.calendar_today,
+                        ),
                       ],
                     ),
                   ),
@@ -611,7 +668,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         _buildInfoRow(Icons.phone, 'Phone', _userPhone),
                         _buildInfoRow(Icons.email, 'Email', _userEmail),
                         _buildInfoRow(
-                            Icons.calendar_today, 'Member Since', 'Jan 2022'),
+                          Icons.calendar_today,
+                          'Member Since',
+                          _memberSince == null
+                              ? '—'
+                              : '${_memberSince!.year}-${_memberSince!.month.toString().padLeft(2, '0')}-${_memberSince!.day.toString().padLeft(2, '0')}',
+                        ),
                       ],
                     ),
                   ),
@@ -619,6 +681,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   const SizedBox(height: 24),
 
                   // Saved Places Section
+
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Text(
@@ -647,6 +710,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   const SizedBox(height: 24),
 
                   // Payment Methods Section
+
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Text(
@@ -711,6 +775,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   const SizedBox(height: 32),
 
                   // Logout Button
+
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: OutlinedButton.icon(
@@ -731,6 +796,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   const SizedBox(height: 16),
 
                   // App Version
+
                   const Center(
                     child: Text(
                       'Version 1.0.0',
@@ -741,7 +807,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 32), // Extra bottom padding
                 ],
               ),
             ),
@@ -752,19 +818,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Widget _buildSavedPlaceItem(SavedPlace place) {
-    IconData icon;
-    Color iconColor;
-
-    if (place.icon == 'home') {
-      icon = Icons.home;
-      iconColor = AppColors.success;
-    } else if (place.icon == 'work') {
-      icon = Icons.work;
-      iconColor = AppColors.primaryBlue;
-    } else {
-      icon = Icons.place;
-      iconColor = AppColors.warning;
-    }
+    const IconData icon = Icons.place;
+    final Color iconColor = AppColors.primaryBlue;
 
     return InkWell(
       onTap: () => _editSavedPlace(place),
@@ -787,7 +842,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    place.name,
+                    place.label,
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -1048,6 +1103,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
+
               await _performLogout();
             },
             child:
@@ -1059,8 +1115,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   void _showSettingsDialog() {
-    // This will show settings - can be expanded to a full screen later
-    _showPrivacySettings();
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const SettingsScreen(),
+      ),
+    );
   }
 
   void _toggleDarkMode() {
@@ -1077,9 +1137,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               subtitle: const Text('Default theme'),
               trailing: Radio<bool>(
                 value: false,
+
                 groupValue: false, // TODO: Get from theme provider
+
                 onChanged: (value) {
                   Navigator.pop(context);
+
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Light mode selected')),
                   );
@@ -1093,9 +1156,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               subtitle: const Text('Dark theme'),
               trailing: Radio<bool>(
                 value: true,
+
                 groupValue: false, // TODO: Get from theme provider
+
                 onChanged: (value) {
                   Navigator.pop(context);
+
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Dark mode selected')),
                   );
@@ -1109,9 +1175,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               subtitle: const Text('Follow system setting'),
               trailing: Radio<bool?>(
                 value: null,
+
                 groupValue: null, // TODO: Get from theme provider
+
                 onChanged: (value) {
                   Navigator.pop(context);
+
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('System default selected')),
                   );
@@ -1145,6 +1214,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 subtitle: Text('Required for sensitive changes'),
                 trailing: Switch(
                   value: true, // Always enabled for security
+
                   onChanged: null, // Cannot be disabled
                 ),
               ),
@@ -1181,6 +1251,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   value: false,
                   onChanged: (value) {
                     // TODO: Implement 2FA toggle
+
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('2FA feature coming soon')),
                     );
@@ -1213,7 +1284,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               title: const Text('Take Photo'),
               onTap: () {
                 Navigator.pop(context);
+
                 // TODO: Implement camera
+
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Camera feature coming soon')),
                 );
@@ -1224,7 +1297,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               title: const Text('Choose from Gallery'),
               onTap: () {
                 Navigator.pop(context);
+
                 // TODO: Implement gallery
+
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Gallery feature coming soon')),
                 );
@@ -1334,6 +1409,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   void _showReportIssue() {
     final issueController = TextEditingController();
+
     String selectedCategory = 'General';
 
     showDialog(
@@ -1384,6 +1460,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             onPressed: () {
               if (issueController.text.trim().isNotEmpty) {
                 Navigator.pop(context);
+
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text(
@@ -1402,7 +1479,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   void _showLostItemReport() {
     final itemController = TextEditingController();
+
     final descriptionController = TextEditingController();
+
     String selectedRide = 'Recent Ride';
 
     showDialog(
@@ -1460,6 +1539,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             onPressed: () {
               if (itemController.text.trim().isNotEmpty) {
                 Navigator.pop(context);
+
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content:
@@ -1490,6 +1570,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               subtitle: const Text('+251 911 234 567'),
               onTap: () {
                 Navigator.pop(context);
+
                 // TODO: Implement phone call
               },
             ),
@@ -1499,6 +1580,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               subtitle: const Text('selamawiride@gmail.com'),
               onTap: () {
                 Navigator.pop(context);
+
                 // TODO: Implement email
               },
             ),
@@ -1508,6 +1590,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               subtitle: const Text('Available 24/7'),
               onTap: () {
                 Navigator.pop(context);
+
                 // TODO: Implement live chat
               },
             ),
@@ -1678,6 +1761,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Future<void> _performLogout() async {
     try {
       // Show loading indicator
+
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -1687,22 +1771,29 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       );
 
       // Use the auth provider to logout properly
+
       final authNotifier = ref.read(authProvider.notifier);
+
       await authNotifier.logout();
 
       // Close loading dialog
+
       if (mounted) Navigator.pop(context);
 
       // Navigate to login screen and clear navigation stack
+
       if (mounted) {
         Navigator.pushAndRemoveUntil(
           context,
+
           MaterialPageRoute(builder: (context) => const LoginScreen()),
+
           (route) => false, // Remove all previous routes
         );
       }
 
       // Show success message
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -1713,9 +1804,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       }
     } catch (e) {
       // Close loading dialog if still open
+
       if (mounted) Navigator.pop(context);
 
       // Show error message
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

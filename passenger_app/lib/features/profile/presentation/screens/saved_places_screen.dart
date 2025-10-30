@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/saved_places_provider.dart';
+import '../../../../shared/domain/models/saved_place.dart';
 
 class SavedPlacesScreen extends ConsumerStatefulWidget {
   const SavedPlacesScreen({super.key});
@@ -339,42 +340,14 @@ class _SavedPlacesScreenState extends ConsumerState<SavedPlacesScreen> {
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
-              notifier.deleteSavedPlace(place.id);
+              if (place.id != null) {
+                notifier.deleteSavedPlace(place.id!);
+              }
             },
             child: const Text('Delete', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
-    );
-  }
-}
-
-// Saved Place model
-class SavedPlace {
-  final int id;
-  final String label;
-  final String address;
-  final double latitude;
-  final double longitude;
-  final DateTime createdAt;
-
-  const SavedPlace({
-    required this.id,
-    required this.label,
-    required this.address,
-    required this.latitude,
-    required this.longitude,
-    required this.createdAt,
-  });
-
-  factory SavedPlace.fromJson(Map<String, dynamic> json) {
-    return SavedPlace(
-      id: json['id'] as int,
-      label: json['label'] as String,
-      address: json['address'] as String,
-      latitude: (json['latitude'] as num).toDouble(),
-      longitude: (json['longitude'] as num).toDouble(),
-      createdAt: DateTime.parse(json['created_at'] as String),
     );
   }
 }

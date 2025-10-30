@@ -6,7 +6,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_user, logout_user, login_required, current_user
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from app.models import Admin, Passenger, db
+from app.models import Admin, Passenger, db, EmailVerification
 
 auth = Blueprint('auth', __name__)
 
@@ -435,3 +435,140 @@ def resend_verification():
     except Exception as e:
         print(f"❌ Resend verification failed: {str(e)}")
         return {'error': 'Failed to resend verification code.'}, 500
+
+@auth.route('/passenger/password-reset/request', methods=['POST'])
+def request_password_reset():
+    """Request password reset for passenger"""
+    try:
+        # Check if this is an API request (from Flutter app)
+        content_type = request.headers.get('Content-Type', '')
+        if 'application/json' in content_type:
+            data = request.get_json()
+            email = data.get('email', '').strip()
+        else:
+            email = request.form.get('email', '').strip()
+        
+        if not email:
+            return {'error': 'Email is required.'}, 400
+        
+        # Check if email is valid
+        import re
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_pattern, email):
+            return {'error': 'Invalid email format.'}, 400
+        
+        # Check if passenger exists with this email
+        passenger = Passenger.query.filter_by(email=email).first()
+        if not passenger:
+            # Don't reveal if email exists or not for security
+            return {'success': 'If an account with this email exists, a password reset link has been sent.'}, 200
+        
+        # Generate 6-digit verification code for reset
+        import random
+        reset_token = f"{random.randint(0, 999999):06d}"
+
+        # Remove any existing unverified/expired codes for this email
+        try:
+            EmailVerification.query.filter_by(email=email).delete()
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
+        # Store reset token in EmailVerification table with short expiry
+        from datetime import datetime, timedelta
+        verification = EmailVerification(
+            email=email,
+            verification_code=reset_token,
+            expires_at=datetime.utcnow() + timedelta(minutes=15)
+        )
+        db.session.add(verification)
+        db.session.commit()
+
+        # Send password reset email
+        from app.utils.email_service import send_password_reset_email
+        success, message = send_password_reset_email(email, reset_token)
+        if not success:
+            current_app.logger.error(f"Password reset email failed for {email}: {message}")
+            # Keep generic response but log failure
+            return {'success': 'If an account with this email exists, a password reset link has been sent.'}, 200
+
+        return {'success': 'If an account with this email exists, a password reset link has been sent.'}, 200
+        
+    except Exception as e:
+        print(f"❌ Password reset request failed: {str(e)}")
+        return {'error': 'Failed to process password reset request.'}, 500
+
+@auth.route('/passenger/password-reset/confirm', methods=['POST'])
+def confirm_password_reset():
+    """Confirm password reset with token"""
+    try:
+        # Check if this is an API request (from Flutter app)
+        content_type = request.headers.get('Content-Type', '')
+        if 'application/json' in content_type:
+            data = request.get_json()
+            email = data.get('email', '').strip()
+            # Accept both 'token' and 'reset_code' from clients
+            token = (data.get('token') or data.get('reset_code') or '').strip()
+            new_password = data.get('new_password', '').strip()
+        else:
+            email = request.form.get('email', '').strip()
+            # Accept both 'token' and 'reset_code'
+            token = (request.form.get('token') or request.form.get('reset_code') or '').strip()
+            new_password = request.form.get('new_password', '').strip()
+        
+        if not email or not token or not new_password:
+            return {'error': 'Email, token and new password are required.'}, 400
+        
+        if len(new_password) < 6:
+            return {'error': 'Password must be at least 6 characters long.'}, 400
+        
+        # Verify token against EmailVerification
+        verification = EmailVerification.query.filter_by(
+            email=email,
+            verification_code=token
+        ).first()
+
+        if not verification:
+            return {'error': 'Invalid reset code.'}, 400
+
+        # Check expiry and used status
+        try:
+            is_expired = verification.is_expired()
+        except Exception:
+            # Fallback if model lacks helper
+            from datetime import datetime
+            is_expired = getattr(verification, 'expires_at', None) and verification.expires_at < datetime.utcnow()
+
+        if is_expired:
+            return {'error': 'Reset code has expired.'}, 400
+        if getattr(verification, 'is_verified', False):
+            return {'error': 'Reset code already used.'}, 400
+
+        # Update passenger password
+        passenger = Passenger.query.filter_by(email=email).first()
+        if not passenger:
+            # Generic response; don't reveal account status
+            return {'success': 'Password has been reset successfully. Please log in with your new password.'}, 200
+
+        passenger.set_password(new_password)
+        # Mark code as used
+        try:
+            verification.is_verified = True
+        except Exception:
+            pass
+        db.session.commit()
+
+        return {'success': 'Password has been reset successfully. Please log in with your new password.'}, 200
+        
+    except Exception as e:
+        print(f"❌ Password reset confirmation failed: {str(e)}")
+        return {'error': 'Failed to reset password.'}, 500
+
+# Compatibility aliases under /api to match mobile client paths
+@auth.route('/api/passenger/password-reset/request', methods=['POST'])
+def request_password_reset_api_alias():
+    return request_password_reset()
+
+@auth.route('/api/passenger/password-reset/confirm', methods=['POST'])
+def confirm_password_reset_api_alias():
+    return confirm_password_reset()

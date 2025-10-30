@@ -57,6 +57,26 @@ class AuthRepository {
             'Login failed: ${errorData['error'] ?? 'Invalid credentials'}');
       }
     } catch (e) {
+      // Handle DioError specifically for better error messages
+      if (e is DioError) {
+        if (e.response != null) {
+          final statusCode = e.response!.statusCode;
+          final responseData = e.response!.data;
+
+          if (statusCode == 401) {
+            throw Exception('Invalid phone number or password');
+          } else if (statusCode == 400) {
+            if (responseData is Map && responseData['error'] != null) {
+              throw Exception(responseData['error']);
+            }
+            throw Exception('Please check your input and try again');
+          } else {
+            throw Exception('Login failed. Please try again.');
+          }
+        } else {
+          throw Exception('Network error. Please check your connection.');
+        }
+      }
       throw Exception('Login failed: $e');
     }
   }
@@ -177,5 +197,47 @@ class AuthRepository {
 
   Future<bool> isLoggedIn() async {
     return await StorageService.isLoggedIn();
+  }
+
+  Future<void> requestPasswordReset(String email) async {
+    try {
+      final response = await _apiClient.post(
+        '/auth/passenger/password-reset/request',
+        data: {'email': email},
+        options: Options(
+          headers: {'Content-Type': 'application/json'},
+          validateStatus: (status) => status! < 400,
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        // Success - password reset email sent
+        return;
+      } else {
+        final errorData = response.data;
+        throw Exception(
+            'Password reset failed: ${errorData['error'] ?? 'Unknown error'}');
+      }
+    } catch (e) {
+      // Handle DioError specifically for better error messages
+      if (e is DioError) {
+        if (e.response != null) {
+          final statusCode = e.response!.statusCode;
+          final responseData = e.response!.data;
+
+          if (statusCode == 400) {
+            if (responseData is Map && responseData['error'] != null) {
+              throw Exception(responseData['error']);
+            }
+            throw Exception('Please check your email address and try again');
+          } else {
+            throw Exception('Password reset failed. Please try again.');
+          }
+        } else {
+          throw Exception('Network error. Please check your connection.');
+        }
+      }
+      throw Exception('Password reset failed: $e');
+    }
   }
 }

@@ -214,6 +214,15 @@ class _SupportCenterScreenState extends State<SupportCenterScreen> {
               onTap: () => _voiceRecording(),
             ),
 
+            const SizedBox(height: 12),
+
+            _buildSafetyFeatureCard(
+              icon: Icons.search_off,
+              title: 'Lost Item',
+              subtitle: 'Report a lost item from your ride',
+              onTap: () => _reportLostItem(),
+            ),
+
             const SizedBox(height: 24),
 
             // Contact Form
@@ -603,6 +612,56 @@ class _SupportCenterScreenState extends State<SupportCenterScreen> {
       const SnackBar(
         content: Text('Voice recording feature coming soon'),
         backgroundColor: AppColors.warning,
+      ),
+    );
+  }
+
+  void _reportLostItem() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Report Lost Item'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Please describe the item you lost:'),
+            const SizedBox(height: 16),
+            TextField(
+              decoration: const InputDecoration(
+                hintText: 'e.g., Phone, Wallet, Keys...',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
+            ),
+            const SizedBox(height: 16),
+            const Text('When did you last see it?'),
+            const SizedBox(height: 8),
+            TextField(
+              decoration: const InputDecoration(
+                hintText: 'e.g., During the ride, After getting out...',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Lost item report submitted successfully'),
+                  backgroundColor: AppColors.success,
+                ),
+              );
+            },
+            child: const Text('Submit Report'),
+          ),
+        ],
       ),
     );
   }

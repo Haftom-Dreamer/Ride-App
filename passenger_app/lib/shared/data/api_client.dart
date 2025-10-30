@@ -43,7 +43,7 @@ class ApiClient {
   Future<void> setAuthToken(String token) async {
     _authToken = token;
     _dio.options.headers['Authorization'] = 'Bearer $token';
-    
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(AppConstants.userTokenKey, token);
   }
@@ -51,7 +51,7 @@ class ApiClient {
   Future<void> clearAuthToken() async {
     _authToken = null;
     _dio.options.headers.remove('Authorization');
-    
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(AppConstants.userTokenKey);
   }
@@ -132,13 +132,21 @@ class ApiClient {
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.sendTimeout:
       case DioExceptionType.receiveTimeout:
-        return NetworkException('Connection timeout. Please check your internet connection.');
-      
+        return NetworkException(
+            'Connection timeout. Please check your internet connection.');
+
       case DioExceptionType.badResponse:
         final statusCode = e.response?.statusCode;
-        final message = e.response?.data?['error'] ?? e.response?.data?['message'] ?? 'Server error';
-        
+        final message = e.response?.data?['error'] ??
+            e.response?.data?['message'] ??
+            'Server error';
+        final path = e.requestOptions.path;
+
         if (statusCode == 401) {
+          // Preserve meaningful message for login endpoint
+          if (path.contains('/auth/passenger/login')) {
+            return AuthException('Invalid phone number or password');
+          }
           clearAuthToken();
           return AuthException('Session expired. Please login again.');
         } else if (statusCode == 403) {
@@ -149,16 +157,17 @@ class ApiClient {
           return NetworkException('Server error. Please try again later.');
         }
         return NetworkException(message);
-      
+
       case DioExceptionType.cancel:
         return NetworkException('Request cancelled.');
-      
+
       case DioExceptionType.connectionError:
-        return NetworkException('No internet connection. Please check your network.');
-      
+        return NetworkException(
+            'No internet connection. Please check your network.');
+
       case DioExceptionType.badCertificate:
         return NetworkException('Security certificate error.');
-      
+
       case DioExceptionType.unknown:
         return NetworkException('An unexpected error occurred.');
     }
@@ -191,14 +200,16 @@ class _LoggingInterceptor extends Interceptor {
 
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) {
-    print('✅ RESPONSE[${response.statusCode}] => PATH: ${response.requestOptions.path}');
+    print(
+        '✅ RESPONSE[${response.statusCode}] => PATH: ${response.requestOptions.path}');
     print('Data: ${response.data}');
     handler.next(response);
   }
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
-    print('❌ ERROR[${err.response?.statusCode}] => PATH: ${err.requestOptions.path}');
+    print(
+        '❌ ERROR[${err.response?.statusCode}] => PATH: ${err.requestOptions.path}');
     print('Message: ${err.message}');
     handler.next(err);
   }
@@ -219,7 +230,7 @@ class _ErrorInterceptor extends Interceptor {
 class NetworkException implements Exception {
   final String message;
   NetworkException(this.message);
-  
+
   @override
   String toString() => 'NetworkException: $message';
 }
@@ -227,8 +238,7 @@ class NetworkException implements Exception {
 class AuthException implements Exception {
   final String message;
   AuthException(this.message);
-  
+
   @override
   String toString() => 'AuthException: $message';
 }
-

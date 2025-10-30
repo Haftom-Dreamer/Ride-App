@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/saved_places_repository.dart';
-import '../screens/saved_places_screen.dart';
+import '../../../../shared/domain/models/saved_place.dart';
 
 // Saved Places state
 class SavedPlacesState {

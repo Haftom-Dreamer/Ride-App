@@ -505,7 +505,7 @@ class _MyTripsScreenState extends State<MyTripsScreen>
                       ),
                     ),
 
-                    // Fare and Rating
+                    // Fare
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
@@ -518,26 +518,6 @@ class _MyTripsScreenState extends State<MyTripsScreen>
                               color: AppColors.primaryBlue,
                             ),
                           ),
-                        if (trip.status == TripStatus.completed &&
-                            trip.rating != null) ...[
-                          const SizedBox(height: 4),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.star,
-                                  size: 16, color: AppColors.warning),
-                              const SizedBox(width: 4),
-                              Text(
-                                trip.rating!.toStringAsFixed(1),
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
                       ],
                     ),
                   ],

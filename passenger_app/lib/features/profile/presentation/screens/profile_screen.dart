@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
-import '../../../ride/data/ride_repository.dart';
+import '../../data/saved_places_repository.dart';
 import '../../../../shared/domain/models/saved_place.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -12,7 +12,7 @@ class ProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
-  final RideRepository _rideRepository = RideRepository();
+  final SavedPlacesRepository _savedPlacesRepository = SavedPlacesRepository();
   List<SavedPlace> _savedPlaces = [];
   bool _isLoadingPlaces = false;
 
@@ -28,7 +28,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     });
 
     try {
-      final places = await _rideRepository.getSavedPlaces();
+      final places = await _savedPlacesRepository.getSavedPlaces();
       if (mounted) {
         setState(() {
           _savedPlaces = places;
@@ -52,7 +52,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   Future<void> _deleteSavedPlace(SavedPlace place) async {
     try {
-      await _rideRepository.deleteSavedPlace(place.id!);
+      await _savedPlacesRepository.deleteSavedPlace(place.id!);
       _loadSavedPlaces();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -97,11 +97,21 @@ class AuthNotifier extends StateNotifier<AuthState> {
         error: null,
       );
     } catch (e) {
+      // Trust repository message; minimal connectivity fallback
+      String message = e.toString();
+      if (message.startsWith('Exception: ')) {
+        message = message.substring('Exception: '.length);
+      }
+      if (message.contains('Network error') ||
+          message.contains('Connection refused')) {
+        message = 'Network error. Please check your connection';
+      }
+
       state = state.copyWith(
         user: null,
         isAuthenticated: false,
         isLoading: false,
-        error: e.toString(),
+        error: message,
       );
     }
   }
@@ -173,5 +183,33 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   void clearError() {
     state = state.copyWith(error: null);
+  }
+
+  Future<void> requestPasswordReset(String email) async {
+    state = state.copyWith(isLoading: true, error: null);
+
+    try {
+      await _authRepository.requestPasswordReset(email);
+      state = state.copyWith(
+        isLoading: false,
+        error: null,
+      );
+    } catch (e) {
+      // Extract user-friendly error message
+      String errorMessage = 'Password reset failed. Please try again.';
+
+      if (e.toString().contains('Invalid email format')) {
+        errorMessage = 'Please enter a valid email address';
+      } else if (e.toString().contains('Email is required')) {
+        errorMessage = 'Please enter your email address';
+      } else if (e.toString().contains('Network error')) {
+        errorMessage = 'Network error. Please check your connection';
+      }
+
+      state = state.copyWith(
+        isLoading: false,
+        error: errorMessage,
+      );
+    }
   }
 }

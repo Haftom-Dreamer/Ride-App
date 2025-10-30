@@ -64,20 +64,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       });
     }
 
-    // Handle successful verification (but not yet authenticated)
-    if (!authState.isLoading &&
-        authState.error == null &&
-        _showVerificationStep) {
-      // Show success message for verification
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Verification successful! Creating your account...'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      });
-    }
+    // Do not show a "verification successful" message until the code is actually verified
 
     return Scaffold(
       backgroundColor: Colors.white,

@@ -533,10 +533,7 @@ class _RideTrackingScreenState extends ConsumerState<RideTrackingScreen> {
   }
 
   void _rateRide(RideTrackingNotifier notifier) {
-    // TODO: Implement rating functionality
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Rating functionality coming soon')),
-    );
+    // Rating removed
   }
 }
 

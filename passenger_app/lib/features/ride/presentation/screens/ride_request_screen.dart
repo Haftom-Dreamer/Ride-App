@@ -1436,11 +1436,11 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
 
   Widget _buildRideConfigurationSheet() {
     return DraggableScrollableSheet(
-      initialChildSize: 0.75,
-      minChildSize: 0.15, // Allow dragging to see map
-      maxChildSize: 0.9,
+      initialChildSize: 0.9,
+      minChildSize: 0.3, // Enough to still see button
+      maxChildSize: 0.95,
       snap: true,
-      snapSizes: const [0.15, 0.4, 0.75, 0.9], // Better snap points
+      snapSizes: const [0.3, 0.6, 0.9, 0.95], // Snap with larger default
       builder: (context, scrollController) {
         return Container(
           decoration: const BoxDecoration(
@@ -1459,7 +1459,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
           ),
           child: ListView(
             controller: scrollController,
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
             children: [
               // Drag handle
               Center(
@@ -1729,6 +1729,8 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                   ),
                 ),
               ),
+              const SizedBox(height: 8), // Ensure button is fully visible
+              const SafeArea(top: false, child: SizedBox.shrink()),
             ],
           ),
         );
@@ -1821,121 +1823,126 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
         ),
       ),
       padding: const EdgeInsets.all(32),
-      height: MediaQuery.of(context).size.height * 0.5,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Animated pulse indicator with multiple circles
-          AnimatedBuilder(
-            animation: _pulseAnimationController,
-            builder: (context, child) {
-              return Stack(
-                alignment: Alignment.center,
-                children: [
-                  // Multiple pulsing circles
-                  for (int i = 0; i < 3; i++)
-                    Container(
-                      width: 120 + (_pulseAnimationController.value * 60),
-                      height: 120 + (_pulseAnimationController.value * 60),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white.withOpacity(
-                            0.3 - (_pulseAnimationController.value * 0.3)),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.2),
-                          width: 2,
+      constraints: BoxConstraints(
+        minHeight: MediaQuery.of(context).size.height * 0.4,
+        maxHeight: MediaQuery.of(context).size.height * 0.6,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Animated pulse indicator with multiple circles
+            AnimatedBuilder(
+              animation: _pulseAnimationController,
+              builder: (context, child) {
+                return Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Multiple pulsing circles
+                    for (int i = 0; i < 3; i++)
+                      Container(
+                        width: 120 + (_pulseAnimationController.value * 60),
+                        height: 120 + (_pulseAnimationController.value * 60),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white.withOpacity(
+                              0.3 - (_pulseAnimationController.value * 0.3)),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.2),
+                            width: 2,
+                          ),
                         ),
                       ),
-                    ),
-                  // Inner circle with icon
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white.withOpacity(0.2),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.3),
-                        width: 3,
+                    // Inner circle with icon
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withOpacity(0.2),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.3),
+                          width: 3,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.location_on,
+                        color: Colors.white,
+                        size: 40,
                       ),
                     ),
-                    child: const Icon(
-                      Icons.location_on,
-                      color: Colors.white,
-                      size: 40,
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-
-          const SizedBox(height: 32),
-
-          Text(
-            'Finding nearby drivers...',
-            style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-            textAlign: TextAlign.center,
-          ),
-
-          const SizedBox(height: 12),
-
-          Text(
-            'Connecting you with the closest available ride',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.white.withOpacity(0.9),
-              fontWeight: FontWeight.w400,
+                  ],
+                );
+              },
             ),
-            textAlign: TextAlign.center,
-          ),
 
-          const SizedBox(height: 40),
+            const SizedBox(height: 32),
 
-          // Cancel button with better styling
-          Container(
-            width: double.infinity,
-            height: 50,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.3),
-                width: 1,
-              ),
-            ),
-            child: TextButton(
-              onPressed: _cancelRide,
-              style: TextButton.styleFrom(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.close,
+            Text(
+              'Finding nearby drivers...',
+              style: Theme.of(context).textTheme.displaySmall?.copyWith(
                     color: Colors.white,
-                    size: 20,
+                    fontWeight: FontWeight.bold,
                   ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Cancel Request',
-                    style: TextStyle(
+              textAlign: TextAlign.center,
+            ),
+
+            const SizedBox(height: 12),
+
+            Text(
+              'Connecting you with the closest available ride',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.white.withOpacity(0.9),
+                fontWeight: FontWeight.w400,
+              ),
+              textAlign: TextAlign.center,
+            ),
+
+            const SizedBox(height: 40),
+
+            // Cancel button with better styling
+            Container(
+              width: double.infinity,
+              height: 50,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              child: TextButton(
+                onPressed: _cancelRide,
+                style: TextButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.close,
                       color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                      size: 20,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Cancel Request',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -2110,9 +2117,6 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
   }
 
   Widget _buildTripCompletedScreen() {
-    int selectedRating = 0;
-    bool isRatingSubmitted = false;
-
     return StatefulBuilder(
       builder: (context, setState) {
         return Container(
@@ -2192,118 +2196,6 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                   ),
 
                   const SizedBox(height: 32),
-
-                  // Rating Section
-                  if (!isRatingSubmitted) ...[
-                    Text(
-                      'Rate Your Ride',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'with ${_assignedDriver?.name ?? 'Driver'}',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Star Rating
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(5, (index) {
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              selectedRating = index + 1;
-                            });
-                          },
-                          child: Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 4),
-                            child: Icon(
-                              index < selectedRating
-                                  ? Icons.star
-                                  : Icons.star_border,
-                              size: 40,
-                              color: AppColors.warning,
-                            ),
-                          ),
-                        );
-                      }),
-                    ),
-
-                    const SizedBox(height: 32),
-
-                    // Submit Rating Button
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: selectedRating > 0
-                            ? () {
-                                setState(() {
-                                  isRatingSubmitted = true;
-                                });
-                                // Show success message
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                        'Thank you for rating ${selectedRating} stars!'),
-                                    backgroundColor: AppColors.success,
-                                  ),
-                                );
-                              }
-                            : null,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: selectedRating > 0
-                              ? AppColors.primaryBlue
-                              : AppColors.gray300,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                        ),
-                        child: Text(
-                          selectedRating > 0
-                              ? 'Submit Rating'
-                              : 'Select a rating',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ] else ...[
-                    // Rating submitted state
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppColors.success.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                            color: AppColors.success.withOpacity(0.3)),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.check_circle,
-                            color: AppColors.success,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Thank you for your feedback!',
-                            style: TextStyle(
-                              color: AppColors.success,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-                  ],
 
                   const Spacer(),
 

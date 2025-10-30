@@ -64,7 +64,7 @@ def create_app(config_name=None):
     def handle_csrf_error(e):
         # Check if it's a CSRF error
         if isinstance(e, BadRequest) and 'CSRF' in str(e.description):
-            if request.path.startswith('/api/'):
+            if request.path.startswith('/api/') or request.path.startswith('/auth/passenger/password-reset'):
                 app.logger.error(f"CSRF error on API endpoint: {request.path}")
                 return jsonify({'error': 'CSRF token missing or invalid'}), 400
             flash('Session expired. Please refresh and try again.', 'danger')
@@ -244,6 +244,22 @@ def create_app(config_name=None):
         from flask import send_from_directory
         import os
         return send_from_directory(os.path.join(app.root_path, 'static'), 'favicon.ico', mimetype='image/vnd.microsoft.icon')
+    
+    # API compatibility routes for password reset (mobile app expects /api/...)
+    from app.auth import request_password_reset as auth_request_password_reset
+    from app.auth import confirm_password_reset as auth_confirm_password_reset
+    
+    @app.route('/api/passenger/password-reset/request', methods=['POST'])
+    def api_password_reset_request():
+        return auth_request_password_reset()
+    
+    @app.route('/api/passenger/password-reset/confirm', methods=['POST'])
+    def api_password_reset_confirm():
+        return auth_confirm_password_reset()
+
+    # Explicitly exempt mobile API password reset routes from CSRF
+    csrf.exempt(api_password_reset_request)
+    csrf.exempt(api_password_reset_confirm)
     
     # Initialize database and default data
     with app.app_context():

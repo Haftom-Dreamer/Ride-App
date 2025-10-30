@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import '../../../shared/data/api_client.dart';
 import '../../../core/config/app_config.dart';
-import '../presentation/screens/saved_places_screen.dart';
+import '../../../shared/domain/models/saved_place.dart';
 
 class SavedPlacesRepository {
   final ApiClient _apiClient = ApiClient();

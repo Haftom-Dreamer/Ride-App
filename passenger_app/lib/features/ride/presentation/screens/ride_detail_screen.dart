@@ -165,46 +165,7 @@ class RideDetailScreen extends StatelessWidget {
                     ),
                   ]),
 
-                  // Rating (if completed)
-                  if (ride.isCompleted && ride.rating != null) ...[
-                    const SizedBox(height: 20),
-                    _buildSectionTitle('Your Rating'),
-                    const SizedBox(height: 12),
-                    _buildInfoCard([
-                      Row(
-                        children: [
-                          ...List.generate(5, (index) {
-                            return Icon(
-                              Icons.star,
-                              color: index < ride.rating!
-                                  ? Colors.amber
-                                  : Colors.grey.shade300,
-                              size: 28,
-                            );
-                          }),
-                          const SizedBox(width: 12),
-                          Text(
-                            '${ride.rating}/5',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (ride.feedback != null &&
-                          ride.feedback!.isNotEmpty) ...[
-                        const SizedBox(height: 12),
-                        Text(
-                          ride.feedback!,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey.shade700,
-                          ),
-                        ),
-                      ],
-                    ]),
-                  ],
+                  // Rating removed
 
                   // Note (if exists)
                   if (ride.note != null && ride.note!.isNotEmpty) ...[
@@ -378,5 +339,3 @@ class RideDetailScreen extends StatelessWidget {
         '${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 }
-
-

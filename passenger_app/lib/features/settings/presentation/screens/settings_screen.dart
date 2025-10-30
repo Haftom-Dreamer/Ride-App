@@ -1,451 +1,520 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
-import '../providers/settings_provider.dart';
+import '../../../../core/theme/app_colors.dart';
 
-class SettingsScreen extends ConsumerStatefulWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
+  State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+class _SettingsScreenState extends State<SettingsScreen> {
+  bool _notificationsEnabled = true;
+  bool _darkModeEnabled = false;
+  String _selectedLanguage = 'English';
+
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authProvider);
-    final user = authState.user;
-    final settingsState = ref.watch(settingsProvider);
-    final settingsNotifier = ref.read(settingsProvider.notifier);
-    final authNotifier = ref.read(authProvider.notifier);
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Settings'),
-        backgroundColor: Colors.blue.shade700,
+        backgroundColor: AppColors.primaryBlue,
         foregroundColor: Colors.white,
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // User Profile Section
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Account',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                  const SizedBox(height: 16),
-                  if (user != null) ...[
-                    ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: Colors.blue.shade100,
-                        backgroundImage: user.profilePicture != null
-                            ? NetworkImage(user.profilePicture!)
-                            : null,
-                        child: user.profilePicture == null
-                            ? Icon(Icons.person, color: Colors.blue.shade700)
-                            : null,
-                      ),
-                      title: Text(
-                        user.username,
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      subtitle: Text(user.email),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () {
-                        // Navigate to profile screen
-                        Navigator.of(context).pushNamed('/profile');
-                      },
-                    ),
-                  ],
-                  const Divider(),
-                  ListTile(
-                    leading: const Icon(Icons.logout, color: Colors.red),
-                    title: const Text('Logout'),
-                    onTap: () => _showLogoutDialog(authNotifier),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
           // Notifications Section
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+          _buildSectionCard(
+            title: 'Notifications',
+            icon: Icons.notifications_outlined,
                 children: [
-                  Text(
-                    'Notifications',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                  const SizedBox(height: 16),
-                  SwitchListTile(
-                    title: const Text('Push Notifications'),
-                    subtitle: const Text('Receive ride updates and promotions'),
-                    value: settingsState.pushNotifications,
-                    onChanged: (value) {
-                      settingsNotifier.updatePushNotifications(value);
-                    },
-                  ),
-                  SwitchListTile(
-                    title: const Text('Email Notifications'),
-                    subtitle: const Text('Receive updates via email'),
-                    value: settingsState.emailNotifications,
-                    onChanged: (value) {
-                      settingsNotifier.updateEmailNotifications(value);
-                    },
-                  ),
-                  SwitchListTile(
-                    title: const Text('SMS Notifications'),
-                    subtitle: const Text('Receive updates via SMS'),
-                    value: settingsState.smsNotifications,
-                    onChanged: (value) {
-                      settingsNotifier.updateSmsNotifications(value);
-                    },
-                  ),
-                ],
+              _buildSwitchItem(
+                title: 'Push Notifications',
+                subtitle: 'Receive notifications about your rides',
+                value: _notificationsEnabled,
+                onChanged: (value) {
+                  setState(() {
+                    _notificationsEnabled = value;
+                  });
+                },
               ),
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // App Preferences Section
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'App Preferences',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                  const SizedBox(height: 16),
-                  ListTile(
-                    leading: const Icon(Icons.language),
-                    title: const Text('Language'),
-                    subtitle: Text(settingsState.language),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () =>
-                        _showLanguageDialog(settingsNotifier, settingsState),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.palette),
-                    title: const Text('Theme'),
-                    subtitle: Text(settingsState.theme),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () =>
-                        _showThemeDialog(settingsNotifier, settingsState),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.location_on),
-                    title: const Text('Default Vehicle Type'),
-                    subtitle: Text(settingsState.defaultVehicleType),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () =>
-                        _showVehicleTypeDialog(settingsNotifier, settingsState),
-                  ),
-                ],
+              _buildDivider(),
+              _buildSettingItem(
+                icon: Icons.notification_important,
+                title: 'Ride Updates',
+                subtitle: 'Driver arrival, trip status',
+                onTap: () => _showNotificationSettings(),
               ),
-            ),
+              _buildDivider(),
+              _buildSettingItem(
+                icon: Icons.local_offer,
+                title: 'Promotions',
+                subtitle: 'Special offers and discounts',
+                onTap: () => _showPromotionSettings(),
+              ),
+            ],
           ),
 
           const SizedBox(height: 16),
 
           // Privacy & Security Section
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+          _buildSectionCard(
+            title: 'Privacy & Security',
+            icon: Icons.lock_outline,
                 children: [
-                  Text(
-                    'Privacy & Security',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                  const SizedBox(height: 16),
-                  ListTile(
-                    leading: const Icon(Icons.privacy_tip),
-                    title: const Text('Privacy Policy'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => _showPrivacyPolicy(),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.security),
-                    title: const Text('Terms of Service'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => _showTermsOfService(),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.lock),
-                    title: const Text('Change Password'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () {
-                      Navigator.of(context).pushNamed('/profile');
-                    },
-                  ),
-                ],
+              _buildSettingItem(
+                icon: Icons.visibility,
+                title: 'Profile Visibility',
+                subtitle: 'Control who can see your profile',
+                onTap: () => _showPrivacySettings(),
               ),
-            ),
+              _buildDivider(),
+              _buildSettingItem(
+                icon: Icons.location_off,
+                title: 'Location Services',
+                subtitle: 'Manage location permissions',
+                onTap: () => _showLocationSettings(),
+              ),
+              _buildDivider(),
+              _buildSettingItem(
+                icon: Icons.security,
+                title: 'Two-Factor Authentication',
+                subtitle: 'Add extra security to your account',
+                onTap: () => _show2FASettings(),
+              ),
+              _buildDivider(),
+              _buildSettingItem(
+                icon: Icons.delete_outline,
+                title: 'Delete Account',
+                subtitle: 'Permanently delete your account',
+                onTap: () => _showDeleteAccountDialog(),
+                iconColor: AppColors.error,
+              ),
+            ],
           ),
 
           const SizedBox(height: 16),
 
-          // Support Section
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+          // App Preferences Section
+          _buildSectionCard(
+            title: 'App Preferences',
+            icon: Icons.tune,
                 children: [
-                  Text(
-                    'Support',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                  const SizedBox(height: 16),
-                  ListTile(
-                    leading: const Icon(Icons.help),
-                    title: const Text('Help Center'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => _showHelpCenter(),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.contact_support),
-                    title: const Text('Contact Support'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => _contactSupport(),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.bug_report),
-                    title: const Text('Report a Bug'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => _reportBug(),
-                  ),
-                ],
+              _buildSettingItem(
+                icon: Icons.language,
+                title: 'Language',
+                subtitle: _selectedLanguage,
+                onTap: () => _showLanguageSelector(),
               ),
-            ),
+              _buildDivider(),
+              _buildSwitchItem(
+                title: 'Dark Mode',
+                subtitle: 'Switch between light and dark theme',
+                value: _darkModeEnabled,
+                onChanged: (value) {
+                  setState(() {
+                    _darkModeEnabled = value;
+                  });
+                  _toggleDarkMode();
+                },
+              ),
+              _buildDivider(),
+              _buildSettingItem(
+                icon: Icons.text_fields,
+                title: 'Font Size',
+                subtitle: 'Adjust text size for better readability',
+                onTap: () => _showFontSizeSettings(),
+              ),
+              _buildDivider(),
+              _buildSettingItem(
+                icon: Icons.accessibility,
+                title: 'Accessibility',
+                subtitle: 'Screen reader and accessibility options',
+                onTap: () => _showAccessibilitySettings(),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          // Payment & Billing Section
+          _buildSectionCard(
+            title: 'Payment & Billing',
+            icon: Icons.payment,
+            children: [
+              _buildSettingItem(
+                icon: Icons.credit_card,
+                title: 'Payment Methods',
+                subtitle: 'Manage your payment options',
+                onTap: () => _showPaymentMethods(),
+              ),
+              _buildDivider(),
+              _buildSettingItem(
+                icon: Icons.receipt,
+                title: 'Billing History',
+                subtitle: 'View your ride receipts',
+                onTap: () => _showBillingHistory(),
+              ),
+              _buildDivider(),
+              _buildSettingItem(
+                icon: Icons.local_offer,
+                title: 'Promo Codes',
+                subtitle: 'Enter and manage promo codes',
+                onTap: () => _showPromoCodes(),
+              ),
+            ],
           ),
 
           const SizedBox(height: 16),
 
           // About Section
-          Card(
+          _buildSectionCard(
+            title: 'About',
+            icon: Icons.info_outline,
+            children: [
+              _buildSettingItem(
+                icon: Icons.description,
+                title: 'Terms & Conditions',
+                subtitle: 'Read our service terms',
+                onTap: () => _showTermsAndConditions(),
+              ),
+              _buildDivider(),
+              _buildSettingItem(
+                icon: Icons.privacy_tip,
+                title: 'Privacy Policy',
+                subtitle: 'How we use your data',
+                onTap: () => _showPrivacyPolicy(),
+              ),
+              _buildDivider(),
+              _buildSettingItem(
+                icon: Icons.info,
+                title: 'App Version',
+                subtitle: 'Version 1.0.0',
+                onTap: () => _showAppInfo(),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionCard({
+    required String title,
+    required IconData icon,
+    required List<Widget> children,
+  }) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: AppColors.gray200),
+      ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+          // Section Header
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Icon(icon, color: AppColors.primaryBlue, size: 24),
+                const SizedBox(width: 12),
+                  Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                ),
+              ],
+            ),
+          ),
+          // Section Items
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettingItem({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+    Color? iconColor,
+  }) {
+    return InkWell(
+      onTap: onTap,
             child: Padding(
-              padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: iconColor ?? AppColors.primaryBlue,
+              size: 20,
+            ),
+            const SizedBox(width: 16),
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'About',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
+                    title,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
                         ),
                   ),
-                  const SizedBox(height: 16),
-                  ListTile(
-                    leading: const Icon(Icons.info),
-                    title: const Text('App Version'),
-                    subtitle: const Text('1.0.0'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => _showAppInfo(),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.update),
-                    title: const Text('Check for Updates'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => _checkForUpdates(),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
                   ),
                 ],
               ),
             ),
+            const Icon(Icons.chevron_right, color: AppColors.gray400),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSwitchItem({
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.toggle_on,
+            color: AppColors.primaryBlue,
+            size: 20,
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                  ),
+                ],
+              ),
+            ),
+          Switch(
+            value: value,
+            onChanged: onChanged,
+            activeColor: AppColors.primaryBlue,
           ),
         ],
       ),
     );
   }
 
-  void _showLogoutDialog(AuthNotifier authNotifier) {
+  Widget _buildDivider() {
+    return const Divider(
+      indent: 52,
+      height: 1,
+      color: AppColors.gray200,
+    );
+  }
+
+  // Action Methods
+  void _showNotificationSettings() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Notification settings coming soon!')),
+    );
+  }
+
+  void _showPromotionSettings() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Promotion settings coming soon!')),
+    );
+  }
+
+  void _showPrivacySettings() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
+        title: const Text('Privacy Settings'),
+        content: const Text('Privacy settings will be available soon.'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLocationSettings() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Location settings coming soon!')),
+    );
+  }
+
+  void _show2FASettings() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('2FA settings coming soon!')),
+    );
+  }
+
+  void _showDeleteAccountDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Account'),
+        content: const Text(
+          'Are you sure you want to delete your account? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
           TextButton(
             onPressed: () {
-              Navigator.of(context).pop();
-              authNotifier.logout();
-              Navigator.of(context).pushReplacementNamed('/login');
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Account deletion coming soon!')),
+              );
             },
-            child: const Text('Logout'),
+            child:
+                const Text('Delete', style: TextStyle(color: AppColors.error)),
           ),
         ],
       ),
     );
   }
 
-  void _showLanguageDialog(
-      SettingsNotifier settingsNotifier, SettingsState settingsState) {
-    final languages = ['English', 'Amharic', 'Oromo', 'Tigrinya'];
-
+  void _showLanguageSelector() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Select Language'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          children: languages.map((language) {
-            return ListTile(
-              title: Text(language),
-              trailing: settingsState.language == language
-                  ? const Icon(Icons.check, color: Colors.blue)
+          children: [
+            ListTile(
+              title: const Text('English'),
+              trailing: _selectedLanguage == 'English'
+                  ? const Icon(Icons.check, color: AppColors.primaryBlue)
                   : null,
               onTap: () {
-                settingsNotifier.updateLanguage(language);
-                Navigator.of(context).pop();
+                setState(() {
+                  _selectedLanguage = 'English';
+                });
+                Navigator.pop(context);
               },
-            );
-          }).toList(),
+            ),
+            ListTile(
+              title: const Text('አማርኛ'),
+              trailing: _selectedLanguage == 'አማርኛ'
+                  ? const Icon(Icons.check, color: AppColors.primaryBlue)
+                  : null,
+              onTap: () {
+                setState(() {
+                  _selectedLanguage = 'አማርኛ';
+                });
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              title: const Text('ትግርኛ'),
+              trailing: _selectedLanguage == 'ትግርኛ'
+                  ? const Icon(Icons.check, color: AppColors.primaryBlue)
+                  : null,
+              onTap: () {
+                setState(() {
+                  _selectedLanguage = 'ትግርኛ';
+                });
+                Navigator.pop(context);
+              },
+            ),
+          ],
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+        ],
       ),
     );
   }
 
-  void _showThemeDialog(
-      SettingsNotifier settingsNotifier, SettingsState settingsState) {
-    final themes = ['Light', 'Dark', 'System'];
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Select Theme'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: themes.map((theme) {
-            return ListTile(
-              title: Text(theme),
-              trailing: settingsState.theme == theme
-                  ? const Icon(Icons.check, color: Colors.blue)
-                  : null,
-              onTap: () {
-                settingsNotifier.updateTheme(theme);
-                Navigator.of(context).pop();
-              },
-            );
-          }).toList(),
-        ),
+  void _toggleDarkMode() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content:
+            Text(_darkModeEnabled ? 'Dark mode enabled' : 'Light mode enabled'),
       ),
     );
   }
 
-  void _showVehicleTypeDialog(
-      SettingsNotifier settingsNotifier, SettingsState settingsState) {
-    final vehicleTypes = ['Bajaj', 'Car', 'Motorcycle'];
+  void _showFontSizeSettings() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Font size settings coming soon!')),
+    );
+  }
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Select Default Vehicle Type'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: vehicleTypes.map((vehicleType) {
-            return ListTile(
-              title: Text(vehicleType),
-              trailing: settingsState.defaultVehicleType == vehicleType
-                  ? const Icon(Icons.check, color: Colors.blue)
-                  : null,
-              onTap: () {
-                settingsNotifier.updateDefaultVehicleType(vehicleType);
-                Navigator.of(context).pop();
-              },
-            );
-          }).toList(),
-        ),
-      ),
+  void _showAccessibilitySettings() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Accessibility settings coming soon!')),
+    );
+  }
+
+  void _showPaymentMethods() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Payment methods coming soon!')),
+    );
+  }
+
+  void _showBillingHistory() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Billing history coming soon!')),
+    );
+  }
+
+  void _showPromoCodes() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Promo codes coming soon!')),
+    );
+  }
+
+  void _showTermsAndConditions() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Terms & Conditions coming soon!')),
     );
   }
 
   void _showPrivacyPolicy() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Privacy Policy'),
-        content: const SingleChildScrollView(
-          child: Text(
-            'This app collects location data to provide ride-hailing services. '
-            'Your data is protected and will not be shared with third parties without your consent.',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showTermsOfService() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Terms of Service'),
-        content: const SingleChildScrollView(
-          child: Text(
-            'By using this app, you agree to our terms of service. '
-            'Please use the app responsibly and follow all local laws and regulations.',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showHelpCenter() {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Help Center coming soon')),
-    );
-  }
-
-  void _contactSupport() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Contact support: support@selamawi.com')),
-    );
-  }
-
-  void _reportBug() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Bug reporting coming soon')),
+      const SnackBar(content: Text('Privacy Policy coming soon!')),
     );
   }
 
@@ -460,24 +529,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           children: [
             Text('Selamawi Ride'),
             Text('Version: 1.0.0'),
-            Text('Build: 1'),
-            SizedBox(height: 16),
+            Text('Build: 2024.01.01'),
+            SizedBox(height: 8),
             Text('© 2024 Selamawi Ride. All rights reserved.'),
           ],
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
           ),
         ],
       ),
-    );
-  }
-
-  void _checkForUpdates() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('You are using the latest version')),
     );
   }
 }

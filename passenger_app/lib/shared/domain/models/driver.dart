@@ -43,7 +43,7 @@ class Driver {
       status: json['status'] as String,
       rating: (json['rating'] as num).toDouble(),
       totalRides: json['total_rides'] as int,
-      lastActive: json['last_active'] != null 
+      lastActive: json['last_active'] != null
           ? DateTime.parse(json['last_active'] as String)
           : null,
     );
@@ -73,7 +73,6 @@ class Driver {
 
   String get displayName => name;
   String get displayVehicle => '$vehicleType - $vehicleDetails';
-  String get displayRating => rating.toStringAsFixed(1);
 
   Driver copyWith({
     int? id,
@@ -121,4 +120,3 @@ class Driver {
     return 'Driver(id: $id, name: $name, status: $status, vehicle: $vehicleType)';
   }
 }
-

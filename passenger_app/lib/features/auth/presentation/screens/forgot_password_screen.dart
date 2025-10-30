@@ -99,13 +99,13 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                     labelText: 'Reset Code',
                     prefixIcon: Icon(Icons.security),
                     border: OutlineInputBorder(),
-                    hintText: 'Enter 8-digit code',
+                    hintText: 'Enter 6-digit code',
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Reset code is required';
                     }
-                    if (value.length < 6) {
+                    if (value.length != 6) {
                       return 'Please enter the complete reset code';
                     }
                     return null;
