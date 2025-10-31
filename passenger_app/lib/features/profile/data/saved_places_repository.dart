@@ -1,6 +1,5 @@
 import 'package:dio/dio.dart';
 import '../../../shared/data/api_client.dart';
-import '../../../core/config/app_config.dart';
 import '../../../shared/domain/models/saved_place.dart';
 
 class SavedPlacesRepository {
@@ -9,35 +8,28 @@ class SavedPlacesRepository {
   Future<List<SavedPlace>> getSavedPlaces() async {
     try {
       final response = await _apiClient.get(
-        '${AppConfig.baseUrl}/api/passenger/saved-places',
+        '/api/passenger/saved-places',
         options: Options(
           headers: {'Content-Type': 'application/json'},
         ),
       );
 
       if (response.statusCode == 200) {
-        final responseData = response.data;
-
-        if (responseData['success'] == true && responseData['places'] != null) {
-          final placesList = responseData['places'] as List;
-          return placesList
-              .map((placeData) => SavedPlace.fromJson(placeData))
-              .toList();
-        } else {
-          throw Exception(
-              'Get saved places failed: ${responseData['error'] ?? 'Unknown error'}');
+        // API returns a plain list of places
+        final data = response.data;
+        if (data is List) {
+          return data.map((e) => SavedPlace.fromJson(e)).toList();
         }
-      } else {
-        final errorData = response.data;
-        throw Exception(
-            'Get saved places failed: ${errorData['error'] ?? 'Unknown error'}');
+        throw Exception('Unexpected response format');
       }
+      throw Exception('Get saved places failed: HTTP ${response.statusCode}');
     } catch (e) {
       throw Exception('Get saved places failed: $e');
     }
   }
 
-  Future<SavedPlace> addSavedPlace({
+  Future<SavedPlace> saveOrUpdatePlace({
+    int? id,
     required String label,
     required String address,
     required double latitude,
@@ -45,8 +37,9 @@ class SavedPlacesRepository {
   }) async {
     try {
       final response = await _apiClient.post(
-        '${AppConfig.baseUrl}/api/passenger/saved-places',
+        '/api/passenger/saved-places',
         data: {
+          if (id != null) 'id': id,
           'label': label,
           'address': address,
           'latitude': latitude,
@@ -57,48 +50,33 @@ class SavedPlacesRepository {
         ),
       );
 
-      if (response.statusCode == 201) {
-        final responseData = response.data;
-
-        if (responseData['success'] == true && responseData['place'] != null) {
-          return SavedPlace.fromJson(responseData['place']);
-        } else {
-          throw Exception(
-              'Add saved place failed: ${responseData['error'] ?? 'Unknown error'}');
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        // API returns saved place object directly
+        final data = response.data;
+        if (data is Map<String, dynamic>) {
+          return SavedPlace.fromJson(data);
         }
-      } else {
-        final errorData = response.data;
-        throw Exception(
-            'Add saved place failed: ${errorData['error'] ?? 'Unknown error'}');
+        throw Exception('Unexpected response format');
       }
+      throw Exception('Save place failed: HTTP ${response.statusCode}');
     } catch (e) {
-      throw Exception('Add saved place failed: $e');
+      throw Exception('Save place failed: $e');
     }
   }
 
   Future<void> deleteSavedPlace(int placeId) async {
     try {
       final response = await _apiClient.delete(
-        '${AppConfig.baseUrl}/api/passenger/saved-places/$placeId',
+        '/api/passenger/saved-places/$placeId',
         options: Options(
           headers: {'Content-Type': 'application/json'},
         ),
       );
 
       if (response.statusCode == 200) {
-        final responseData = response.data;
-
-        if (responseData['success'] == true) {
-          return; // Success
-        } else {
-          throw Exception(
-              'Delete saved place failed: ${responseData['error'] ?? 'Unknown error'}');
-        }
-      } else {
-        final errorData = response.data;
-        throw Exception(
-            'Delete saved place failed: ${errorData['error'] ?? 'Unknown error'}');
+        return;
       }
+      throw Exception('Delete saved place failed: HTTP ${response.statusCode}');
     } catch (e) {
       throw Exception('Delete saved place failed: $e');
     }

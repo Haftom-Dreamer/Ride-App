@@ -1,20 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/theme_provider.dart';
 
-class SettingsScreen extends StatefulWidget {
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _notificationsEnabled = true;
-  bool _darkModeEnabled = false;
   String _selectedLanguage = 'English';
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = ref.watch(themeProviderNotifier);
+    final bool _darkModeEnabled = themeProvider.themeMode == ThemeMode.dark;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Settings'),
@@ -28,7 +32,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _buildSectionCard(
             title: 'Notifications',
             icon: Icons.notifications_outlined,
-                children: [
+            children: [
               _buildSwitchItem(
                 title: 'Push Notifications',
                 subtitle: 'Receive notifications about your rides',
@@ -62,7 +66,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _buildSectionCard(
             title: 'Privacy & Security',
             icon: Icons.lock_outline,
-                children: [
+            children: [
               _buildSettingItem(
                 icon: Icons.visibility,
                 title: 'Profile Visibility',
@@ -100,7 +104,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _buildSectionCard(
             title: 'App Preferences',
             icon: Icons.tune,
-                children: [
+            children: [
               _buildSettingItem(
                 icon: Icons.language,
                 title: 'Language',
@@ -113,10 +117,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 subtitle: 'Switch between light and dark theme',
                 value: _darkModeEnabled,
                 onChanged: (value) {
-                  setState(() {
-                    _darkModeEnabled = value;
-                  });
-                  _toggleDarkMode();
+                  themeProvider.setThemeMode(
+                    value ? ThemeMode.dark : ThemeMode.light,
+                  );
                 },
               ),
               _buildDivider(),
@@ -213,9 +216,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         borderRadius: BorderRadius.circular(16),
         side: const BorderSide(color: AppColors.gray200),
       ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           // Section Header
           Padding(
             padding: const EdgeInsets.all(16),
@@ -223,10 +226,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 Icon(icon, color: AppColors.primaryBlue, size: 24),
                 const SizedBox(width: 12),
-                  Text(
+                Text(
                   title,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.bold,
                         color: AppColors.textPrimary,
                       ),
                 ),
@@ -249,7 +252,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }) {
     return InkWell(
       onTap: onTap,
-            child: Padding(
+      child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           children: [
@@ -304,10 +307,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(width: 16),
           Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
                   title,
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w600,
@@ -320,14 +323,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: AppColors.textSecondary,
                       ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
+          ),
           Switch(
             value: value,
             onChanged: onChanged,
-            activeColor: AppColors.primaryBlue,
+            activeThumbColor: AppColors.primaryBlue,
           ),
         ],
       ),
@@ -467,14 +470,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  void _toggleDarkMode() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content:
-            Text(_darkModeEnabled ? 'Dark mode enabled' : 'Light mode enabled'),
-      ),
-    );
-  }
+  // Removed legacy _toggleDarkMode; theme switches via ThemeProvider
 
   void _showFontSizeSettings() {
     ScaffoldMessenger.of(context).showSnackBar(

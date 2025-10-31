@@ -782,7 +782,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                   ),
                   child: Row(
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.search,
                         color: AppColors.textTertiary,
                       ),
@@ -809,7 +809,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                               _routePoints = null;
                             });
                           },
-                          child: Icon(
+                          child: const Icon(
                             Icons.clear,
                             color: AppColors.textTertiary,
                             size: 20,
@@ -1914,16 +1914,16 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: Row(
+                child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.close,
                       color: Colors.white,
                       size: 20,
                     ),
-                    const SizedBox(width: 8),
-                    const Text(
+                    SizedBox(width: 8),
+                    Text(
                       'Cancel Request',
                       style: TextStyle(
                         color: Colors.white,

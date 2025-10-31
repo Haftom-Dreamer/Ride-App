@@ -4,13 +4,30 @@ Handles all passenger-related API endpoints for the mobile app
 """
 
 from flask import Blueprint, request, jsonify, session
-from flask_login import login_required, current_user
+from flask_login import current_user
 from app.models import db, Passenger, Ride, Driver, SavedPlace, EmergencyAlert
 from datetime import datetime, timedelta
 from sqlalchemy import or_, desc
 import math
+from app.utils import handle_file_upload
 
 passenger_api = Blueprint('passenger_api', __name__)
+
+def resolve_current_passenger():
+    """Resolve passenger from session or X-User-Id header for mobile API."""
+    try:
+        if current_user.is_authenticated and hasattr(current_user, 'id'):
+            return current_user
+    except Exception:
+        pass
+    try:
+        user_id = request.headers.get('X-User-Id')
+        if user_id:
+            pax = Passenger.query.get(int(user_id))
+            return pax
+    except Exception:
+        pass
+    return None
 
 @passenger_api.route('/test', methods=['GET'])
 def test_route():
@@ -202,11 +219,13 @@ def rate_ride():
         return jsonify({'error': str(e)}), 400
 
 @passenger_api.route('/saved-places', methods=['GET'])
-@login_required
 def get_saved_places():
     """Get all saved places for current user"""
     try:
-        places = SavedPlace.query.filter_by(passenger_id=current_user.id).all()
+        user = resolve_current_passenger()
+        if not user:
+            return jsonify({'error': 'Unauthorized'}), 401
+        places = SavedPlace.query.filter_by(passenger_id=user.id).all()
         
         return jsonify([{
                     'id': place.id,
@@ -220,17 +239,19 @@ def get_saved_places():
         return jsonify({'error': str(e)}), 400
 
 @passenger_api.route('/saved-places', methods=['POST'])
-@login_required
 def add_saved_place():
     """Add or update a saved place"""
     try:
+        user = resolve_current_passenger()
+        if not user:
+            return jsonify({'error': 'Unauthorized'}), 401
         data = request.get_json()
         
         place_id = data.get('id')
         
         if place_id:
             # Update existing place
-            place = SavedPlace.query.filter_by(id=place_id, passenger_id=current_user.id).first()
+            place = SavedPlace.query.filter_by(id=place_id, passenger_id=user.id).first()
             if not place:
                 return jsonify({'error': 'Place not found'}), 404
             
@@ -241,7 +262,7 @@ def add_saved_place():
         else:
             # Create new place
             place = SavedPlace(
-            passenger_id=current_user.id,
+            passenger_id=user.id,
                 label=data.get('label'),
                 address=data.get('address'),
                 latitude=float(data.get('latitude')),
@@ -264,11 +285,13 @@ def add_saved_place():
         return jsonify({'error': str(e)}), 400
 
 @passenger_api.route('/saved-places/<int:place_id>', methods=['DELETE'])
-@login_required
 def delete_saved_place(place_id):
     """Delete a saved place"""
     try:
-        place = SavedPlace.query.filter_by(id=place_id, passenger_id=current_user.id).first()
+        user = resolve_current_passenger()
+        if not user:
+            return jsonify({'error': 'Unauthorized'}), 401
+        place = SavedPlace.query.filter_by(id=place_id, passenger_id=user.id).first()
         
         if not place:
             return jsonify({'error': 'Place not found'}), 404
@@ -399,4 +422,93 @@ def get_ride_details(ride_id):
         return jsonify(details), 200
         
     except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+@passenger_api.route('/profile-picture', methods=['POST'])
+def upload_profile_picture():
+    """Upload or replace passenger profile picture"""
+    try:
+        user = resolve_current_passenger()
+        if not user:
+            return jsonify({'error': 'Unauthorized'}), 401
+        if 'profile_picture' not in request.files:
+            return jsonify({'error': 'No file provided'}), 400
+
+        file = request.files['profile_picture']
+        if not file or not file.filename:
+            return jsonify({'error': 'Invalid file'}), 400
+
+        # Save file and update user
+        new_path = handle_file_upload(file, user.profile_picture)
+        user.profile_picture = new_path
+        db.session.commit()
+
+        return jsonify({
+            'profile_picture': new_path,
+            'message': 'Profile picture updated'
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
+
+@passenger_api.route('/profile', methods=['PUT'])
+def update_profile():
+    """Update passenger profile fields"""
+    try:
+        user = resolve_current_passenger()
+        if not user:
+            return jsonify({'error': 'Unauthorized'}), 401
+        data = request.get_json() or {}
+        username = data.get('username')
+        email = data.get('email')
+        phone_number = data.get('phone_number')
+        profile_picture = data.get('profile_picture')
+
+        if username:
+            user.username = username
+        if email:
+            user.email = email
+        if phone_number:
+            user.phone_number = phone_number
+        if profile_picture:
+            user.profile_picture = profile_picture
+
+        db.session.commit()
+
+        return jsonify({
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'phone_number': user.phone_number,
+                'passenger_uid': getattr(user, 'passenger_uid', None),
+                'profile_picture': user.profile_picture,
+            }
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
+
+@passenger_api.route('/change-password', methods=['POST'])
+def change_password():
+    """Change passenger password with current password verification"""
+    try:
+        user = resolve_current_passenger()
+        if not user:
+            return jsonify({'error': 'Unauthorized'}), 401
+        data = request.get_json() or {}
+        current_password = (data.get('current_password') or '').strip()
+        new_password = (data.get('new_password') or '').strip()
+
+        if not current_password or not new_password:
+            return jsonify({'error': 'Current and new password are required'}), 400
+
+        if not user.check_password(current_password):
+            return jsonify({'error': 'Current password is incorrect'}), 400
+
+        user.set_password(new_password)
+        db.session.commit()
+        return jsonify({'message': 'Password changed successfully'}), 200
+    except Exception as e:
+        db.session.rollback()
         return jsonify({'error': str(e)}), 400

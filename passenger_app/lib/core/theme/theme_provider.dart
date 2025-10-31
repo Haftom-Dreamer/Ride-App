@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app_theme.dart';
 
@@ -65,3 +66,8 @@ class ThemeProvider extends ChangeNotifier {
     }
   }
 }
+
+// Riverpod provider to expose ThemeProvider to the app
+final themeProviderNotifier = ChangeNotifierProvider<ThemeProvider>((ref) {
+  return ThemeProvider();
+});

@@ -156,7 +156,7 @@ class _MapSelectionScreenState extends State<MapSelectionScreen> {
               ),
               child: Row(
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.location_on,
                     color: AppColors.primaryBlue,
                     size: 24,
@@ -200,7 +200,7 @@ class _MapSelectionScreenState extends State<MapSelectionScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
+                const Icon(
                   Icons.location_on,
                   color: AppColors.destinationRed,
                   size: 48,
@@ -209,7 +209,7 @@ class _MapSelectionScreenState extends State<MapSelectionScreen> {
                 Container(
                   width: 8,
                   height: 8,
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     color: AppColors.destinationRed,
                     shape: BoxShape.circle,
                   ),
@@ -258,7 +258,7 @@ class _MapSelectionScreenState extends State<MapSelectionScreen> {
                   ),
                   Row(
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.location_on,
                         color: AppColors.primaryBlue,
                         size: 24,

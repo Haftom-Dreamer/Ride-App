@@ -250,7 +250,7 @@ class _SupportCenterScreenState extends State<SupportCenterScreen> {
               child: Column(
                 children: [
                   DropdownButtonFormField<String>(
-                    value: _selectedCategory,
+                    initialValue: _selectedCategory,
                     decoration: const InputDecoration(
                       labelText: 'Category',
                       border: OutlineInputBorder(),
@@ -621,23 +621,23 @@ class _SupportCenterScreenState extends State<SupportCenterScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Report Lost Item'),
-        content: Column(
+        content: const Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Please describe the item you lost:'),
-            const SizedBox(height: 16),
+            Text('Please describe the item you lost:'),
+            SizedBox(height: 16),
             TextField(
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: 'e.g., Phone, Wallet, Keys...',
                 border: OutlineInputBorder(),
               ),
               maxLines: 3,
             ),
-            const SizedBox(height: 16),
-            const Text('When did you last see it?'),
-            const SizedBox(height: 8),
+            SizedBox(height: 16),
+            Text('When did you last see it?'),
+            SizedBox(height: 8),
             TextField(
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: 'e.g., During the ride, After getting out...',
                 border: OutlineInputBorder(),
               ),

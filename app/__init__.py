@@ -213,7 +213,7 @@ def create_app(config_name=None):
     # Register blueprints
     app.register_blueprint(auth, url_prefix='/auth')
     app.register_blueprint(api, url_prefix='/api')  # Register main API blueprint
-    app.register_blueprint(passenger_api, url_prefix='/api')  # Register passenger API blueprint (routes start with /passenger)
+    app.register_blueprint(passenger_api, url_prefix='/api/passenger')  # Passenger API under /api/passenger
     app.register_blueprint(admin)
     app.register_blueprint(passenger)
     

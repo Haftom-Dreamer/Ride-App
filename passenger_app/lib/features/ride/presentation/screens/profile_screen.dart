@@ -11,10 +11,16 @@ import '../../../auth/presentation/screens/login_screen.dart';
 
 import '../../../auth/presentation/providers/auth_provider.dart';
 
-import '../../../support/presentation/screens/support_center_screen.dart';
+// import '../../../support/presentation/screens/support_center_screen.dart';
 import '../../../settings/presentation/screens/settings_screen.dart';
+import '../../../profile/data/profile_repository.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 import 'map_selection_screen.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import '../../../../core/config/app_config.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -40,9 +46,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   String _newPlaceName = '';
 
   String _newPlaceAddress = '';
+  final ProfileRepository _profileRepository = ProfileRepository();
+  final ImagePicker _imagePicker = ImagePicker();
 
   // Stats
-  int _totalTrips = 0;
+  final int _totalTrips = 0;
   DateTime? _memberSince;
 
   @override
@@ -137,24 +145,26 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   final location = result['location'] as LatLng;
                   final address = result['address'] as String;
 
-                  // Add the place with location from map
-                  setState(() {
-                    _savedPlaces.add(SavedPlace(
+                  try {
+                    await _savedPlacesRepository.saveOrUpdatePlace(
                       label: _newPlaceName.isNotEmpty
                           ? _newPlaceName
                           : 'New Place',
                       address: address,
                       latitude: location.latitude,
                       longitude: location.longitude,
-                    ));
-                  });
-
-                  _newPlaceName = '';
-                  _newPlaceAddress = '';
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Place saved successfully')),
-                  );
+                    );
+                    await _fetchSavedPlaces();
+                    _newPlaceName = '';
+                    _newPlaceAddress = '';
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Place saved successfully')),
+                    );
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Failed to save place: $e')),
+                    );
+                  }
                 }
               },
               icon: const Icon(Icons.map),
@@ -168,22 +178,27 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
-              if (_newPlaceName.isNotEmpty && _newPlaceAddress.isNotEmpty) {
-                // For now, add locally; backend add can be wired with real coords
-                setState(() {
-                  _savedPlaces.add(SavedPlace(
-                    label: _newPlaceName,
-                    address: _newPlaceAddress,
-                    latitude: 0.0,
-                    longitude: 0.0,
-                  ));
-                });
-
-                Navigator.pop(context);
-
-                _newPlaceName = '';
-                _newPlaceAddress = '';
+            onPressed: () async {
+              if (_newPlaceName.isEmpty || _newPlaceAddress.isEmpty) return;
+              try {
+                await _savedPlacesRepository.saveOrUpdatePlace(
+                  label: _newPlaceName,
+                  address: _newPlaceAddress,
+                  latitude: 0.0,
+                  longitude: 0.0,
+                );
+                if (mounted) {
+                  Navigator.pop(context);
+                  await _fetchSavedPlaces();
+                  _newPlaceName = '';
+                  _newPlaceAddress = '';
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed to add place: $e')),
+                  );
+                }
               }
             },
             child: const Text('Add'),
@@ -475,7 +490,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundGray,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
           // App Bar with gradient
@@ -519,23 +534,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 child: CircleAvatar(
                                   radius: 45,
                                   backgroundColor: AppColors.lightBlue,
-                                  backgroundImage: _profilePicture !=
-                                          'assets/images/default_avatar.png'
-                                      ? NetworkImage(_profilePicture)
-                                      : null,
-                                  child: _profilePicture ==
-                                          'assets/images/default_avatar.png'
-                                      ? Text(
-                                          _userName.isNotEmpty
-                                              ? _userName[0]
-                                              : 'U',
-                                          style: const TextStyle(
-                                            fontSize: 40,
-                                            fontWeight: FontWeight.bold,
-                                            color: AppColors.primaryBlue,
-                                          ),
-                                        )
-                                      : null,
+                                  child: _buildProfileAvatarChild(),
                                 ),
                               ),
                             ),
@@ -596,7 +595,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
@@ -643,10 +642,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       children: [
                         Text(
                           'Quick Actions',
-                          style:
-                              Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
                         ),
                         const SizedBox(height: 16),
                         Row(
@@ -662,10 +664,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: _buildQuickActionButton(
-                                icon: Icons.location_on,
-                                title: 'Addresses',
-                                color: AppColors.secondaryGreen,
-                                onTap: () {},
+                                icon: Icons.settings,
+                                title: 'Settings',
+                                color: AppColors.primaryBlue,
+                                onTap: () => _showSettingsDialog(),
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -689,7 +691,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
@@ -717,6 +719,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                         .titleMedium
                                         ?.copyWith(
                                           fontWeight: FontWeight.w600,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurface,
                                         ),
                                   ),
                                   const SizedBox(height: 4),
@@ -770,7 +775,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   Container(
                     margin: const EdgeInsets.symmetric(horizontal: 16),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Column(
@@ -806,7 +811,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   Container(
                     margin: const EdgeInsets.symmetric(horizontal: 16),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Column(
@@ -825,34 +830,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
 
                   const SizedBox(height: 24),
-
-                  // Settings and Support - Simplified to buttons
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildQuickActionButton(
-                          icon: Icons.settings,
-                          title: 'Settings',
-                          color: AppColors.primaryBlue,
-                          onTap: () => _showSettingsDialog(),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildQuickActionButton(
-                          icon: Icons.help_outline,
-                          title: 'Support',
-                          color: AppColors.secondaryGreen,
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const SupportCenterScreen(),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
 
                   const SizedBox(height: 32),
 
@@ -901,7 +878,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   Widget _buildSavedPlaceItem(SavedPlace place) {
     const IconData icon = Icons.place;
-    final Color iconColor = AppColors.primaryBlue;
+    const Color iconColor = AppColors.primaryBlue;
 
     return InkWell(
       onTap: () => _editSavedPlace(place),
@@ -925,19 +902,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 children: [
                   Text(
                     place.label,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     place.address,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: AppColors.textTertiary,
-                    ),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withOpacity(0.7),
+                        ),
                   ),
                 ],
               ),
@@ -1005,19 +983,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 children: [
                   Text(
                     'Set $label address',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
                   ),
                   const SizedBox(height: 2),
-                  const Text(
+                  Text(
                     'Enter manually or pin on the map',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textTertiary,
-                    ),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withOpacity(0.7),
+                        ),
                   ),
                 ],
               ),
@@ -1262,49 +1241,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _buildSettingItem(IconData icon, String title, String subtitle,
-      {Color? iconColor, VoidCallback? onTap}) {
-    return InkWell(
-      onTap: onTap ??
-          () {
-            // TODO: Navigate to setting screen
-          },
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Icon(icon, color: iconColor ?? AppColors.textSecondary, size: 24),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: iconColor ?? AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: AppColors.textTertiary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(Icons.chevron_right, color: AppColors.gray400),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildDivider() {
     return const Padding(
       padding: EdgeInsets.symmetric(horizontal: 16),
@@ -1346,154 +1282,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  void _toggleDarkMode() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Dark Mode'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.light_mode, color: AppColors.warning),
-              title: const Text('Light Mode'),
-              subtitle: const Text('Default theme'),
-              trailing: Radio<bool>(
-                value: false,
-
-                groupValue: false, // TODO: Get from theme provider
-
-                onChanged: (value) {
-                  Navigator.pop(context);
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Light mode selected')),
-                  );
-                },
-              ),
-            ),
-            ListTile(
-              leading:
-                  const Icon(Icons.dark_mode, color: AppColors.primaryBlue),
-              title: const Text('Dark Mode'),
-              subtitle: const Text('Dark theme'),
-              trailing: Radio<bool>(
-                value: true,
-
-                groupValue: false, // TODO: Get from theme provider
-
-                onChanged: (value) {
-                  Navigator.pop(context);
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Dark mode selected')),
-                  );
-                },
-              ),
-            ),
-            ListTile(
-              leading:
-                  const Icon(Icons.brightness_auto, color: AppColors.success),
-              title: const Text('System Default'),
-              subtitle: const Text('Follow system setting'),
-              trailing: Radio<bool?>(
-                value: null,
-
-                groupValue: null, // TODO: Get from theme provider
-
-                onChanged: (value) {
-                  Navigator.pop(context);
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('System default selected')),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showPrivacySettings() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Privacy & Security'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const ListTile(
-                leading: Icon(Icons.email, color: AppColors.primaryBlue),
-                title: Text('Email Verification'),
-                subtitle: Text('Required for sensitive changes'),
-                trailing: Switch(
-                  value: true, // Always enabled for security
-
-                  onChanged: null, // Cannot be disabled
-                ),
-              ),
-              ListTile(
-                leading:
-                    const Icon(Icons.location_on, color: AppColors.primaryBlue),
-                title: const Text('Location Sharing'),
-                subtitle: const Text('Share location during rides'),
-                trailing: Switch(
-                  value: true,
-                  onChanged: (value) {
-                    // TODO: Implement location sharing toggle
-                  },
-                ),
-              ),
-              ListTile(
-                leading:
-                    const Icon(Icons.visibility, color: AppColors.primaryBlue),
-                title: const Text('Profile Visibility'),
-                subtitle: const Text('Show profile to drivers'),
-                trailing: Switch(
-                  value: true,
-                  onChanged: (value) {
-                    // TODO: Implement profile visibility toggle
-                  },
-                ),
-              ),
-              ListTile(
-                leading:
-                    const Icon(Icons.security, color: AppColors.primaryBlue),
-                title: const Text('Two-Factor Authentication'),
-                subtitle: const Text('Add extra security'),
-                trailing: Switch(
-                  value: false,
-                  onChanged: (value) {
-                    // TODO: Implement 2FA toggle
-
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('2FA feature coming soon')),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _changeProfilePicture() {
     showDialog(
       context: context,
@@ -1505,27 +1293,37 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ListTile(
               leading: const Icon(Icons.camera_alt),
               title: const Text('Take Photo'),
-              onTap: () {
+              onTap: () async {
                 Navigator.pop(context);
-
-                // TODO: Implement camera
-
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Camera feature coming soon')),
-                );
+                // Request camera permission
+                final camStatus = await Permission.camera.request();
+                if (!camStatus.isGranted) return;
+                final XFile? photo =
+                    await _imagePicker.pickImage(source: ImageSource.camera);
+                if (photo != null) {
+                  await _uploadProfileImage(File(photo.path));
+                }
               },
             ),
             ListTile(
               leading: const Icon(Icons.photo_library),
               title: const Text('Choose from Gallery'),
-              onTap: () {
+              onTap: () async {
                 Navigator.pop(context);
-
-                // TODO: Implement gallery
-
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Gallery feature coming soon')),
-                );
+                // Request photos/storage permission
+                var granted = true;
+                if (await Permission.photos.isDenied &&
+                    await Permission.storage.isDenied) {
+                  final p1 = await Permission.photos.request();
+                  final p2 = await Permission.storage.request();
+                  granted = p1.isGranted || p2.isGranted;
+                }
+                if (!granted) return;
+                final XFile? image =
+                    await _imagePicker.pickImage(source: ImageSource.gallery);
+                if (image != null) {
+                  await _uploadProfileImage(File(image.path));
+                }
               },
             ),
           ],
@@ -1540,7 +1338,103 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  void _showFAQ() {
+  Future<void> _uploadProfileImage(File file) async {
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
+
+      final newUrl = await _profileRepository.uploadProfilePicture(file);
+
+      final authNotifier = ref.read(authProvider.notifier);
+      final authState = ref.read(authProvider);
+      if (authState.user != null) {
+        final updated = authState.user!.copyWith(profilePicture: newUrl);
+        authNotifier.state = authState.copyWith(user: updated);
+      }
+
+      if (mounted) Navigator.pop(context);
+      if (mounted) {
+        setState(() {
+          _profilePicture = newUrl;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile picture updated')),
+        );
+      }
+    } catch (e) {
+      if (mounted) Navigator.pop(context);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Upload failed: $e')),
+        );
+      }
+    }
+  }
+
+  Widget _buildProfileAvatarChild() {
+    // Default avatar with initial
+    if (_profilePicture.isEmpty ||
+        _profilePicture == 'assets/images/default_avatar.png') {
+      return Text(
+        _userName.isNotEmpty ? _userName[0] : 'U',
+        style: const TextStyle(
+          fontSize: 40,
+          fontWeight: FontWeight.bold,
+          color: AppColors.primaryBlue,
+        ),
+      );
+    }
+
+    String url = _profilePicture;
+    if (!url.startsWith('http')) {
+      if (url.startsWith('/')) {
+        url = '${AppConfig.baseUrl}$url';
+      } else {
+        url = '${AppConfig.baseUrl}/$url';
+      }
+    }
+
+    if (url.toLowerCase().endsWith('.svg')) {
+      return ClipOval(
+        child: SvgPicture.network(
+          url,
+          width: 90,
+          height: 90,
+          fit: BoxFit.cover,
+        ),
+      );
+    }
+
+    return ClipOval(
+      child: Image.network(
+        url,
+        width: 90,
+        height: 90,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return Text(
+            _userName.isNotEmpty ? _userName[0] : 'U',
+            style: const TextStyle(
+              fontSize: 40,
+              fontWeight: FontWeight.bold,
+              color: AppColors.primaryBlue,
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /* Removed unused _showFAQ */
+  /* Removed unused _buildFAQItem */
+  /* Removed unused _showReportIssue */
+  /* Removed unused _showLostItemReport */
+  /* Keeping _changeProfilePicture and others that are used */
+
+  /* void _showFAQ() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -1630,7 +1524,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  void _showReportIssue() {
+  // Removed unused _showReportIssue
     final issueController = TextEditingController();
 
     String selectedCategory = 'General';
@@ -1700,7 +1594,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  void _showLostItemReport() {
+  // Removed unused _showLostItemReport
     final itemController = TextEditingController();
 
     final descriptionController = TextEditingController();
@@ -1778,6 +1672,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       ),
     );
   }
+  */
 
   void _showContactSupport() {
     showDialog(

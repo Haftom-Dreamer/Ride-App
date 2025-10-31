@@ -58,7 +58,7 @@ class AuthRepository {
       }
     } catch (e) {
       // Handle DioError specifically for better error messages
-      if (e is DioError) {
+      if (e is DioException) {
         if (e.response != null) {
           final statusCode = e.response!.statusCode;
           final responseData = e.response!.data;
@@ -220,7 +220,7 @@ class AuthRepository {
       }
     } catch (e) {
       // Handle DioError specifically for better error messages
-      if (e is DioError) {
+      if (e is DioException) {
         if (e.response != null) {
           final statusCode = e.response!.statusCode;
           final responseData = e.response!.data;

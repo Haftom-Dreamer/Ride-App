@@ -64,7 +64,7 @@ class SavedPlacesNotifier extends StateNotifier<SavedPlacesState> {
     state = state.copyWith(isLoading: true, error: null);
 
     try {
-      final newPlace = await _savedPlacesRepository.addSavedPlace(
+      final newPlace = await _savedPlacesRepository.saveOrUpdatePlace(
         label: label,
         address: address,
         latitude: latitude,
