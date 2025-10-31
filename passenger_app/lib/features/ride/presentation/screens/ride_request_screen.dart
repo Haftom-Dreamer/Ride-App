@@ -1133,26 +1133,20 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                       style: Theme.of(context).textTheme.headlineMedium,
                     ),
                   ),
-                  // Map Pin Button
-                  IconButton(
+                  // Map Pin Button with clearer label
+                  TextButton.icon(
                     onPressed: () {
                       setState(() {
                         _isMapSelectionMode = true;
                         _currentStatus = RideStatus.pinDestination;
                       });
                     },
-                    icon: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.secondaryGreen.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.location_on,
-                        color: AppColors.secondaryGreen,
-                      ),
+                    icon: const Icon(Icons.location_on,
+                        color: AppColors.secondaryGreen),
+                    label: const Text(
+                      'Pin on map',
+                      style: TextStyle(color: AppColors.secondaryGreen),
                     ),
-                    tooltip: 'Pin on Map',
                   ),
                 ],
               ),

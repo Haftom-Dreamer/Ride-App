@@ -13,6 +13,8 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 
 import '../../../support/presentation/screens/support_center_screen.dart';
 import '../../../settings/presentation/screens/settings_screen.dart';
+import 'map_selection_screen.dart';
+import 'package:latlong2/latlong.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -114,9 +116,49 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             TextField(
               decoration: const InputDecoration(
                 labelText: 'Address',
-                hintText: 'Enter full address',
+                hintText: 'Enter full address or pin on map',
               ),
               onChanged: (value) => _newPlaceAddress = value,
+            ),
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed: () async {
+                Navigator.pop(context); // Close dialog first
+
+                // Open map selection screen
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const MapSelectionScreen(),
+                  ),
+                );
+
+                if (result != null && mounted) {
+                  final location = result['location'] as LatLng;
+                  final address = result['address'] as String;
+
+                  // Add the place with location from map
+                  setState(() {
+                    _savedPlaces.add(SavedPlace(
+                      label: _newPlaceName.isNotEmpty
+                          ? _newPlaceName
+                          : 'New Place',
+                      address: address,
+                      latitude: location.latitude,
+                      longitude: location.longitude,
+                    ));
+                  });
+
+                  _newPlaceName = '';
+                  _newPlaceAddress = '';
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Place saved successfully')),
+                  );
+                }
+              },
+              icon: const Icon(Icons.map),
+              label: const Text('Pin on Map'),
             ),
           ],
         ),
@@ -141,7 +183,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 Navigator.pop(context);
 
                 _newPlaceName = '';
-
                 _newPlaceAddress = '';
               }
             },
@@ -184,18 +225,52 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.pop(context);
+                    onPressed: () async {
+                      Navigator.pop(context); // Close dialog first
 
-                      // TODO: Open map to select location
-
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('Map selection coming soon')),
+                      // Open map selection screen
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => MapSelectionScreen(
+                            placeLabel: place.label,
+                            initialLocation:
+                                place.latitude != 0.0 && place.longitude != 0.0
+                                    ? LatLng(place.latitude, place.longitude)
+                                    : null,
+                          ),
+                        ),
                       );
+
+                      if (result != null && mounted) {
+                        final location = result['location'] as LatLng;
+                        final address = result['address'] as String;
+
+                        // Update the place with new location
+                        setState(() {
+                          final index =
+                              _savedPlaces.indexWhere((p) => p.id == place.id);
+                          if (index != -1) {
+                            _savedPlaces[index] = SavedPlace(
+                              id: place.id,
+                              label: nameController.text.trim().isNotEmpty
+                                  ? nameController.text.trim()
+                                  : place.label,
+                              address: address,
+                              latitude: location.latitude,
+                              longitude: location.longitude,
+                            );
+                          }
+                        });
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content: Text('Location updated successfully')),
+                        );
+                      }
                     },
                     icon: const Icon(Icons.map),
-                    label: const Text('Set on Map'),
+                    label: const Text('Pin on Map'),
                   ),
                 ),
               ],
@@ -700,6 +775,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                     child: Column(
                       children: [
+                        // Home/Work placeholders
+                        if (!_savedPlaces
+                            .any((p) => p.label.toLowerCase() == 'home'))
+                          _buildSavedPlacePlaceholder('Home'),
+                        if (!_savedPlaces
+                            .any((p) => p.label.toLowerCase() == 'work'))
+                          _buildSavedPlacePlaceholder('Work'),
                         ..._savedPlaces
                             .map((place) => _buildSavedPlaceItem(place)),
                         _buildAddPlaceItem(),
@@ -895,6 +977,147 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildSavedPlacePlaceholder(String label) {
+    return InkWell(
+      onTap: () => _addSavedPlaceWithLabel(label),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.gray100,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.add_location_alt,
+                  color: AppColors.primaryBlue, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Set $label address',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  const Text(
+                    'Enter manually or pin on the map',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textTertiary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: AppColors.gray400),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _addSavedPlaceWithLabel(String label) {
+    _newPlaceName = label;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Add $label'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              decoration: InputDecoration(
+                labelText: '$label Name',
+                hintText: label,
+              ),
+              controller: TextEditingController(text: label),
+              readOnly: true,
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              decoration: const InputDecoration(
+                labelText: 'Address',
+                hintText: 'Enter full address or pin on map',
+              ),
+              onChanged: (value) => _newPlaceAddress = value,
+            ),
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed: () async {
+                Navigator.pop(context); // Close dialog first
+
+                // Open map selection screen
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => MapSelectionScreen(placeLabel: label),
+                  ),
+                );
+
+                if (result != null && mounted) {
+                  final location = result['location'] as LatLng;
+                  final address = result['address'] as String;
+
+                  // Add the place with location from map
+                  setState(() {
+                    _savedPlaces.add(SavedPlace(
+                      label: label,
+                      address: address,
+                      latitude: location.latitude,
+                      longitude: location.longitude,
+                    ));
+                  });
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('$label saved')),
+                  );
+                  _newPlaceAddress = '';
+                }
+              },
+              icon: const Icon(Icons.map),
+              label: const Text('Pin on Map'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              if (_newPlaceAddress.isNotEmpty) {
+                setState(() {
+                  _savedPlaces.add(SavedPlace(
+                    label: label,
+                    address: _newPlaceAddress,
+                    latitude: 0.0,
+                    longitude: 0.0,
+                  ));
+                });
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('$label saved')),
+                );
+                _newPlaceAddress = '';
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
       ),
     );
   }
