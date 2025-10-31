@@ -45,6 +45,7 @@ class AuthRepository {
           await _apiClient.setAuthToken(token);
           await StorageService.saveToken(token);
           await StorageService.saveUser(user);
+          await _apiClient.setUserId(user.id);
 
           return user;
         } else {

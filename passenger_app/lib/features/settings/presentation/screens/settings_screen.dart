@@ -14,6 +14,56 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _notificationsEnabled = true;
   String _selectedLanguage = 'English';
 
+  void _showSupport() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Customer Support'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(Icons.phone,
+                  color: Theme.of(context).colorScheme.primary),
+              title: const Text('Call Support'),
+              subtitle: const Text('+251 911 234 567'),
+              onTap: () {
+                Navigator.pop(context);
+                // TODO: launch call
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.email,
+                  color: Theme.of(context).colorScheme.primary),
+              title: const Text('Email Support'),
+              subtitle: const Text('selamawiride@gmail.com'),
+              onTap: () {
+                Navigator.pop(context);
+                // TODO: launch email
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.chat,
+                  color: Theme.of(context).colorScheme.primary),
+              title: const Text('Live Chat'),
+              subtitle: const Text('Available 24/7'),
+              onTap: () {
+                Navigator.pop(context);
+                // TODO: open chat
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeProvider = ref.watch(themeProviderNotifier);
@@ -22,8 +72,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Settings'),
-        backgroundColor: AppColors.primaryBlue,
-        foregroundColor: Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
+        elevation: 0,
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -177,6 +228,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             icon: Icons.info_outline,
             children: [
               _buildSettingItem(
+                icon: Icons.support_agent,
+                title: 'Customer Support',
+                subtitle: 'Call, email, or chat with us',
+                onTap: () => _showSupport(),
+              ),
+              _buildDivider(),
+              _buildSettingItem(
                 icon: Icons.description,
                 title: 'Terms & Conditions',
                 subtitle: 'Read our service terms',
@@ -214,7 +272,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: AppColors.gray200),
+        side: BorderSide(color: Theme.of(context).dividerColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -224,13 +282,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                Icon(icon, color: AppColors.primaryBlue, size: 24),
+                Icon(icon,
+                    color: Theme.of(context).colorScheme.primary, size: 24),
                 const SizedBox(width: 12),
                 Text(
                   title,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                 ),
               ],
@@ -258,7 +317,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           children: [
             Icon(
               icon,
-              color: iconColor ?? AppColors.primaryBlue,
+              color: iconColor ?? Theme.of(context).colorScheme.primary,
               size: 20,
             ),
             const SizedBox(width: 16),
@@ -270,20 +329,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     title,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     subtitle,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.textSecondary,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withOpacity(0.7),
                         ),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: AppColors.gray400),
+            Icon(Icons.chevron_right,
+                color:
+                    Theme.of(context).colorScheme.onSurface.withOpacity(0.5)),
           ],
         ),
       ),
@@ -300,9 +364,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
-          const Icon(
+          Icon(
             Icons.toggle_on,
-            color: AppColors.primaryBlue,
+            color: Theme.of(context).colorScheme.primary,
             size: 20,
           ),
           const SizedBox(width: 16),
@@ -314,14 +378,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   title,
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondary,
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withOpacity(0.7),
                       ),
                 ),
               ],
@@ -330,7 +397,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeThumbColor: AppColors.primaryBlue,
+            activeColor: Theme.of(context).colorScheme.primary,
           ),
         ],
       ),
@@ -338,10 +405,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Widget _buildDivider() {
-    return const Divider(
+    return Divider(
       indent: 52,
       height: 1,
-      color: AppColors.gray200,
+      color: Theme.of(context).dividerColor,
     );
   }
 

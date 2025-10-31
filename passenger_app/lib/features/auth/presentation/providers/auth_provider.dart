@@ -185,6 +185,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = state.copyWith(error: null);
   }
 
+  // Update the current user data (e.g., after profile picture change)
+  void updateCurrentUser(User user) {
+    state = state.copyWith(user: user);
+  }
+
   Future<void> requestPasswordReset(String email) async {
     state = state.copyWith(isLoading: true, error: null);
 

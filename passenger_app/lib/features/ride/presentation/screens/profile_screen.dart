@@ -627,7 +627,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
@@ -731,7 +731,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                         .textTheme
                                         .bodySmall
                                         ?.copyWith(
-                                          color: AppColors.textSecondary,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurface
+                                              .withOpacity(0.7),
                                         ),
                                   ),
                                 ],
@@ -938,20 +941,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: AppColors.gray100,
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child:
-                  const Icon(Icons.add, color: AppColors.primaryBlue, size: 20),
+              child: Icon(Icons.add,
+                  color: Theme.of(context).colorScheme.primary, size: 20),
             ),
             const SizedBox(width: 12),
-            const Text(
+            Text(
               'Add New Place',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: AppColors.primaryBlue,
-              ),
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
             ),
           ],
         ),
@@ -970,11 +973,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: AppColors.gray100,
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.add_location_alt,
-                  color: AppColors.primaryBlue, size: 20),
+              child: Icon(Icons.add_location_alt,
+                  color: Theme.of(context).colorScheme.primary, size: 20),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -1001,7 +1004,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: AppColors.gray400),
+            Icon(Icons.chevron_right,
+                color:
+                    Theme.of(context).colorScheme.onSurface.withOpacity(0.5)),
           ],
         ),
       ),
@@ -1050,20 +1055,27 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   final location = result['location'] as LatLng;
                   final address = result['address'] as String;
 
-                  // Add the place with location from map
-                  setState(() {
-                    _savedPlaces.add(SavedPlace(
+                  try {
+                    await _savedPlacesRepository.saveOrUpdatePlace(
                       label: label,
                       address: address,
                       latitude: location.latitude,
                       longitude: location.longitude,
-                    ));
-                  });
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('$label saved')),
-                  );
-                  _newPlaceAddress = '';
+                    );
+                    await _fetchSavedPlaces();
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('$label saved')),
+                      );
+                    }
+                    _newPlaceAddress = '';
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Failed to save place: $e')),
+                      );
+                    }
+                  }
                 }
               },
               icon: const Icon(Icons.map),
@@ -1077,21 +1089,30 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               if (_newPlaceAddress.isNotEmpty) {
-                setState(() {
-                  _savedPlaces.add(SavedPlace(
+                try {
+                  await _savedPlacesRepository.saveOrUpdatePlace(
                     label: label,
                     address: _newPlaceAddress,
                     latitude: 0.0,
                     longitude: 0.0,
-                  ));
-                });
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('$label saved')),
-                );
-                _newPlaceAddress = '';
+                  );
+                  if (mounted) {
+                    Navigator.pop(context);
+                    await _fetchSavedPlaces();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('$label saved')),
+                    );
+                  }
+                  _newPlaceAddress = '';
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Failed to save place: $e')),
+                    );
+                  }
+                }
               }
             },
             child: const Text('Save'),
@@ -1348,12 +1369,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
       final newUrl = await _profileRepository.uploadProfilePicture(file);
 
-      final authNotifier = ref.read(authProvider.notifier);
-      final authState = ref.read(authProvider);
-      if (authState.user != null) {
-        final updated = authState.user!.copyWith(profilePicture: newUrl);
-        authNotifier.state = authState.copyWith(user: updated);
-      }
+      // Update local state; auth provider refresh will pick it up if needed
 
       if (mounted) Navigator.pop(context);
       if (mounted) {
@@ -1683,7 +1699,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.phone, color: AppColors.primaryBlue),
+              leading: Icon(Icons.phone,
+                  color: Theme.of(context).colorScheme.primary),
               title: const Text('Call Support'),
               subtitle: const Text('+251 911 234 567'),
               onTap: () {
@@ -1693,7 +1710,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.email, color: AppColors.primaryBlue),
+              leading: Icon(Icons.email,
+                  color: Theme.of(context).colorScheme.primary),
               title: const Text('Email Support'),
               subtitle: const Text('selamawiride@gmail.com'),
               onTap: () {
@@ -1703,7 +1721,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.chat, color: AppColors.primaryBlue),
+              leading: Icon(Icons.chat,
+                  color: Theme.of(context).colorScheme.primary),
               title: const Text('Live Chat'),
               subtitle: const Text('Available 24/7'),
               onTap: () {
@@ -1781,30 +1800,30 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           width: 50,
           height: 50,
           decoration: BoxDecoration(
-            color: AppColors.primaryBlue.withOpacity(0.1),
+            color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(
             icon,
-            color: AppColors.primaryBlue,
+            color: Theme.of(context).colorScheme.primary,
             size: 24,
           ),
         ),
         const SizedBox(height: 8),
         Text(
           value,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
-          ),
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
         ),
         Text(
           label,
-          style: const TextStyle(
-            fontSize: 12,
-            color: AppColors.textSecondary,
-          ),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+              ),
         ),
       ],
     );
@@ -1822,20 +1841,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.3)),
+          border: Border.all(color: Theme.of(context).dividerColor),
         ),
         child: Column(
           children: [
-            Icon(icon, color: color, size: 24),
+            Icon(icon, color: Theme.of(context).colorScheme.primary, size: 24),
             const SizedBox(height: 8),
             Text(
               title,
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: color,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
               textAlign: TextAlign.center,
             ),
@@ -1850,23 +1869,25 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: AppColors.textSecondary),
+          Icon(icon,
+              size: 20,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
           const SizedBox(width: 12),
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w500,
-              color: AppColors.textSecondary,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
             ),
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
-                color: AppColors.textPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
               textAlign: TextAlign.end,
             ),

@@ -67,12 +67,13 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     // Do not show a "verification successful" message until the code is actually verified
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: Icon(Icons.arrow_back,
+              color: Theme.of(context).colorScheme.onSurface),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -97,24 +98,24 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
           const SizedBox(height: 20),
 
           // Title
-          const Text(
+          Text(
             'Create Account',
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
-            ),
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
             textAlign: TextAlign.center,
           ),
 
           const SizedBox(height: 8),
 
-          const Text(
+          Text(
             'Sign up to start your journey',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey,
-            ),
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color:
+                      Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                ),
             textAlign: TextAlign.center,
           ),
 
@@ -126,13 +127,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             decoration: InputDecoration(
               labelText: 'Username',
               prefixIcon: const Icon(Icons.person_outline),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey.shade300),
-              ),
+              // borders themed globally
             ),
             validator: (value) {
               if (value == null || value.isEmpty) {
@@ -154,13 +149,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             decoration: InputDecoration(
               labelText: 'Email',
               prefixIcon: const Icon(Icons.email_outlined),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey.shade300),
-              ),
+              // borders themed globally
             ),
             validator: (value) {
               if (value == null || value.isEmpty) {
@@ -184,13 +173,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
               labelText: 'Phone Number',
               prefixText: '+251 ',
               prefixIcon: const Icon(Icons.phone_outlined),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey.shade300),
-              ),
+              // borders themed globally
             ),
             validator: (value) {
               if (value == null || value.isEmpty) {
@@ -215,13 +198,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             decoration: InputDecoration(
               labelText: 'Password',
               prefixIcon: const Icon(Icons.lock_outline),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey.shade300),
-              ),
+              // borders themed globally
             ),
             validator: (value) {
               if (value == null || value.isEmpty) {
@@ -243,13 +220,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             decoration: InputDecoration(
               labelText: 'Confirm Password',
               prefixIcon: const Icon(Icons.lock_outline),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey.shade300),
-              ),
+              // borders themed globally
             ),
             validator: (value) {
               if (value == null || value.isEmpty) {
@@ -292,14 +263,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                       );
                     }
                   },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
+            // Use themed ElevatedButton
             child: authState.isLoading
                 ? const SizedBox(
                     height: 20,
@@ -321,7 +285,15 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text('Already have an account? '),
+              Text(
+                'Already have an account? ',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withOpacity(0.7),
+                    ),
+              ),
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
                 child: const Text('Sign In'),

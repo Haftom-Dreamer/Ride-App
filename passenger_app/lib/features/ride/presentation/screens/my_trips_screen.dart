@@ -198,11 +198,11 @@ class _MyTripsScreenState extends State<MyTripsScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundGray,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('My Trips'),
         elevation: 0,
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         actions: [
           IconButton(
             onPressed: _refreshTrips,
@@ -211,9 +211,10 @@ class _MyTripsScreenState extends State<MyTripsScreen>
         ],
         bottom: TabBar(
           controller: _tabController,
-          labelColor: AppColors.primaryBlue,
-          unselectedLabelColor: AppColors.textTertiary,
-          indicatorColor: AppColors.primaryBlue,
+          labelColor: Theme.of(context).colorScheme.primary,
+          unselectedLabelColor:
+              Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+          indicatorColor: Theme.of(context).colorScheme.primary,
           indicatorWeight: 3,
           onTap: (index) {
             setState(() {}); // Refresh the list
@@ -230,9 +231,9 @@ class _MyTripsScreenState extends State<MyTripsScreen>
           // Stats Cards
           Container(
             padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(
-              color: AppColors.primaryBlue,
-              borderRadius: BorderRadius.only(
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primary,
+              borderRadius: const BorderRadius.only(
                 bottomLeft: Radius.circular(24),
                 bottomRight: Radius.circular(24),
               ),
@@ -276,11 +277,16 @@ class _MyTripsScreenState extends State<MyTripsScreen>
                             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                             child: Text(
                               header,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textSecondary,
-                              ),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withOpacity(0.7),
+                                  ),
                             ),
                           ),
 
@@ -336,7 +342,7 @@ class _MyTripsScreenState extends State<MyTripsScreen>
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Material(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         elevation: 2,
         shadowColor: Colors.black.withOpacity(0.1),
@@ -355,15 +361,18 @@ class _MyTripsScreenState extends State<MyTripsScreen>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: AppColors.primaryBlue.withOpacity(0.1),
+                        color: Theme.of(context)
+                            .colorScheme
+                            .primary
+                            .withOpacity(0.1),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
                         _formatTime(trip.timestamp),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.primaryBlue,
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                       ),
                     ),
@@ -434,22 +443,30 @@ class _MyTripsScreenState extends State<MyTripsScreen>
                         children: [
                           Text(
                             trip.fromLocation,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.textPrimary,
-                            ),
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
+                                  color:
+                                      Theme.of(context).colorScheme.onSurface,
+                                ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: 24),
                           Text(
                             trip.toLocation,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.textPrimary,
-                            ),
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
+                                  color:
+                                      Theme.of(context).colorScheme.onSurface,
+                                ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -469,13 +486,16 @@ class _MyTripsScreenState extends State<MyTripsScreen>
                     // Driver
                     CircleAvatar(
                       radius: 20,
-                      backgroundColor: AppColors.lightBlue,
+                      backgroundColor: Theme.of(context)
+                          .colorScheme
+                          .primary
+                          .withOpacity(0.1),
                       child: Text(
                         trip.driverName[0],
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.primaryBlue,
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                       ),
                     ),
@@ -487,19 +507,27 @@ class _MyTripsScreenState extends State<MyTripsScreen>
                         children: [
                           Text(
                             trip.driverName,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary,
-                            ),
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color:
+                                      Theme.of(context).colorScheme.onSurface,
+                                ),
                           ),
                           const SizedBox(height: 2),
                           Text(
                             trip.vehicleType,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: AppColors.textTertiary,
-                            ),
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      fontSize: 13,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface
+                                          .withOpacity(0.6),
+                                    ),
                           ),
                         ],
                       ),
@@ -512,10 +540,10 @@ class _MyTripsScreenState extends State<MyTripsScreen>
                         if (trip.status == TripStatus.completed)
                           Text(
                             'ETB ${trip.fare.toStringAsFixed(0)}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
-                              color: AppColors.primaryBlue,
+                              color: Theme.of(context).colorScheme.primary,
                             ),
                           ),
                       ],
@@ -588,7 +616,7 @@ class _MyTripsScreenState extends State<MyTripsScreen>
         builder: (context, scrollController) {
           return Container(
             decoration: const BoxDecoration(
-              color: Colors.white,
+              color: Colors.transparent,
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(24),
                 topRight: Radius.circular(24),
@@ -648,7 +676,7 @@ class _MyTripsScreenState extends State<MyTripsScreen>
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: AppColors.gray50,
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Column(
@@ -731,7 +759,8 @@ class _MyTripsScreenState extends State<MyTripsScreen>
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    border: Border.all(color: AppColors.gray200),
+                    border: Border.all(
+                        color: Theme.of(context).dividerColor),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
@@ -796,7 +825,10 @@ class _MyTripsScreenState extends State<MyTripsScreen>
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: AppColors.lightBlue.withOpacity(0.3),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .primary
+                          .withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
@@ -859,27 +891,27 @@ class _MyTripsScreenState extends State<MyTripsScreen>
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        border: Border.all(color: AppColors.gray200),
+        border: Border.all(color: Theme.of(context).dividerColor),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         children: [
-          Icon(icon, size: 24, color: AppColors.primaryBlue),
+          Icon(icon, size: 24, color: Theme.of(context).colorScheme.primary),
           const SizedBox(height: 8),
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
-              color: AppColors.textTertiary,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
             ),
           ),
           const SizedBox(height: 4),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
         ],

@@ -84,15 +84,17 @@ def estimate_fare():
         return jsonify({'error': str(e)}), 400
 
 @passenger_api.route('/ride-request', methods=['POST'])
-@login_required
 def request_ride():
     """Submit a new ride request"""
     try:
+        user = resolve_current_passenger()
+        if not user:
+            return jsonify({'error': 'Unauthorized'}), 401
         data = request.get_json()
         
         # Create new ride
         new_ride = Ride(
-            passenger_id=current_user.id,
+            passenger_id=user.id,
             pickup_address=data.get('pickup_address', ''),
             pickup_lat=float(data.get('pickup_lat')),
             pickup_lon=float(data.get('pickup_lon')),
@@ -122,11 +124,13 @@ def request_ride():
         return jsonify({'error': str(e)}), 400
 
 @passenger_api.route('/ride-status/<int:ride_id>', methods=['GET'])
-@login_required
 def get_ride_status(ride_id):
     """Get current status of a ride"""
     try:
-        ride = Ride.query.filter_by(id=ride_id, passenger_id=current_user.id).first()
+        user = resolve_current_passenger()
+        if not user:
+            return jsonify({'error': 'Unauthorized'}), 401
+        ride = Ride.query.filter_by(id=ride_id, passenger_id=user.id).first()
         
         if not ride:
             return jsonify({'error': 'Ride not found'}), 404
@@ -166,14 +170,16 @@ def get_ride_status(ride_id):
         return jsonify({'error': str(e)}), 400
 
 @passenger_api.route('/cancel-ride', methods=['POST'])
-@login_required
 def cancel_ride():
     """Cancel a pending ride"""
     try:
+        user = resolve_current_passenger()
+        if not user:
+            return jsonify({'error': 'Unauthorized'}), 401
         data = request.get_json()
         ride_id = data.get('ride_id')
         
-        ride = Ride.query.filter_by(id=ride_id, passenger_id=current_user.id).first()
+        ride = Ride.query.filter_by(id=ride_id, passenger_id=user.id).first()
         
         if not ride:
             return jsonify({'error': 'Ride not found'}), 404
@@ -191,16 +197,18 @@ def cancel_ride():
         return jsonify({'error': str(e)}), 400
 
 @passenger_api.route('/rate-ride', methods=['POST'])
-@login_required
 def rate_ride():
     """Submit rating and feedback for a completed ride"""
     try:
+        user = resolve_current_passenger()
+        if not user:
+            return jsonify({'error': 'Unauthorized'}), 401
         data = request.get_json()
         ride_id = data.get('ride_id')
         rating = int(data.get('rating'))
         comment = data.get('comment', '')
         
-        ride = Ride.query.filter_by(id=ride_id, passenger_id=current_user.id).first()
+        ride = Ride.query.filter_by(id=ride_id, passenger_id=user.id).first()
         
         if not ride:
             return jsonify({'error': 'Ride not found'}), 404
@@ -306,14 +314,16 @@ def delete_saved_place(place_id):
         return jsonify({'error': str(e)}), 400
 
 @passenger_api.route('/emergency-sos', methods=['POST'])
-@login_required
 def emergency_sos():
     """Handle emergency SOS alert"""
     try:
+        user = resolve_current_passenger()
+        if not user:
+            return jsonify({'error': 'Unauthorized'}), 401
         data = request.get_json()
         
         alert = EmergencyAlert(
-            passenger_id=current_user.id,
+            passenger_id=user.id,
             ride_id=data.get('ride_id'),
             latitude=float(data.get('latitude', 0)),
             longitude=float(data.get('longitude', 0)),
@@ -337,15 +347,17 @@ def emergency_sos():
         return jsonify({'error': str(e)}), 400
 
 @passenger_api.route('/ride-history', methods=['GET'])
-@login_required
 def get_ride_history():
     """Get ride history with pagination"""
     try:
+        user = resolve_current_passenger()
+        if not user:
+            return jsonify({'error': 'Unauthorized'}), 401
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 20, type=int)
         status_filter = request.args.get('status', None)
         
-        query = Ride.query.filter_by(passenger_id=current_user.id)
+        query = Ride.query.filter_by(passenger_id=user.id)
         
         if status_filter:
             query = query.filter_by(status=status_filter)
@@ -377,11 +389,13 @@ def get_ride_history():
         return jsonify({'error': str(e)}), 400
 
 @passenger_api.route('/ride-details/<int:ride_id>', methods=['GET'])
-@login_required
 def get_ride_details(ride_id):
     """Get detailed information about a specific ride"""
     try:
-        ride = Ride.query.filter_by(id=ride_id, passenger_id=current_user.id).first()
+        user = resolve_current_passenger()
+        if not user:
+            return jsonify({'error': 'Unauthorized'}), 401
+        ride = Ride.query.filter_by(id=ride_id, passenger_id=user.id).first()
         
         if not ride:
             return jsonify({'error': 'Ride not found'}), 404

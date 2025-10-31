@@ -10,6 +10,7 @@ class ApiClient {
 
   late Dio _dio;
   String? _authToken;
+  int? _userId;
 
   Future<void> initialize() async {
     _dio = Dio(BaseOptions(
@@ -30,6 +31,7 @@ class ApiClient {
 
     // Load saved token
     await _loadAuthToken();
+    await _loadUserId();
   }
 
   Future<void> _loadAuthToken() async {
@@ -40,12 +42,27 @@ class ApiClient {
     }
   }
 
+  Future<void> _loadUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    _userId = prefs.getInt('user_id');
+    if (_userId != null) {
+      _dio.options.headers['X-User-Id'] = _userId.toString();
+    }
+  }
+
   Future<void> setAuthToken(String token) async {
     _authToken = token;
     _dio.options.headers['Authorization'] = 'Bearer $token';
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(AppConstants.userTokenKey, token);
+  }
+
+  Future<void> setUserId(int userId) async {
+    _userId = userId;
+    _dio.options.headers['X-User-Id'] = userId.toString();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('user_id', userId);
   }
 
   Future<void> clearAuthToken() async {

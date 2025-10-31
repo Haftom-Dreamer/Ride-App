@@ -564,8 +564,8 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                   child: SafeArea(
                     child: FloatingActionButton(
                       onPressed: _cancelMapSelection,
-                      backgroundColor: Colors.white,
-                      foregroundColor: AppColors.primaryBlue,
+                      backgroundColor: Theme.of(context).colorScheme.surface,
+                      foregroundColor: Theme.of(context).colorScheme.primary,
                       mini: true,
                       child: const Icon(Icons.close),
                     ),
@@ -599,7 +599,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
         style:
             const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
       ),
-      backgroundColor: AppColors.primaryBlue,
+      backgroundColor: Theme.of(context).colorScheme.primary,
       elevation: 0,
     );
   }
@@ -756,7 +756,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: AppColors.gray300,
+                    color: Theme.of(context).dividerColor,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -1990,12 +1990,14 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
 
               const SizedBox(height: 8),
 
-              const Text(
+              Text(
                 'Arriving in 5 min',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: AppColors.textSecondary,
-                ),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withOpacity(0.7),
+                    ),
               ),
 
               const SizedBox(height: 20),
@@ -2005,13 +2007,14 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                 children: [
                   CircleAvatar(
                     radius: 30,
-                    backgroundColor: AppColors.lightBlue,
+                    backgroundColor:
+                        Theme.of(context).colorScheme.primary.withOpacity(0.1),
                     child: Text(
                       _assignedDriver!.name[0],
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.primaryBlue,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                     ),
                   ),
@@ -2022,10 +2025,14 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                       children: [
                         Text(
                           _assignedDriver!.name,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
                         ),
                         const SizedBox(height: 4),
                         Row(
@@ -2035,9 +2042,12 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                             const SizedBox(width: 4),
                             Text(
                               '${_assignedDriver!.rating} • ${_assignedDriver!.totalRides} trips',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 14,
-                                color: AppColors.textSecondary,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurface
+                                    .withOpacity(0.7),
                               ),
                             ),
                           ],
