@@ -62,10 +62,13 @@ class RideRepository {
     return response.data;
   }
 
-  Future<void> cancelRide(int rideId) async {
+  Future<void> cancelRide(int rideId, {String? reason}) async {
     await _apiClient.post(
       '/api/passenger/cancel-ride',
-      data: {'ride_id': rideId},
+      data: {
+        'ride_id': rideId,
+        if (reason != null && reason.isNotEmpty) 'reason': reason,
+      },
     );
   }
 

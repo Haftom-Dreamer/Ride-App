@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import '../widgets/address_autocomplete_widget.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/data/tigray_locations.dart';
@@ -116,6 +117,98 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
       duration: const Duration(milliseconds: 1500),
     )..repeat();
     _initializeApp();
+  }
+
+  void _showPickupEditSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+        String tempAddress = _pickupAddress;
+        return Padding(
+          padding: EdgeInsets.only(bottom: bottomInset),
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Set pickup location',
+                      style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surface,
+                      border: Border.all(color: Theme.of(context).dividerColor),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: AddressAutocompleteWidget(
+                      hintText: 'Enter pickup address',
+                      initialValue: _pickupAddress,
+                      onAddressSelected: (value) async {
+                        tempAddress = value;
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            setState(() {
+                              _currentStatus = RideStatus.home;
+                              _isPickupSelectionMode = true;
+                              _tempPickupLocation = _mapController.camera.center;
+                            });
+                          },
+                          icon: const Icon(Icons.place),
+                          label: const Text('Pin on map'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () async {
+                            Navigator.pop(context);
+                            if (tempAddress.trim().isEmpty) return;
+                            final coords = await GeocodingService.addressToCoordinates(tempAddress.trim());
+                            if (coords != null) {
+                              setState(() {
+                                _pickupLocation = coords;
+                                _pickupAddress = tempAddress.trim();
+                              });
+                              _mapController.move(coords, 15.0);
+                            } else {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Could not find that address')),
+                                );
+                              }
+                            }
+                          },
+                          icon: const Icon(Icons.check),
+                          label: const Text('Use this address'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -501,32 +594,92 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
   }
 
   void _cancelRide() {
-    showDialog(
+    String? selectedReason;
+    final reasons = <String>[
+      'Changed my mind',
+      'Waited too long',
+      'Wrong pickup location',
+      'Found another ride',
+      'Other',
+    ];
+
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Cancel Ride'),
-        content: const Text('Are you sure you want to cancel this ride?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('No'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() {
-                _currentStatus = RideStatus.home;
-                _destinationLocation = null;
-                _destinationAddress = '';
-                _routePoints = null;
-                _estimatedFare = null;
-                _assignedDriver = null;
-              });
-            },
-            child: const Text('Yes, Cancel'),
-          ),
-        ],
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
+      builder: (context) {
+        final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+        return Padding(
+          padding: EdgeInsets.only(bottom: bottomInset),
+          child: SafeArea(
+            top: false,
+            child: StatefulBuilder(
+              builder: (context, setModalState) {
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Cancel Ride', style: Theme.of(context).textTheme.titleMedium),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Please tell us why you are canceling:',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                            ),
+                      ),
+                      const SizedBox(height: 8),
+                      ...reasons.map((r) => RadioListTile<String>(
+                            title: Text(r),
+                            value: r,
+                            groupValue: selectedReason,
+                            onChanged: (v) => setModalState(() => selectedReason = v),
+                          )),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            Navigator.pop(context);
+                            // Submit to backend if we have a ride id
+                            if (_currentRideId != null) {
+                              try {
+                                await _rideRepository.cancelRide(
+                                  _currentRideId!,
+                                  reason: selectedReason,
+                                );
+                              } catch (e) {
+                                // Ignore errors; still reset UI
+                              }
+                            }
+                            setState(() {
+                              _currentStatus = RideStatus.home;
+                              _destinationLocation = null;
+                              _destinationAddress = '';
+                              _routePoints = null;
+                              _estimatedFare = null;
+                              _assignedDriver = null;
+                              _currentRideId = null;
+                            });
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Ride canceled')),
+                            );
+                          },
+                          child: const Text('Submit'),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -547,9 +700,25 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
           // Bottom Sheet or Full Screen Content
           _buildBottomContent(),
 
+          // Locate me FAB (always above sheets on Home)
+          if (_currentStatus == RideStatus.home) _buildLocateMeFab(),
+
           // Bottom Navigation Bar
           if (_shouldShowBottomNav()) _buildBottomNavigationBar(),
         ],
+      ),
+    );
+  }
+
+  Widget _buildLocateMeFab() {
+    return Positioned(
+      bottom: 100,
+      right: 16,
+      child: FloatingActionButton(
+        onPressed: () async {
+          await _getCurrentLocation();
+        },
+        child: const Icon(Icons.my_location),
       ),
     );
   }
@@ -602,18 +771,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                 }
               : null,
         ),
-        if (_currentStatus == RideStatus.home && _currentLocation != null) ...[
-          // Locate me icon
-          Positioned(
-            bottom: 100,
-            right: 16,
-            child: FloatingActionButton(
-              onPressed: () async {
-                await _getCurrentLocation();
-              },
-              child: const Icon(Icons.my_location),
-            ),
-          ),
+        if (_currentStatus == RideStatus.home) ...[
           // Pickup chip - tap to change pickup
           Positioned(
             top: 12,
@@ -1455,6 +1613,13 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                       style: TextStyle(color: AppColors.secondaryGreen),
                     ),
                   ),
+              const SizedBox(width: 8),
+              // My location quick-center for destination selection map mode
+              IconButton(
+                tooltip: 'Locate me',
+                onPressed: _getCurrentLocation,
+                icon: const Icon(Icons.my_location),
+              ),
                 ],
               ),
             ),
@@ -1464,7 +1629,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
                 children: [
-                  // FROM field
+                  // FROM field (tap to edit or pin pickup)
                   Row(
                     children: [
                       Container(
@@ -1477,18 +1642,22 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: AppColors.gray50,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            _pickupAddress,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              color: AppColors.textPrimary,
+                        child: InkWell(
+                          onTap: _showPickupEditSheet,
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: AppColors.gray50,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              _pickupAddress,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                color: AppColors.textPrimary,
+                              ),
                             ),
                           ),
                         ),
@@ -1740,8 +1909,8 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
 
   Widget _buildRideConfigurationSheet() {
     return DraggableScrollableSheet(
-      initialChildSize: 0.9,
-      minChildSize: 0.3, // Enough to still see button
+      initialChildSize: 0.85,
+      minChildSize: 0.25, // Enough to still see button
       maxChildSize: 0.95,
       snap: true,
       snapSizes: const [0.3, 0.6, 0.9, 0.95], // Snap with larger default
@@ -1763,7 +1932,12 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
           ),
           child: ListView(
             controller: scrollController,
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+            padding: EdgeInsets.fromLTRB(
+              20,
+              20,
+              20,
+              28 + MediaQuery.of(context).viewInsets.bottom,
+            ),
             children: [
               // Drag handle
               Center(
