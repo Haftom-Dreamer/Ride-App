@@ -13,6 +13,7 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 
 // import '../../../support/presentation/screens/support_center_screen.dart';
 import '../../../settings/presentation/screens/settings_screen.dart';
+import '../../../support/presentation/screens/support_screen.dart';
 import '../../../profile/data/profile_repository.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
@@ -21,6 +22,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../core/config/app_config.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../services/geocoding_service.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -676,7 +678,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 icon: Icons.support_agent,
                                 title: 'Support',
                                 color: AppColors.warning,
-                                onTap: () => _showContactSupport(),
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const SupportScreen(),
+                                    ),
+                                  );
+                                },
                               ),
                             ),
                           ],
@@ -1092,11 +1101,23 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             onPressed: () async {
               if (_newPlaceAddress.isNotEmpty) {
                 try {
+                  final coords = await GeocodingService.addressToCoordinates(
+                      _newPlaceAddress);
+                  if (coords == null) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text(
+                                'Could not locate that address. Please pin on map.')),
+                      );
+                    }
+                    return;
+                  }
                   await _savedPlacesRepository.saveOrUpdatePlace(
                     label: label,
                     address: _newPlaceAddress,
-                    latitude: 0.0,
-                    longitude: 0.0,
+                    latitude: coords.latitude,
+                    longitude: coords.longitude,
                   );
                   if (mounted) {
                     Navigator.pop(context);
@@ -1690,58 +1711,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
   */
 
-  void _showContactSupport() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Contact Support'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: Icon(Icons.phone,
-                  color: Theme.of(context).colorScheme.primary),
-              title: const Text('Call Support'),
-              subtitle: const Text('+251 911 234 567'),
-              onTap: () {
-                Navigator.pop(context);
-
-                // TODO: Implement phone call
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.email,
-                  color: Theme.of(context).colorScheme.primary),
-              title: const Text('Email Support'),
-              subtitle: const Text('selamawiride@gmail.com'),
-              onTap: () {
-                Navigator.pop(context);
-
-                // TODO: Implement email
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.chat,
-                  color: Theme.of(context).colorScheme.primary),
-              title: const Text('Live Chat'),
-              subtitle: const Text('Available 24/7'),
-              onTap: () {
-                Navigator.pop(context);
-
-                // TODO: Implement live chat
-              },
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
+  // Support handled via SupportScreen navigation
 
   void _showPaymentOptions() {
     showDialog(

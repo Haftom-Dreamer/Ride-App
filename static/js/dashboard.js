@@ -373,15 +373,15 @@ document.addEventListener('DOMContentLoaded', () => {
             // IMPORTANT: Only show errors if we have NO cached data at all
             const hasAnyCache = useCache && cache.has(key);
             if (!hasCachedData && !hasAnyCache && shouldShowError) {
-                if (e.message === 'No internet connection') {
-                    showErrorNotification('No internet connection. Please check your network.');
-                } else if (e.message.includes('Failed to fetch')) {
-                    // Suppress repeated toast; console is enough here
-                    console.warn('Suppressed network toast: Failed to fetch');
-                } else if (e.message.includes('Server error')) {
+            if (e.message === 'No internet connection') {
+                showErrorNotification('No internet connection. Please check your network.');
+            } else if (e.message.includes('Failed to fetch')) {
+                // Suppress repeated toast; console is enough here
+                console.warn('Suppressed network toast: Failed to fetch');
+            } else if (e.message.includes('Server error')) {
                     // Only show server error if we marked it, have no cached data, and this is a real server error
                     console.error(`Server error for ${endpoint}: ${e.message}`);
-                    showErrorNotification('Server error. Please try again later.');
+                showErrorNotification('Server error. Please try again later.');
                 }
             } else {
                 // We have cached data or this is a non-critical error - just log it

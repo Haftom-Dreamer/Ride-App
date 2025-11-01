@@ -203,14 +203,14 @@ def get_all_rides_data():
             db.joinedload(Ride.passenger),
             db.joinedload(Ride.driver)
         ).order_by(Ride.request_time.desc()).all()
-        
+
         # Get all feedbacks in one query for efficiency
         ride_ids = [ride.id for ride in rides]
         feedbacks_dict = {}
         if ride_ids:
             feedbacks = Feedback.query.filter(Feedback.ride_id.in_(ride_ids)).all()
             feedbacks_dict = {fb.ride_id: fb for fb in feedbacks}
-        
+
         rides_data = []
         for ride in rides:
             try:
@@ -220,21 +220,21 @@ def get_all_rides_data():
                 if ride.passenger_id and ride.passenger:
                     user_name = ride.passenger.username if ride.passenger.username else "N/A"
                     user_phone = ride.passenger.phone_number if ride.passenger.phone_number else "N/A"
-                
+
                 # Safely access driver data
                 driver_name = "N/A"
                 if ride.driver_id and ride.driver:
                     driver_name = ride.driver.name if ride.driver.name else "N/A"
-                
+
                 # Safely access fare
                 try:
                     fare = float(ride.fare) if ride.fare is not None else 0.0
                 except (ValueError, TypeError):
                     fare = 0.0
-                
+
                 # Safely access status
                 status = ride.status if ride.status else "Unknown"
-                
+
                 # Safely access rating from Feedback model (not the string column)
                 rating = None
                 feedback_obj = feedbacks_dict.get(ride.id)
@@ -243,16 +243,17 @@ def get_all_rides_data():
                         rating = int(feedback_obj.rating)
                     except (ValueError, TypeError):
                         rating = None
-                
+
                 # Safely format request_time
                 request_time_str = "N/A"
                 if ride.request_time:
                     try:
                         request_time_str = to_eat(ride.request_time).strftime('%Y-%m-%d %H:%M')
                     except (AttributeError, ValueError, TypeError) as e:
-                        current_app.logger.warning(f"Error formatting request_time for ride {ride.id}: {e}")
+                        current_app.logger.warning(
+                            f"Error formatting request_time for ride {ride.id}: {e}")
                         request_time_str = "N/A"
-                
+
                 rides_data.append({
                     'id': ride.id,
                     'user_name': user_name,
@@ -267,7 +268,8 @@ def get_all_rides_data():
                 # Log error for this specific ride but continue processing others
                 import traceback
                 error_trace = traceback.format_exc()
-                current_app.logger.error(f"Error processing ride {ride.id} at line 215-258: {str(ride_error)}\n{error_trace}")
+                current_app.logger.error(
+                    f"Error processing ride {ride.id}: {str(ride_error)}\n{error_trace}")
                 # Still add the ride with minimal data
                 rides_data.append({
                     'id': ride.id,
@@ -279,14 +281,15 @@ def get_all_rides_data():
                     'rating': None,
                     'request_time': "N/A"
                 })
-        
+
         current_app.logger.info(f"Successfully processed {len(rides_data)} rides")
         return jsonify(rides_data)
     except Exception as e:
         import traceback
         error_trace = traceback.format_exc()
         error_line = error_trace.split('\n')[-3] if len(error_trace.split('\n')) > 3 else "Unknown"
-        current_app.logger.error(f"Error getting all rides data at line 201-279: {str(e)}\nLine: {error_line}\nFull trace: {error_trace}")
+        current_app.logger.error(
+            f"Error getting all rides data: {str(e)}\nLine: {error_line}\nFull trace: {error_trace}")
         return jsonify({'error': f'Internal server error: {str(e)}', 'line': error_line}), 500
 
 @api.route('/ride-details/<int:ride_id>')
@@ -465,13 +468,24 @@ def api_passenger_history():
     """Get ride history for logged-in passenger"""
     try:
         from flask_login import current_user
-        
-        rides = Ride.query.filter_by(passenger_id=current_user.id)\
-            .options(db.joinedload(Ride.feedback), db.joinedload(Ride.driver))\
-            .order_by(Ride.request_time.desc()).all()
-        
+
+        rides = (
+            Ride.query.filter_by(passenger_id=current_user.id)
+            .options(db.joinedload(Ride.driver))
+            .order_by(Ride.request_time.desc())
+            .all()
+        )
+
+        # Fetch feedbacks in one query
+        ride_ids = [ride.id for ride in rides]
+        feedbacks_dict = {}
+        if ride_ids:
+            feedbacks = Feedback.query.filter(Feedback.ride_id.in_(ride_ids)).all()
+            feedbacks_dict = {fb.ride_id: fb for fb in feedbacks}
+
         rides_data = []
         for ride in rides:
+            fb = feedbacks_dict.get(ride.id)
             rides_data.append({
                 'id': ride.id,
                 'driver_name': ride.driver.name if ride.driver else "N/A",
@@ -479,10 +493,10 @@ def api_passenger_history():
                 'fare': float(ride.fare) if ride.fare else 0.0,
                 'status': ride.status or "Unknown",
                 'request_time': to_eat(ride.request_time).strftime('%b %d, %Y at %I:%M %p') if ride.request_time else "N/A",
-                'rating': ride.feedback.rating if ride.feedback and ride.feedback.rating else None,
-                'comment': ride.feedback.comment if ride.feedback and ride.feedback.comment else None
+                'rating': fb.rating if fb and fb.rating is not None else None,
+                'comment': fb.comment if fb and fb.comment else None,
             })
-        
+
         return jsonify(rides_data)
     except Exception as e:
         current_app.logger.error(f"Error getting passenger ride history: {str(e)}")

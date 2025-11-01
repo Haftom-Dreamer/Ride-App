@@ -52,7 +52,7 @@ class MyTripsScreen extends StatefulWidget {
 class _MyTripsScreenState extends State<MyTripsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-
+  
   // Sample trip data
   final List<TripRecord> _allTrips = [
     TripRecord(
@@ -145,7 +145,7 @@ class _MyTripsScreenState extends State<MyTripsScreen>
 
   List<TripRecord> get _filteredTrips {
     final int currentTab = _tabController.index;
-
+    
     if (currentTab == 0) {
       // All trips
       return _allTrips;
@@ -183,7 +183,7 @@ class _MyTripsScreenState extends State<MyTripsScreen>
 
   Map<String, List<TripRecord>> get _groupedTrips {
     final Map<String, List<TripRecord>> grouped = {};
-
+    
     for (final trip in _filteredTrips) {
       final header = _getDateHeader(trip.timestamp);
       if (!grouped.containsKey(header)) {
@@ -191,7 +191,7 @@ class _MyTripsScreenState extends State<MyTripsScreen>
       }
       grouped[header]!.add(trip);
     }
-
+    
     return grouped;
   }
 
@@ -261,44 +261,44 @@ class _MyTripsScreenState extends State<MyTripsScreen>
           // Trip List
           Expanded(
             child: _filteredTrips.isEmpty
-                ? _buildEmptyState()
-                : ListView.builder(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    itemCount: _groupedTrips.length,
-                    itemBuilder: (context, index) {
-                      final header = _groupedTrips.keys.elementAt(index);
-                      final trips = _groupedTrips[header]!;
-
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Date header
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                            child: Text(
-                              header,
+          ? _buildEmptyState()
+          : ListView.builder(
+              padding: const EdgeInsets.only(bottom: 16),
+              itemCount: _groupedTrips.length,
+              itemBuilder: (context, index) {
+                final header = _groupedTrips.keys.elementAt(index);
+                final trips = _groupedTrips[header]!;
+                
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Date header
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                      child: Text(
+                        header,
                               style: Theme.of(context)
                                   .textTheme
                                   .bodySmall
                                   ?.copyWith(
-                                    fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w600,
                                     color: Theme.of(context)
                                         .colorScheme
                                         .onSurface
                                         .withOpacity(0.7),
-                                  ),
-                            ),
-                          ),
-
-                          // Trip cards
-                          ...trips.map((trip) => _buildTripCard(trip)),
-                        ],
-                      );
-                    },
+                        ),
+                      ),
+                    ),
+                    
+                    // Trip cards
+                    ...trips.map((trip) => _buildTripCard(trip)),
+                  ],
+                );
+              },
                   ),
           ),
         ],
-      ),
+            ),
     );
   }
 
@@ -318,12 +318,12 @@ class _MyTripsScreenState extends State<MyTripsScreen>
             Text(
               _tabController.index == 2 ? 'No Cancelled Trips' : 'No Trips Yet',
               style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
+                color: AppColors.textSecondary,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
-              _tabController.index == 2
+              _tabController.index == 2 
                   ? 'You haven\'t cancelled any rides'
                   : 'Book your first ride to get started',
               style: const TextStyle(
@@ -368,10 +368,10 @@ class _MyTripsScreenState extends State<MyTripsScreen>
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        _formatTime(trip.timestamp),
+                      _formatTime(trip.timestamp),
                         style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
                           color: Theme.of(context).colorScheme.primary,
                         ),
                       ),
@@ -380,9 +380,9 @@ class _MyTripsScreenState extends State<MyTripsScreen>
                     _buildStatusBadge(trip.status),
                   ],
                 ),
-
+                
                 const SizedBox(height: 16),
-
+                
                 // Route
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -410,7 +410,7 @@ class _MyTripsScreenState extends State<MyTripsScreen>
                           width: 3,
                           height: 24,
                           decoration: BoxDecoration(
-                            color: AppColors.gray300,
+                          color: AppColors.gray300,
                             borderRadius: BorderRadius.circular(2),
                           ),
                         ),
@@ -433,9 +433,9 @@ class _MyTripsScreenState extends State<MyTripsScreen>
                         ),
                       ],
                     ),
-
+                    
                     const SizedBox(width: 16),
-
+                    
                     // Locations
                     Expanded(
                       child: Column(
@@ -451,7 +451,7 @@ class _MyTripsScreenState extends State<MyTripsScreen>
                                   fontWeight: FontWeight.w500,
                                   color:
                                       Theme.of(context).colorScheme.onSurface,
-                                ),
+                            ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -466,7 +466,7 @@ class _MyTripsScreenState extends State<MyTripsScreen>
                                   fontWeight: FontWeight.w500,
                                   color:
                                       Theme.of(context).colorScheme.onSurface,
-                                ),
+                            ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -475,11 +475,11 @@ class _MyTripsScreenState extends State<MyTripsScreen>
                     ),
                   ],
                 ),
-
+                
                 const SizedBox(height: 16),
                 const Divider(height: 1),
                 const SizedBox(height: 16),
-
+                
                 // Footer - driver, vehicle, fare
                 Row(
                   children: [
@@ -500,7 +500,7 @@ class _MyTripsScreenState extends State<MyTripsScreen>
                       ),
                     ),
                     const SizedBox(width: 12),
-
+                    
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -515,7 +515,7 @@ class _MyTripsScreenState extends State<MyTripsScreen>
                                   fontWeight: FontWeight.w600,
                                   color:
                                       Theme.of(context).colorScheme.onSurface,
-                                ),
+                            ),
                           ),
                           const SizedBox(height: 2),
                           Text(
@@ -527,27 +527,27 @@ class _MyTripsScreenState extends State<MyTripsScreen>
                                           .colorScheme
                                           .onSurface
                                           .withOpacity(0.6),
-                                    ),
+                            ),
                           ),
                         ],
                       ),
                     ),
-
+                    
                     // Fare
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        if (trip.status == TripStatus.completed)
-                          Text(
-                            'ETB ${trip.fare.toStringAsFixed(0)}',
+                    if (trip.status == TripStatus.completed)
+                      Text(
+                        'ETB ${trip.fare.toStringAsFixed(0)}',
                             style: TextStyle(
                               fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.bold,
                               color: Theme.of(context).colorScheme.primary,
                             ),
                           ),
-                      ],
-                    ),
+                        ],
+                      ),
                   ],
                 ),
               ],
@@ -562,7 +562,7 @@ class _MyTripsScreenState extends State<MyTripsScreen>
     Color backgroundColor;
     Color textColor;
     String text;
-
+    
     switch (status) {
       case TripStatus.completed:
         backgroundColor = AppColors.success.withOpacity(0.1);
@@ -580,7 +580,7 @@ class _MyTripsScreenState extends State<MyTripsScreen>
         text = 'Ongoing';
         break;
     }
-
+    
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -637,9 +637,9 @@ class _MyTripsScreenState extends State<MyTripsScreen>
                     ),
                   ),
                 ),
-
+                
                 const SizedBox(height: 24),
-
+                
                 // Title
                 Row(
                   children: [
@@ -651,9 +651,9 @@ class _MyTripsScreenState extends State<MyTripsScreen>
                     _buildStatusBadge(trip.status),
                   ],
                 ),
-
+                
                 const SizedBox(height: 24),
-
+                
                 // Date and time
                 Row(
                   children: [
@@ -669,9 +669,9 @@ class _MyTripsScreenState extends State<MyTripsScreen>
                     ),
                   ],
                 ),
-
+                
                 const SizedBox(height: 24),
-
+                
                 // Route details
                 Container(
                   padding: const EdgeInsets.all(16),
@@ -729,9 +729,9 @@ class _MyTripsScreenState extends State<MyTripsScreen>
                     ],
                   ),
                 ),
-
+                
                 const SizedBox(height: 24),
-
+                
                 // Trip info
                 Row(
                   children: [
@@ -752,9 +752,9 @@ class _MyTripsScreenState extends State<MyTripsScreen>
                     ),
                   ],
                 ),
-
+                
                 const SizedBox(height: 24),
-
+                
                 // Driver info
                 Container(
                   padding: const EdgeInsets.all(16),
@@ -817,9 +817,9 @@ class _MyTripsScreenState extends State<MyTripsScreen>
                     ],
                   ),
                 ),
-
+                
                 const SizedBox(height: 24),
-
+                
                 // Fare
                 if (trip.status == TripStatus.completed)
                   Container(
@@ -852,9 +852,9 @@ class _MyTripsScreenState extends State<MyTripsScreen>
                       ],
                     ),
                   ),
-
+                
                 const SizedBox(height: 24),
-
+                
                 // Actions
                 if (trip.status == TripStatus.completed) ...[
                   SizedBox(
@@ -934,7 +934,7 @@ class _MyTripsScreenState extends State<MyTripsScreen>
       'Nov',
       'Dec'
     ];
-
+    
     return '${months[dateTime.month - 1]} ${dateTime.day}, ${dateTime.year}';
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/theme_provider.dart';
+import '../../../support/presentation/screens/support_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -15,51 +16,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   String _selectedLanguage = 'English';
 
   void _showSupport() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Customer Support'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: Icon(Icons.phone,
-                  color: Theme.of(context).colorScheme.primary),
-              title: const Text('Call Support'),
-              subtitle: const Text('+251 911 234 567'),
-              onTap: () {
-                Navigator.pop(context);
-                // TODO: launch call
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.email,
-                  color: Theme.of(context).colorScheme.primary),
-              title: const Text('Email Support'),
-              subtitle: const Text('selamawiride@gmail.com'),
-              onTap: () {
-                Navigator.pop(context);
-                // TODO: launch email
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.chat,
-                  color: Theme.of(context).colorScheme.primary),
-              title: const Text('Live Chat'),
-              subtitle: const Text('Available 24/7'),
-              onTap: () {
-                Navigator.pop(context);
-                // TODO: open chat
-              },
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const SupportScreen(),
       ),
     );
   }

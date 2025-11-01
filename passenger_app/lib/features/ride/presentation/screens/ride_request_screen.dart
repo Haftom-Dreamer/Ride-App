@@ -14,6 +14,9 @@ import '../../../../shared/domain/models/ride_models.dart';
 import 'my_trips_screen.dart';
 import 'profile_screen.dart';
 import '../../data/ride_api_service.dart';
+import '../../../profile/data/saved_places_repository.dart';
+import '../../../ride/data/ride_repository.dart';
+import '../../../../shared/domain/models/saved_place.dart' as user_models;
 
 class RideRequestScreen extends ConsumerStatefulWidget {
   const RideRequestScreen({super.key});
@@ -47,6 +50,12 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
   Driver? _assignedDriver;
   int _currentNavigationIndex = 0;
   bool _isMapSelectionMode = false;
+  bool _isPickupSelectionMode = false;
+  LatLng? _tempPickupLocation;
+
+  // Rider info
+  bool _isForSomeoneElse = false;
+  final TextEditingController _otherPhoneController = TextEditingController();
 
   // Vehicle options (ETB - Ethiopian Birr)
   final List<VehicleOption> _vehicleOptions = const [
@@ -93,6 +102,12 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
   final RideApiService _rideApiService = RideApiService();
   int? _currentRideId;
 
+  // Home data: saved places and recent trips
+  final SavedPlacesRepository _savedPlacesRepository = SavedPlacesRepository();
+  final RideRepository _rideRepository = RideRepository();
+  List<SavedPlace> _savedPlacesUi = [];
+  List<RecentTrip> _recentTripsUi = [];
+
   @override
   void initState() {
     super.initState();
@@ -109,11 +124,67 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
     _searchController.dispose();
     _searchDebounce?.cancel();
     _sheetController.dispose();
+    _otherPhoneController.dispose();
     super.dispose();
   }
 
   Future<void> _initializeApp() async {
     await _getCurrentLocation();
+    await _loadHomeData();
+  }
+
+  Future<void> _loadHomeData() async {
+    try {
+      // Load saved places from backend and map to UI model
+      final List<user_models.SavedPlace> places =
+          await _savedPlacesRepository.getSavedPlaces();
+      _savedPlacesUi = places
+          .map((p) => SavedPlace(
+                id: (p.id ?? 0).toString(),
+                name: p.label,
+                address: p.address,
+                coordinates: LatLng(p.latitude, p.longitude),
+                icon: p.label.toLowerCase() == 'home'
+                    ? 'home'
+                    : (p.label.toLowerCase() == 'work' ? 'work' : 'favorite'),
+              ))
+          .toList();
+
+      // Load recent rides (limit to 5) and fetch details for coordinates
+      final history = await _rideRepository.getRideHistory(page: 1, perPage: 5);
+      final List<dynamic> rides = (history['rides'] as List<dynamic>? ?? []);
+      final List<RecentTrip> recent = [];
+      for (final r in rides) {
+        try {
+          final int rideId = r['id'] as int;
+          final details = await _rideRepository.getRideDetails(rideId);
+          // details is a Ride model; map to RecentTrip
+          final String destName = details.destAddress;
+          final double lat = details.destLat;
+          final double lon = details.destLon;
+          recent.add(RecentTrip(
+            id: rideId.toString(),
+            destinationName: destName,
+            destinationAddress: destName,
+            destinationCoordinates: LatLng(lat, lon),
+            timestamp: DateTime.tryParse(r['request_time'] as String? ?? '') ??
+                DateTime.now(),
+          ));
+        } catch (_) {
+          // Skip malformed entries
+        }
+      }
+      setState(() {
+        _savedPlacesUi = _savedPlacesUi;
+        _recentTripsUi = recent;
+      });
+    } catch (_) {
+      // Leave empty on failure; UI will show nothing
+      setState(() {
+        _savedPlacesUi = [];
+        _recentTripsUi = [];
+      });
+    }
   }
 
   Future<void> _getCurrentLocation() async {
@@ -346,8 +417,12 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
         destLon: _destinationLocation!.longitude,
         destAddress: _destinationAddress,
         vehicleType: vehicleTypeStr,
+        distanceKm: _distanceKm ?? 0.0,
         estimatedFare: _estimatedFare ?? 0.0,
         paymentMethod: _selectedPayment,
+        note: _isForSomeoneElse && _otherPhoneController.text.isNotEmpty
+            ? 'For: ${_otherPhoneController.text.trim()}'
+            : null,
       );
 
       // Save ride ID
@@ -513,15 +588,130 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
               _calculateRoute();
             }
           },
-          onMapMoved: _currentStatus == RideStatus.pinDestination
+          onMapMoved: (_currentStatus == RideStatus.pinDestination ||
+                  _isPickupSelectionMode)
               ? (center) {
-                  // Update pin location when map moves in pin mode
                   setState(() {
-                    _tempPinLocation = center;
+                    if (_currentStatus == RideStatus.pinDestination) {
+                      _tempPinLocation = center;
+                    }
+                    if (_isPickupSelectionMode) {
+                      _tempPickupLocation = center;
+                    }
                   });
                 }
               : null,
         ),
+        if (_currentStatus == RideStatus.home && _currentLocation != null) ...[
+          // Locate me icon
+          Positioned(
+            bottom: 100,
+            right: 16,
+            child: FloatingActionButton(
+              onPressed: () async {
+                await _getCurrentLocation();
+              },
+              child: const Icon(Icons.my_location),
+            ),
+          ),
+          // Pickup chip - tap to change pickup
+          Positioned(
+            top: 12,
+            left: 12,
+            child: InkWell(
+              onTap: () {
+                setState(() {
+                  _isPickupSelectionMode = true;
+                  _tempPickupLocation = _mapController.camera.center;
+                });
+              },
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Theme.of(context).dividerColor),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.place,
+                        size: 16, color: Theme.of(context).colorScheme.primary),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      width: 180,
+                      child: Text(
+                        _pickupAddress,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+        // Pickup selection overlay
+        if (_isPickupSelectionMode)
+          Container(
+            color: Colors.black.withOpacity(0.1),
+            child: Stack(
+              children: [
+                const Center(
+                  child: Icon(
+                    Icons.place,
+                    color: Colors.green,
+                    size: 60,
+                  ),
+                ),
+                Positioned(
+                  top: 50,
+                  right: 20,
+                  child: SafeArea(
+                    child: FloatingActionButton(
+                      onPressed: () {
+                        setState(() => _isPickupSelectionMode = false);
+                      },
+                      mini: true,
+                      backgroundColor: Theme.of(context).colorScheme.surface,
+                      foregroundColor: Theme.of(context).colorScheme.primary,
+                      child: const Icon(Icons.close),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  bottom: 30,
+                  left: 20,
+                  right: 20,
+                  child: SafeArea(
+                    child: ElevatedButton(
+                      onPressed: _tempPickupLocation != null
+                          ? () async {
+                              final loc = _tempPickupLocation!;
+                              setState(() {
+                                _pickupLocation = loc;
+                                _isPickupSelectionMode = false;
+                              });
+                              await _updatePickupAddress(loc);
+                            }
+                          : null,
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                      child: const Text('Set Pickup Here'),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         // Map selection overlay
         if (_isMapSelectionMode)
           Container(
@@ -732,15 +922,15 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
       snapSizes: const [0.15, 0.3, 0.6, 0.9], // Better snap points
       builder: (context, scrollController) {
         return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.only(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(24),
               topRight: Radius.circular(24),
             ),
-            boxShadow: [
+            boxShadow: const [
               BoxShadow(
-                color: Colors.black12,
+                color: Color(0x1F000000),
                 blurRadius: 20,
                 offset: Offset(0, -5),
               ),
@@ -776,15 +966,18 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                   padding:
                       const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                   decoration: BoxDecoration(
-                    color: AppColors.gray50,
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.gray200),
+                    border: Border.all(color: Theme.of(context).dividerColor),
                   ),
                   child: Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.search,
-                        color: AppColors.textTertiary,
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withOpacity(0.7),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -794,9 +987,11 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                               : _destinationAddress,
                           style: TextStyle(
                             fontSize: 16,
-                            color: _destinationAddress.isEmpty
-                                ? AppColors.textTertiary
-                                : AppColors.textPrimary,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withOpacity(
+                                    _destinationAddress.isEmpty ? 0.6 : 1.0),
                           ),
                         ),
                       ),
@@ -809,9 +1004,12 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                               _routePoints = null;
                             });
                           },
-                          child: const Icon(
+                          child: Icon(
                             Icons.clear,
-                            color: AppColors.textTertiary,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withOpacity(0.6),
                             size: 20,
                           ),
                         ),
@@ -827,7 +1025,10 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                 'Suggestions',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textSecondary,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withOpacity(0.7),
                     ),
               ),
 
@@ -843,14 +1044,16 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                 'Saved Places',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textSecondary,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withOpacity(0.7),
                     ),
               ),
 
               const SizedBox(height: 12),
 
-              ...SampleSavedPlaces.defaultSavedPlaces
-                  .map((place) => _buildSavedPlaceCard(place)),
+              ..._savedPlacesUi.map((place) => _buildSavedPlaceCard(place)),
 
               const SizedBox(height: 24),
 
@@ -859,14 +1062,16 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                 'Recent Trips',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textSecondary,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withOpacity(0.7),
                     ),
               ),
 
               const SizedBox(height: 12),
 
-              ...SampleRecentTrips.defaultRecentTrips
-                  .map((trip) => _buildRecentTripCard(trip)),
+              ..._recentTripsUi.map((trip) => _buildRecentTripCard(trip)),
             ],
           ),
         );
@@ -883,9 +1088,9 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.gray200),
+            border: Border.all(color: Theme.of(context).dividerColor),
           ),
           child: Row(
             children: [
@@ -913,19 +1118,22 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                   children: [
                     Text(
                       place.name,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                      ),
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       place.address,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: AppColors.textTertiary,
-                      ),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            fontSize: 14,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withOpacity(0.7),
+                          ),
                     ),
                   ],
                 ),
@@ -939,27 +1147,115 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
   }
 
   Widget _buildSuggestionsGrid() {
+    final homeWork = _savedPlacesUi
+        .where((p) =>
+            p.name.toLowerCase() == 'home' || p.name.toLowerCase() == 'work')
+        .toList();
+
+    if (homeWork.isNotEmpty) {
+      return GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 1,
+          childAspectRatio: 3.5,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+        ),
+        itemCount: homeWork.length,
+        itemBuilder: (context, index) {
+          final place = homeWork[index];
+          final isHome =
+              place.name.toLowerCase() == 'home' || place.icon == 'home';
+          return InkWell(
+            onTap: () => _selectSavedPlace(place),
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Theme.of(context).dividerColor),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .primary
+                          .withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      isHome ? Icons.home : Icons.work,
+                      color: Theme.of(context).colorScheme.primary,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          place.name,
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyLarge
+                              ?.copyWith(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          place.address,
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    fontSize: 14,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withOpacity(0.7),
+                                  ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.chevron_right,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withOpacity(0.5)),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    }
+
+    // Fallback suggestions
     final suggestions = [
       {
         'name': 'Home',
         'address': 'Hawelti, Mekelle',
         'icon': Icons.home,
-        'color': AppColors.success,
-        'bgColor': AppColors.green100,
       },
       {
         'name': 'Work',
         'address': 'Kedamay Weyane, Mekelle',
         'icon': Icons.work,
-        'color': AppColors.primaryBlue,
-        'bgColor': AppColors.blue100,
       },
       {
         'name': 'Ayder Hospital',
         'address': 'Ayder, Mekelle',
         'icon': Icons.local_hospital,
-        'color': AppColors.error,
-        'bgColor': AppColors.red100,
       },
     ];
 
@@ -993,9 +1289,9 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.gray200),
+              border: Border.all(color: Theme.of(context).dividerColor),
             ),
             child: Row(
               children: [
@@ -1003,12 +1299,13 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: suggestion['bgColor'] as Color,
+                    color:
+                        Theme.of(context).colorScheme.primary.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
                     suggestion['icon'] as IconData,
-                    color: suggestion['color'] as Color,
+                    color: Theme.of(context).colorScheme.primary,
                     size: 20,
                   ),
                 ),
@@ -1020,24 +1317,31 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                     children: [
                       Text(
                         suggestion['name'] as String,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                        ),
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Theme.of(context).colorScheme.onSurface,
+                            ),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         suggestion['address'] as String,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: AppColors.textTertiary,
-                        ),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              fontSize: 14,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withOpacity(0.7),
+                            ),
                       ),
                     ],
                   ),
                 ),
-                const Icon(Icons.chevron_right, color: AppColors.gray400),
+                Icon(Icons.chevron_right,
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withOpacity(0.5)),
               ],
             ),
           ),
@@ -1055,9 +1359,9 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.gray200),
+            border: Border.all(color: Theme.of(context).dividerColor),
           ),
           child: Row(
             children: [
@@ -1081,19 +1385,22 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                   children: [
                     Text(
                       trip.destinationName,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                      ),
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       trip.destinationAddress,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: AppColors.textTertiary,
-                      ),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            fontSize: 14,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withOpacity(0.7),
+                          ),
                     ),
                   ],
                 ),
@@ -1108,7 +1415,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
 
   Widget _buildSearchDestinationScreen() {
     return Container(
-      color: Colors.white,
+      color: Theme.of(context).colorScheme.surface,
       child: SafeArea(
         child: Column(
           children: [
@@ -1343,15 +1650,15 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
       left: 0,
       right: 0,
       child: Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.only(
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(24),
             topRight: Radius.circular(24),
           ),
-          boxShadow: [
+          boxShadow: const [
             BoxShadow(
-              color: Colors.black12,
+              color: Color(0x1F000000),
               blurRadius: 20,
               offset: Offset(0, -5),
             ),
@@ -1365,12 +1672,15 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
               mainAxisSize: MainAxisSize.min,
               children: [
                 // Instructions
-                const Text(
+                Text(
                   'Tap on the map or move the map to adjust the pin',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: AppColors.textSecondary,
-                  ),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontSize: 16,
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withOpacity(0.7),
+                      ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 24),
@@ -1408,8 +1718,8 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       backgroundColor: _tempPinLocation != null
-                          ? AppColors.primaryBlue
-                          : AppColors.gray300,
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).disabledColor,
                     ),
                     child: const Text(
                       'Next',
@@ -1437,15 +1747,15 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
       snapSizes: const [0.3, 0.6, 0.9, 0.95], // Snap with larger default
       builder: (context, scrollController) {
         return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.only(
               topLeft: Radius.circular(24),
               topRight: Radius.circular(24),
             ),
-            boxShadow: [
+            boxShadow: const [
               BoxShadow(
-                color: Colors.black12,
+                color: Color(0x1F000000),
                 blurRadius: 20,
                 offset: Offset(0, -5),
               ),
@@ -1461,7 +1771,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: AppColors.gray300,
+                    color: Theme.of(context).dividerColor,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -1489,26 +1799,78 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                             color: AppColors.textPrimary,
                           ),
                         ),
-                        TextButton.icon(
-                          onPressed: () {
-                            setState(() {
-                              _currentStatus = RideStatus.searchingDestination;
-                            });
-                          },
-                          icon: const Icon(Icons.edit,
-                              size: 16, color: AppColors.primaryBlue),
-                          label: const Text(
-                            'Change',
-                            style: TextStyle(
-                              color: AppColors.primaryBlue,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
+                        Row(
+                          children: [
+                            TextButton.icon(
+                              onPressed: () {
+                                setState(() {
+                                  _currentStatus =
+                                      RideStatus.searchingDestination;
+                                });
+                              },
+                              icon: const Icon(Icons.edit,
+                                  size: 16, color: AppColors.primaryBlue),
+                              label: const Text(
+                                'Change destination',
+                                style: TextStyle(
+                                  color: AppColors.primaryBlue,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
                             ),
-                          ),
+                            const SizedBox(width: 8),
+                            TextButton.icon(
+                              onPressed: () {
+                                setState(() {
+                                  _isPickupSelectionMode = true;
+                                  _tempPickupLocation =
+                                      _mapController.camera.center;
+                                });
+                              },
+                              icon: const Icon(Icons.place,
+                                  size: 16, color: AppColors.primaryBlue),
+                              label: const Text(
+                                'Change pickup',
+                                style: TextStyle(
+                                  color: AppColors.primaryBlue,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                     const SizedBox(height: 12),
+                    // Rider info
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Ride for someone else?',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        Switch(
+                          value: _isForSomeoneElse,
+                          onChanged: (v) =>
+                              setState(() => _isForSomeoneElse = v),
+                        ),
+                      ],
+                    ),
+                    if (_isForSomeoneElse) ...[
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _otherPhoneController,
+                        keyboardType: TextInputType.phone,
+                        decoration: const InputDecoration(
+                          labelText: 'Recipient phone number',
+                          hintText: '+251 9XX XXX XXX',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ],
                     Row(
                       children: [
                         const Icon(Icons.circle,
@@ -1949,15 +2311,15 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
       left: 0,
       right: 0,
       child: Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.only(
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(24),
             topRight: Radius.circular(24),
           ),
-          boxShadow: [
+          boxShadow: const [
             BoxShadow(
-              color: Colors.black12,
+              color: Color(0x1F000000),
               blurRadius: 20,
               offset: Offset(0, -5),
             ),
@@ -1974,7 +2336,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: AppColors.gray300,
+                    color: Theme.of(context).dividerColor,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -2124,7 +2486,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
     return StatefulBuilder(
       builder: (context, setState) {
         return Container(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surface,
           child: SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(24),
@@ -2271,12 +2633,12 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
       right: 0,
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
+          color: Theme.of(context).colorScheme.surface,
+          boxShadow: const [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Color(0x1F000000),
               blurRadius: 10,
-              offset: const Offset(0, -5),
+              offset: Offset(0, -5),
             ),
           ],
         ),
@@ -2335,7 +2697,9 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
           children: [
             Icon(
               icon,
-              color: isActive ? AppColors.primaryBlue : AppColors.gray400,
+              color: isActive
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
               size: 24,
             ),
             const SizedBox(height: 4),
@@ -2344,7 +2708,9 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen>
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
-                color: isActive ? AppColors.primaryBlue : AppColors.gray400,
+                color: isActive
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
               ),
             ),
           ],

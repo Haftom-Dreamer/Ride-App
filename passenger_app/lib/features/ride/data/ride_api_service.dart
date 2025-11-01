@@ -13,22 +13,26 @@ class RideApiService {
     required double destLon,
     required String destAddress,
     required String vehicleType,
+    required double distanceKm,
     required double estimatedFare,
     String paymentMethod = 'Cash',
+    String? note,
   }) async {
     try {
       final response = await _apiClient.post(
-        '/api/ride-request',
+        '/api/passenger/ride-request',
         data: {
-          'pickup_latitude': pickupLat,
-          'pickup_longitude': pickupLon,
           'pickup_address': pickupAddress,
-          'destination_latitude': destLat,
-          'destination_longitude': destLon,
-          'destination_address': destAddress,
+          'pickup_lat': pickupLat,
+          'pickup_lon': pickupLon,
+          'dest_address': destAddress,
+          'dest_lat': destLat,
+          'dest_lon': destLon,
+          'distance_km': distanceKm,
+          'fare': estimatedFare,
           'vehicle_type': vehicleType,
-          'estimated_fare': estimatedFare,
           'payment_method': paymentMethod,
+          if (note != null && note.isNotEmpty) 'note': note,
         },
       );
 
@@ -42,7 +46,7 @@ class RideApiService {
   /// Get ride status
   Future<Map<String, dynamic>> getRideStatus(int rideId) async {
     try {
-      final response = await _apiClient.get('/api/ride-status/$rideId');
+      final response = await _apiClient.get('/api/passenger/ride-status/$rideId');
       return response.data as Map<String, dynamic>;
     } catch (e) {
       log('Error getting ride status: $e', name: 'RideApiService');
@@ -54,7 +58,7 @@ class RideApiService {
   Future<void> cancelRide(int rideId, String reason) async {
     try {
       await _apiClient.post(
-        '/api/cancel-ride',
+        '/api/passenger/cancel-ride',
         data: {
           'ride_id': rideId,
           'cancellation_reason': reason,
@@ -75,7 +79,7 @@ class RideApiService {
   }) async {
     try {
       await _apiClient.post(
-        '/api/rate-ride',
+        '/api/passenger/rate-ride',
         data: {
           'ride_id': rideId,
           'rating': rating,

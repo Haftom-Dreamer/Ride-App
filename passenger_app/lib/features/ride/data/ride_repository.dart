@@ -13,7 +13,7 @@ class RideRepository {
     required String vehicleType,
   }) async {
     final response = await _apiClient.post(
-      '/api/fare-estimate',
+      '/api/passenger/fare-estimate',
       data: {
         'pickup_lat': pickup.latitude,
         'pickup_lon': pickup.longitude,
@@ -39,7 +39,7 @@ class RideRepository {
     String? note,
   }) async {
     final response = await _apiClient.post(
-      '/api/ride-request',
+      '/api/passenger/ride-request',
       data: {
         'pickup_address': pickupAddress,
         'pickup_lat': pickupLat,
@@ -58,13 +58,13 @@ class RideRepository {
   }
 
   Future<Map<String, dynamic>> checkRideStatus(int rideId) async {
-    final response = await _apiClient.get('/api/ride-status/$rideId');
+    final response = await _apiClient.get('/api/passenger/ride-status/$rideId');
     return response.data;
   }
 
   Future<void> cancelRide(int rideId) async {
     await _apiClient.post(
-      '/api/cancel-ride',
+      '/api/passenger/cancel-ride',
       data: {'ride_id': rideId},
     );
   }
@@ -75,7 +75,7 @@ class RideRepository {
     String? comment,
   }) async {
     await _apiClient.post(
-      '/api/rate-ride',
+      '/api/passenger/rate-ride',
       data: {
         'ride_id': rideId,
         'rating': rating,
@@ -116,14 +116,14 @@ class RideRepository {
     }
 
     final response = await _apiClient.get(
-      '/api/ride-history',
+      '/api/passenger/ride-history',
       queryParameters: queryParams,
     );
     return response.data;
   }
 
   Future<Ride> getRideDetails(int rideId) async {
-    final response = await _apiClient.get('/api/ride-details/$rideId');
+    final response = await _apiClient.get('/api/passenger/ride-details/$rideId');
     return Ride.fromJson(response.data);
   }
 
@@ -133,7 +133,7 @@ class RideRepository {
     String? message,
   }) async {
     await _apiClient.post(
-      '/api/emergency-sos',
+      '/api/passenger/emergency-sos',
       data: {
         'ride_id': rideId,
         'latitude': location.latitude,

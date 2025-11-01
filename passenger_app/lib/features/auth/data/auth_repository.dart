@@ -58,6 +58,10 @@ class AuthRepository {
             'Login failed: ${errorData['error'] ?? 'Invalid credentials'}');
       }
     } catch (e) {
+      // Prefer mapped AuthException messages from ApiClient
+      if (e is AuthException) {
+        throw Exception(e.message);
+      }
       // Handle DioError specifically for better error messages
       if (e is DioException) {
         if (e.response != null) {
