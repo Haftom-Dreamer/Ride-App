@@ -5,11 +5,12 @@ Handles all passenger-related API endpoints for the mobile app
 
 from flask import Blueprint, request, jsonify, session
 from flask_login import current_user
-from app.models import db, Passenger, Ride, Driver, SavedPlace, EmergencyAlert
+from app.models import db, Passenger, Ride, Driver, SavedPlace, EmergencyAlert, ChatMessage
 from datetime import datetime, timedelta
 from sqlalchemy import or_, desc
 import math
 from app.utils import handle_file_upload
+from app.services.push import register_device_token
 
 passenger_api = Blueprint('passenger_api', __name__)
 
@@ -112,7 +113,15 @@ def request_ride():
         
         db.session.add(new_ride)
         db.session.commit()
-        
+
+        # Broadcast offers to nearby drivers (non-blocking best-effort)
+        try:
+            from app.services.assigner import broadcast_offers
+            broadcast_offers(new_ride)
+        except Exception as e:
+            # Log but do not fail request
+            print(f"Broadcast offers failed: {e}")
+
         return jsonify({
             'ride_id': new_ride.id,
             'status': 'Requested',
@@ -346,6 +355,25 @@ def emergency_sos():
         db.session.rollback()
         return jsonify({'error': str(e)}), 400
 
+
+@passenger_api.route('/register-token', methods=['POST'])
+def passenger_register_token():
+    """Register push token for passenger"""
+    try:
+        user = resolve_current_passenger()
+        if not user:
+            return jsonify({'error': 'Unauthorized'}), 401
+        data = request.get_json() or {}
+        token = (data.get('token') or '').strip()
+        platform = (data.get('platform') or '').strip() or None
+        if not token:
+            return jsonify({'error': 'token is required'}), 400
+        register_device_token('passenger', user.id, token, platform)
+        return jsonify({'message': 'Token registered'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
+
 @passenger_api.route('/ride-history', methods=['GET'])
 def get_ride_history():
     """Get ride history with pagination"""
@@ -435,6 +463,30 @@ def get_ride_details(ride_id):
         
         return jsonify(details), 200
         
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+
+@passenger_api.route('/ride/<int:ride_id>/chat', methods=['GET'])
+def get_ride_chat(ride_id: int):
+    """Get chat messages for a ride (passenger side)"""
+    try:
+        user = resolve_current_passenger()
+        if not user:
+            return jsonify({'error': 'Unauthorized'}), 401
+        ride = Ride.query.filter_by(id=ride_id, passenger_id=user.id).first()
+        if not ride:
+            return jsonify({'error': 'Ride not found'}), 404
+        msgs = ChatMessage.query.filter_by(ride_id=ride.id).order_by(ChatMessage.created_at.asc()).all()
+        return jsonify([
+            {
+                'id': m.id,
+                'sender_role': m.sender_role,
+                'sender_id': m.sender_id,
+                'message': m.message,
+                'created_at': m.created_at.isoformat() if m.created_at else None,
+            } for m in msgs
+        ]), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 

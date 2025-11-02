@@ -185,6 +185,7 @@ def get_all_drivers():
                 'driver_uid': driver.driver_uid,
                 'name': driver.name,
                 'phone_number': driver.phone_number,
+                'email': driver.email,
                 'vehicle_type': driver.vehicle_type,
                 'vehicle_details': driver.vehicle_details,
                 'vehicle_plate_number': driver.vehicle_plate_number,
@@ -193,6 +194,8 @@ def get_all_drivers():
                 'profile_picture': driver.profile_picture,
                 'license_document': driver.license_document,
                 'vehicle_document': driver.vehicle_document,
+                'plate_photo': driver.plate_photo,
+                'id_document': driver.id_document,
                 'join_date': driver.join_date.strftime('%Y-%m-%d') if driver.join_date else None,
                 'avg_rating': round(avg_rating, 2) if avg_rating else 0,
                 'is_blocked': driver.is_blocked,
@@ -354,12 +357,16 @@ def get_driver_details(driver_id):
             'status': driver.status,
             'avatar': driver.profile_picture,
             'phone_number': driver.phone_number,
+            'email': driver.email,
             'vehicle_type': driver.vehicle_type,
             'vehicle_details': driver.vehicle_details,
             'plate_number': driver.vehicle_plate_number,
             'license': driver.license_info,
             'license_document': driver.license_document,
             'vehicle_document': driver.vehicle_document,
+            'plate_photo': driver.plate_photo,
+            'id_document': driver.id_document,
+            'join_date': to_eat(driver.join_date).strftime('%b %d, %Y') if driver.join_date else None,
             'is_blocked': driver.is_blocked,
             'blocked_reason': driver.blocked_reason if driver.is_blocked else None,
             'blocked_at': to_eat(driver.blocked_at).strftime('%b %d, %Y') if driver.blocked_at else None
@@ -372,6 +379,38 @@ def get_driver_details(driver_id):
             'date': to_eat(ride.request_time).strftime('%Y-%m-%d')
         } for ride in history]
     })
+
+@api.route('/pending-drivers')
+@admin_required
+def get_pending_drivers():
+    """Get drivers awaiting approval (status='Pending')"""
+    try:
+        drivers = Driver.query.filter_by(status='Pending').order_by(Driver.join_date.desc()).all()
+        drivers_data = []
+        
+        for driver in drivers:
+            driver_info = {
+                'id': driver.id,
+                'driver_uid': driver.driver_uid,
+                'name': driver.name,
+                'phone_number': driver.phone_number,
+                'email': driver.email,
+                'vehicle_type': driver.vehicle_type,
+                'vehicle_details': driver.vehicle_details,
+                'vehicle_plate_number': driver.vehicle_plate_number,
+                'license_info': driver.license_info,
+                'profile_picture': driver.profile_picture,
+                'license_document': driver.license_document,
+                'vehicle_document': driver.vehicle_document,
+                'plate_photo': driver.plate_photo,
+                'id_document': driver.id_document,
+                'join_date': driver.join_date.strftime('%Y-%m-%d %H:%M:%S') if driver.join_date else None,
+            }
+            drivers_data.append(driver_info)
+        
+        return jsonify(drivers_data)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @api.route('/suggest-drivers', methods=['POST'])
 @admin_required

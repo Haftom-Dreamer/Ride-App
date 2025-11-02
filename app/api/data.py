@@ -98,6 +98,7 @@ def get_dashboard_stats():
     # Count drivers by status
     drivers_online = Driver.query.filter(Driver.status == 'Available').count()
     total_drivers = Driver.query.count()
+    pending_drivers = Driver.query.filter(Driver.status == 'Pending').count()
     
     # Count passengers
     total_passengers = Passenger.query.count()
@@ -128,6 +129,7 @@ def get_dashboard_stats():
         'total_rides': total_rides,
         'drivers_online': drivers_online,
         'total_drivers': total_drivers,
+        'pending_drivers': pending_drivers,
         'total_passengers': total_passengers,
         'pending_requests': pending_requests,
         'active_rides': active_rides,
@@ -203,7 +205,7 @@ def get_all_rides_data():
             db.joinedload(Ride.passenger),
             db.joinedload(Ride.driver)
         ).order_by(Ride.request_time.desc()).all()
-
+        
         # Get all feedbacks in one query for efficiency
         ride_ids = [ride.id for ride in rides]
         feedbacks_dict = {}
@@ -468,7 +470,7 @@ def api_passenger_history():
     """Get ride history for logged-in passenger"""
     try:
         from flask_login import current_user
-
+        
         rides = (
             Ride.query.filter_by(passenger_id=current_user.id)
             .options(db.joinedload(Ride.driver))
@@ -482,7 +484,7 @@ def api_passenger_history():
         if ride_ids:
             feedbacks = Feedback.query.filter(Feedback.ride_id.in_(ride_ids)).all()
             feedbacks_dict = {fb.ride_id: fb for fb in feedbacks}
-
+        
         rides_data = []
         for ride in rides:
             fb = feedbacks_dict.get(ride.id)
@@ -496,7 +498,7 @@ def api_passenger_history():
                 'rating': fb.rating if fb and fb.rating is not None else None,
                 'comment': fb.comment if fb and fb.comment else None,
             })
-
+        
         return jsonify(rides_data)
     except Exception as e:
         current_app.logger.error(f"Error getting passenger ride history: {str(e)}")

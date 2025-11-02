@@ -43,7 +43,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           _buildSectionCard(
             title: 'Notifications',
             icon: Icons.notifications_outlined,
-            children: [
+                children: [
               _buildSwitchItem(
                 title: 'Push Notifications',
                 subtitle: 'Receive notifications about your rides',
@@ -60,15 +60,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 title: 'Ride Updates',
                 subtitle: 'Driver arrival, trip status',
                 onTap: () => _showNotificationSettings(),
-              ),
+                    ),
               _buildDivider(),
               _buildSettingItem(
                 icon: Icons.local_offer,
                 title: 'Promotions',
                 subtitle: 'Special offers and discounts',
                 onTap: () => _showPromotionSettings(),
-              ),
-            ],
+                  ),
+                ],
           ),
 
           const SizedBox(height: 16),
@@ -77,7 +77,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           _buildSectionCard(
             title: 'Privacy & Security',
             icon: Icons.lock_outline,
-            children: [
+                children: [
               _buildSettingItem(
                 icon: Icons.visibility,
                 title: 'Profile Visibility',
@@ -90,7 +90,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 title: 'Location Services',
                 subtitle: 'Manage location permissions',
                 onTap: () => _showLocationSettings(),
-              ),
+                  ),
               _buildDivider(),
               _buildSettingItem(
                 icon: Icons.security,
@@ -105,8 +105,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 subtitle: 'Permanently delete your account',
                 onTap: () => _showDeleteAccountDialog(),
                 iconColor: AppColors.error,
-              ),
-            ],
+                  ),
+                ],
           ),
 
           const SizedBox(height: 16),
@@ -115,7 +115,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           _buildSectionCard(
             title: 'App Preferences',
             icon: Icons.tune,
-            children: [
+                children: [
               _buildSettingItem(
                 icon: Icons.language,
                 title: 'Language',
@@ -139,7 +139,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 title: 'Font Size',
                 subtitle: 'Adjust text size for better readability',
                 onTap: () => _showFontSizeSettings(),
-              ),
+                  ),
               _buildDivider(),
               _buildSettingItem(
                 icon: Icons.accessibility,
@@ -176,8 +176,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 title: 'Promo Codes',
                 subtitle: 'Enter and manage promo codes',
                 onTap: () => _showPromoCodes(),
-              ),
-            ],
+                  ),
+                ],
           ),
 
           const SizedBox(height: 16),
@@ -234,9 +234,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: Theme.of(context).dividerColor),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
           // Section Header
           Padding(
             padding: const EdgeInsets.all(16),
@@ -245,10 +245,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 Icon(icon,
                     color: Theme.of(context).colorScheme.primary, size: 24),
                 const SizedBox(width: 12),
-                Text(
+                  Text(
                   title,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.bold,
                         color: Theme.of(context).colorScheme.onSurface,
                       ),
                 ),
@@ -258,7 +258,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           // Section Items
           ...children,
         ],
-      ),
+                  ),
     );
   }
 
@@ -271,7 +271,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }) {
     return InkWell(
       onTap: onTap,
-      child: Padding(
+            child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           children: [
@@ -331,16 +331,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           const SizedBox(width: 16),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
                   title,
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w600,
                         color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                ),
+                        ),
+                  ),
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
@@ -350,10 +350,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             .onSurface
                             .withOpacity(0.7),
                       ),
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
-          ),
           Switch(
             value: value,
             onChanged: onChanged,
@@ -484,7 +484,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 });
                 Navigator.pop(context);
               },
-            ),
+          ),
           ],
         ),
         actions: [

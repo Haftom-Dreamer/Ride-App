@@ -69,7 +69,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final authState = ref.read(authProvider);
 
     final user = authState.user;
-
+    
     if (user != null) {
       setState(() {
         _userName = user.username;
@@ -185,15 +185,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               try {
                 await _savedPlacesRepository.saveOrUpdatePlace(
                   label: _newPlaceName,
-                  address: _newPlaceAddress,
+                    address: _newPlaceAddress,
                   latitude: 0.0,
                   longitude: 0.0,
                 );
                 if (mounted) {
-                  Navigator.pop(context);
+                Navigator.pop(context);
                   await _fetchSavedPlaces();
-                  _newPlaceName = '';
-                  _newPlaceAddress = '';
+                _newPlaceName = '';
+                _newPlaceAddress = '';
                 }
               } catch (e) {
                 if (mounted) {
@@ -280,10 +280,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           }
                         });
 
-                        ScaffoldMessenger.of(context).showSnackBar(
+                      ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                               content: Text('Location updated successfully')),
-                        );
+                      );
                       }
                     },
                     icon: const Icon(Icons.map),
@@ -505,7 +505,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             title: const Text(
               'Profile',
               style: TextStyle(
-                color: Colors.white,
+              color: Colors.white,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -518,69 +518,69 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     end: Alignment.bottomCenter,
                     colors: [AppColors.primaryBlue, AppColors.darkBlue],
                   ),
-                ),
+            ),
                 child: SafeArea(
                   child: Padding(
                     padding: const EdgeInsets.all(24),
-                    child: Column(
+            child: Column(
                       mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
+              children: [
                         // Profile Photo with status indicator
-                        Stack(
-                          children: [
-                            GestureDetector(
-                              onTap: () => _changeProfilePicture(),
-                              child: CircleAvatar(
-                                radius: 50,
+                Stack(
+                  children: [
+                    GestureDetector(
+                      onTap: () => _changeProfilePicture(),
+                      child: CircleAvatar(
+                        radius: 50,
                                 backgroundColor: Colors.white,
                                 child: CircleAvatar(
                                   radius: 45,
-                                  backgroundColor: AppColors.lightBlue,
+                        backgroundColor: AppColors.lightBlue,
                                   child: _buildProfileAvatarChild(),
                                 ),
-                              ),
-                            ),
-                            Positioned(
-                              bottom: 0,
-                              right: 0,
-                              child: Container(
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                        child: Container(
                                 width: 20,
                                 height: 20,
-                                decoration: BoxDecoration(
+                          decoration: BoxDecoration(
                                   color: AppColors.success,
-                                  shape: BoxShape.circle,
+                            shape: BoxShape.circle,
                                   border:
                                       Border.all(color: Colors.white, width: 2),
-                                ),
-                              ),
-                            ),
-                          ],
                         ),
+                      ),
+                    ),
+                  ],
+                ),
 
                         const SizedBox(height: 8),
 
                         // Name
-                        Text(
-                          _userName,
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
+                Text(
+                  _userName,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
                             color: Colors.white,
-                          ),
-                        ),
+                  ),
+                ),
 
                         const SizedBox(height: 4),
 
                         // Phone
-                        Text(
-                          _userPhone,
-                          style: const TextStyle(
-                            fontSize: 14,
+                    Text(
+                      _userPhone,
+                      style: const TextStyle(
+                        fontSize: 14,
                             color: Colors.white70,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
+                  ],
+                ),
                   ),
                 ),
               ),
@@ -592,7 +592,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
-                children: [
+                  children: [
                   // Quick Stats
                   Container(
                     padding: const EdgeInsets.all(20),
@@ -604,9 +604,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           color: Colors.black.withOpacity(0.05),
                           blurRadius: 10,
                           offset: const Offset(0, 2),
-                        ),
-                      ],
                     ),
+                  ],
+                ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
@@ -618,19 +618,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               ? '—'
                               : '${_memberSince!.year}-${_memberSince!.month.toString().padLeft(2, '0')}',
                           Icons.calendar_today,
-                        ),
-                      ],
-                    ),
-                  ),
+                ),
+              ],
+            ),
+          ),
 
-                  const SizedBox(height: 24),
+          const SizedBox(height: 24),
 
                   // Quick Actions
-                  Container(
+          Container(
                     padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
+            decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.surface,
-                      borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.05),
@@ -638,10 +638,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           offset: const Offset(0, 2),
                         ),
                       ],
-                    ),
-                    child: Column(
+            ),
+            child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+              children: [
                         Text(
                           'Quick Actions',
                           style: Theme.of(context)
@@ -690,18 +690,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             ),
                           ],
                         ),
-                      ],
-                    ),
-                  ),
+              ],
+            ),
+          ),
 
-                  const SizedBox(height: 24),
+          const SizedBox(height: 24),
 
                   // User Info Card
-                  Container(
+          Container(
                     padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
+            decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.surface,
-                      borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.05),
@@ -709,9 +709,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           offset: const Offset(0, 2),
                         ),
                       ],
-                    ),
-                    child: Column(
-                      children: [
+            ),
+            child: Column(
+              children: [
                         Row(
                           children: [
                             const Icon(Icons.person,
@@ -766,32 +766,32 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               ? '—'
                               : '${_memberSince!.year}-${_memberSince!.month.toString().padLeft(2, '0')}-${_memberSince!.day.toString().padLeft(2, '0')}',
                         ),
-                      ],
-                    ),
-                  ),
+              ],
+            ),
+          ),
 
-                  const SizedBox(height: 24),
+          const SizedBox(height: 24),
 
                   // Saved Places Section
 
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
                       'Saved Places',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                  ),
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+          ),
 
-                  const SizedBox(height: 12),
+          const SizedBox(height: 12),
 
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 16),
-                    decoration: BoxDecoration(
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.surface,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Column(
-                      children: [
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              children: [
                         // Home/Work placeholders
                         if (!_savedPlaces
                             .any((p) => p.label.toLowerCase() == 'home'))
@@ -802,81 +802,81 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         ..._savedPlaces
                             .map((place) => _buildSavedPlaceItem(place)),
                         _buildAddPlaceItem(),
-                      ],
-                    ),
-                  ),
+              ],
+            ),
+          ),
 
-                  const SizedBox(height: 24),
+          const SizedBox(height: 24),
 
                   // Payment Methods Section
 
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
                       'Payment Methods',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                  ),
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+          ),
 
-                  const SizedBox(height: 12),
+          const SizedBox(height: 12),
 
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 16),
-                    decoration: BoxDecoration(
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.surface,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Column(
-                      children: [
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              children: [
                         _buildPaymentMethodItem(
                           icon: Icons.money,
                           title: 'Cash',
                           subtitle: 'Default payment method',
                           isDefault: true,
                           onTap: () => _showPaymentOptions(),
-                        ),
-                        _buildDivider(),
+                ),
+                _buildDivider(),
                         _buildAddPaymentItem(),
-                      ],
-                    ),
-                  ),
+              ],
+            ),
+          ),
 
                   const SizedBox(height: 24),
 
-                  const SizedBox(height: 32),
+          const SizedBox(height: 32),
 
-                  // Logout Button
+          // Logout Button
 
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        _showLogoutDialog();
-                      },
-                      icon: const Icon(Icons.logout, color: AppColors.error),
-                      label: const Text('Logout',
-                          style: TextStyle(color: AppColors.error)),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: AppColors.error),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        minimumSize: const Size(double.infinity, 0),
-                      ),
-                    ),
-                  ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: OutlinedButton.icon(
+              onPressed: () {
+                _showLogoutDialog();
+              },
+              icon: const Icon(Icons.logout, color: AppColors.error),
+              label: const Text('Logout',
+                  style: TextStyle(color: AppColors.error)),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: AppColors.error),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                minimumSize: const Size(double.infinity, 0),
+              ),
+            ),
+          ),
 
-                  const SizedBox(height: 16),
+          const SizedBox(height: 16),
 
-                  // App Version
+          // App Version
 
-                  const Center(
-                    child: Text(
-                      'Version 1.0.0',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textTertiary,
-                      ),
-                    ),
-                  ),
+          const Center(
+            child: Text(
+              'Version 1.0.0',
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.textTertiary,
+              ),
+            ),
+          ),
 
                   const SizedBox(height: 32), // Extra bottom padding
                 ],
@@ -915,9 +915,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   Text(
                     place.label,
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w600,
                           color: Theme.of(context).colorScheme.onSurface,
-                        ),
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -927,7 +927,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               .colorScheme
                               .onSurface
                               .withOpacity(0.7),
-                        ),
+                    ),
                   ),
                 ],
               ),
@@ -960,10 +960,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             Text(
               'Add New Place',
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
                     color: Theme.of(context).colorScheme.onSurface,
-                  ),
+              ),
             ),
           ],
         ),
@@ -1161,8 +1161,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: isComingSoon
-                    ? AppColors.gray100
+                color: isComingSoon 
+                    ? AppColors.gray100 
                     : AppColors.primaryBlue.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
@@ -1336,7 +1336,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               leading: const Icon(Icons.camera_alt),
               title: const Text('Take Photo'),
               onTap: () async {
-                Navigator.pop(context);
+                  Navigator.pop(context);
                 // Request camera permission
                 final camStatus = await Permission.camera.request();
                 if (!camStatus.isGranted) return;
@@ -1351,7 +1351,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               leading: const Icon(Icons.photo_library),
               title: const Text('Choose from Gallery'),
               onTap: () async {
-                Navigator.pop(context);
+                  Navigator.pop(context);
                 // Request photos/storage permission
                 var granted = true;
                 if (await Permission.photos.isDenied &&
@@ -1382,8 +1382,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   Future<void> _uploadProfileImage(File file) async {
     try {
-      showDialog(
-        context: context,
+    showDialog(
+      context: context,
         barrierDismissible: false,
         builder: (context) => const Center(child: CircularProgressIndicator()),
       );
@@ -1397,9 +1397,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         setState(() {
           _profilePicture = newUrl;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
+                    ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Profile picture updated')),
-        );
+                    );
       }
     } catch (e) {
       if (mounted) Navigator.pop(context);
@@ -1421,9 +1421,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           fontSize: 40,
           fontWeight: FontWeight.bold,
           color: AppColors.primaryBlue,
-        ),
-      );
-    }
+      ),
+    );
+  }
 
     String url = _profilePicture;
     if (!url.startsWith('http')) {
@@ -1442,7 +1442,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           height: 90,
           fit: BoxFit.cover,
         ),
-      );
+                );
     }
 
     return ClipOval(
@@ -1458,7 +1458,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               fontSize: 40,
               fontWeight: FontWeight.bold,
               color: AppColors.primaryBlue,
-            ),
+          ),
           );
         },
       ),
@@ -1915,7 +1915,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       // Close loading dialog if still open
 
       if (mounted) Navigator.pop(context);
-
+      
       // Show error message
 
       if (mounted) {

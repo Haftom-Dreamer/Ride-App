@@ -264,6 +264,20 @@ def passenger_signup():
                 verification_record.is_verified = True
             db.session.commit()
             
+            # Emit real-time notification to dispatchers
+            try:
+                from app.utils.socket_utils import emit_passenger_registration_notification
+                emit_passenger_registration_notification({
+                    'passenger_id': new_passenger.id,
+                    'passenger_uid': new_passenger.passenger_uid,
+                    'username': new_passenger.username,
+                    'phone_number': new_passenger.phone_number,
+                    'email': new_passenger.email,
+                    'join_date': new_passenger.join_date.isoformat() if new_passenger.join_date else None
+                })
+            except Exception as e:
+                current_app.logger.error(f"Failed to emit passenger registration notification: {e}")
+            
             return {'success': 'Account created successfully! Please log in.'}, 200
         else:
             # Send verification email

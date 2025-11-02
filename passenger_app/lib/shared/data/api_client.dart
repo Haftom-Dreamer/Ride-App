@@ -53,7 +53,7 @@ class ApiClient {
   Future<void> setAuthToken(String token) async {
     _authToken = token;
     _dio.options.headers['Authorization'] = 'Bearer $token';
-
+    
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(AppConstants.userTokenKey, token);
   }
@@ -68,7 +68,7 @@ class ApiClient {
   Future<void> clearAuthToken() async {
     _authToken = null;
     _dio.options.headers.remove('Authorization');
-
+    
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(AppConstants.userTokenKey);
   }
@@ -151,14 +151,14 @@ class ApiClient {
       case DioExceptionType.receiveTimeout:
         return NetworkException(
             'Connection timeout. Please check your internet connection.');
-
+      
       case DioExceptionType.badResponse:
         final statusCode = e.response?.statusCode;
         final message = e.response?.data?['error'] ??
             e.response?.data?['message'] ??
             'Server error';
         final path = e.requestOptions.path;
-
+        
         if (statusCode == 401) {
           // Preserve meaningful message for login endpoint
           if (path.contains('/auth/passenger/login')) {
@@ -174,17 +174,17 @@ class ApiClient {
           return NetworkException('Server error. Please try again later.');
         }
         return NetworkException(message);
-
+      
       case DioExceptionType.cancel:
         return NetworkException('Request cancelled.');
-
+      
       case DioExceptionType.connectionError:
         return NetworkException(
             'No internet connection. Please check your network.');
-
+      
       case DioExceptionType.badCertificate:
         return NetworkException('Security certificate error.');
-
+      
       case DioExceptionType.unknown:
         return NetworkException('An unexpected error occurred.');
     }
@@ -247,7 +247,7 @@ class _ErrorInterceptor extends Interceptor {
 class NetworkException implements Exception {
   final String message;
   NetworkException(this.message);
-
+  
   @override
   String toString() => 'NetworkException: $message';
 }
@@ -255,7 +255,7 @@ class NetworkException implements Exception {
 class AuthException implements Exception {
   final String message;
   AuthException(this.message);
-
+  
   @override
   String toString() => 'AuthException: $message';
 }

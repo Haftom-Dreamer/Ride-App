@@ -254,3 +254,74 @@ def change_admin_password():
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+
+@api.route('/drivers/pending', methods=['GET'])
+@admin_required
+def list_pending_drivers():
+    """List drivers with status Pending for approval"""
+    pending = Driver.query.filter_by(status='Pending').all()
+    return jsonify([
+        {
+            'id': d.id,
+            'name': d.name,
+            'phone_number': d.phone_number,
+            'vehicle_type': d.vehicle_type,
+            'vehicle_details': d.vehicle_details,
+            'vehicle_plate_number': d.vehicle_plate_number,
+            'status': d.status,
+        } for d in pending
+    ]), 200
+
+
+@api.route('/drivers/approve', methods=['POST'])
+@admin_required
+def approve_driver():
+    """Approve a pending driver; set status to Offline"""
+    try:
+        data = request.get_json() or {}
+        driver_id = data.get('driver_id')
+        if not driver_id:
+            return jsonify({'error': 'driver_id is required'}), 400
+        d = Driver.query.get(driver_id)
+        if not d:
+            return jsonify({'error': 'Driver not found'}), 404
+        d.status = 'Offline'
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'message': 'Driver approved',
+            'driver_id': d.id,
+            'status': d.status
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@api.route('/drivers/reject', methods=['POST'])
+@admin_required
+def reject_driver():
+    """Reject a pending driver; set status to Blocked and optional reason"""
+    try:
+        data = request.get_json() or {}
+        driver_id = data.get('driver_id')
+        reason = (data.get('reason') or '').strip() or 'Rejected by admin'
+        if not driver_id:
+            return jsonify({'error': 'driver_id is required'}), 400
+        d = Driver.query.get(driver_id)
+        if not d:
+            return jsonify({'error': 'Driver not found'}), 404
+        d.is_blocked = True
+        d.blocked_reason = reason
+        d.blocked_at = datetime.now(timezone.utc)
+        d.status = 'Offline'
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'message': 'Driver rejected',
+            'driver_id': d.id
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500

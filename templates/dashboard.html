@@ -65,6 +65,12 @@
                     <span class="group-arrow ml-auto sidebar-link-text text-gray-400">&#9660;</span>
                 </summary>
                  <div class="pl-2 space-y-1">
+                    <a href="#" class="sidebar-link flex items-center p-3 rounded-lg" data-pane="pending-drivers" title="Pending Drivers">
+                        <span class="icon-outline"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg></span>
+                        <span class="icon-solid"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" /></svg></span>
+                        <span class="sidebar-link-text">Pending Drivers</span>
+                        <span class="sidebar-badge" id="pending-drivers-badge" style="background-color:#f59e0b;color:#fff">0</span>
+                    </a>
                     <a href="#" class="sidebar-link flex items-center p-3 rounded-lg" data-pane="drivers" title="{{ _('drivers') }}">
                         <span class="icon-outline"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" /></svg></span>
                         <span class="icon-solid"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-5.5-2.5a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0zM10 12a5.99 5.99 0 00-4.793 2.39A6.483 6.483 0 0010 16.5a6.483 6.483 0 004.793-2.11A5.99 5.99 0 0010 12z" clip-rule="evenodd" /></svg></span>
@@ -801,6 +807,39 @@
                     </div>
                 </div>
             </div>
+            <div id="pending-drivers-pane" class="pane">
+                <div class="card p-6 rounded-lg shadow">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-semibold text-primary">Drivers Awaiting Approval</h3>
+                        <button id="refresh-pending-drivers-btn" class="btn-modern btn-primary text-sm px-3 py-1">
+                            <svg class="w-4 h-4 mr-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                            </svg>
+                            Refresh
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead>
+                                <tr class="border-b border-border">
+                                    <th class="p-2">ID</th>
+                                    <th>Name</th>
+                                    <th>Contact</th>
+                                    <th>Vehicle</th>
+                                    <th>Documents</th>
+                                    <th>Registered</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pending-drivers-table-body">
+                                <tr>
+                                    <td colspan="7" class="text-center p-8 text-secondary">Loading pending drivers...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
             <div id="passengers-pane" class="pane">
                 <div class="card p-6 rounded-lg shadow">
                     <div class="flex justify-between items-center mb-4">
@@ -1173,7 +1212,10 @@
 <div id="driver-details-modal" class="modal fixed inset-0 z-50 items-center justify-center hidden overflow-y-auto">
     <div class="absolute inset-0 bg-black opacity-50"></div>
     <div class="modal-content p-8 rounded-lg shadow-xl z-10 w-full max-w-3xl my-8">
-        <div class="flex justify-between items-start"><h2 class="text-2xl font-bold mb-4">Driver Details</h2><button type="button" class="cancel-modal-btn -mt-2 -mr-2 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">&times;</button></div>
+        <div class="flex justify-between items-start">
+            <h2 class="text-2xl font-bold mb-4 text-primary">Driver Registration Review</h2>
+            <button type="button" class="cancel-modal-btn -mt-2 -mr-2 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-2xl">&times;</button>
+        </div>
         <div id="driver-details-content" class="max-h-[75vh] overflow-y-auto pr-4"></div>
     </div>
 </div>

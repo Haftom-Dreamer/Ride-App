@@ -197,6 +197,7 @@ def create_app(config_name=None):
     
     # Import API blueprints and all their routes BEFORE registering
     from app.api.passenger_api import passenger_api  # Import passenger API blueprint
+    from app.api.driver_api import driver_api  # Driver API blueprint
     from app.api import api, init_limiter as api_init_limiter  # Import main API blueprint
     
     # Initialize limiter for blueprints
@@ -214,12 +215,14 @@ def create_app(config_name=None):
     app.register_blueprint(auth, url_prefix='/auth')
     app.register_blueprint(api, url_prefix='/api')  # Register main API blueprint
     app.register_blueprint(passenger_api, url_prefix='/api/passenger')  # Passenger API under /api/passenger
+    app.register_blueprint(driver_api, url_prefix='/api/driver')  # Driver API under /api/driver
     app.register_blueprint(admin)
     app.register_blueprint(passenger)
     
     # Exempt API blueprints from CSRF after registration
     csrf.exempt(api)
     csrf.exempt(passenger_api)
+    csrf.exempt(driver_api)
     
     # Root route redirect
     @app.route('/')
@@ -331,4 +334,11 @@ def create_app(config_name=None):
         leave_room('dispatchers')
         app.logger.info(f"Client {request.sid} left dispatcher room")
     
+    # Import additional realtime handlers (driver rooms, chat)
+    try:
+        # no-op import to register handlers
+        from app.realtime import socket  # noqa: F401
+    except Exception as e:
+        app.logger.warning(f"Failed to initialize realtime handlers: {e}")
+
     return app

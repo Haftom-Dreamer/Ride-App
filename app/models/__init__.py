@@ -45,20 +45,31 @@ class Driver(db.Model):
     driver_uid = db.Column(db.String(20), unique=True, nullable=True, index=True)  # User-friendly ID
     name = db.Column(db.String(100), nullable=False)
     phone_number = db.Column(db.String(20), nullable=False, index=True)
+    password_hash = db.Column(db.String(255), nullable=True)  # For driver authentication
+    email = db.Column(db.String(120), nullable=True, index=True)
     vehicle_type = db.Column(db.String(50), nullable=False, default='Bajaj', index=True)
     vehicle_details = db.Column(db.String(150), nullable=False)
     vehicle_plate_number = db.Column(db.String(50), nullable=True)
     license_info = db.Column(db.String(100), nullable=True)
-    status = db.Column(db.String(20), default='Offline', nullable=False, index=True)
+    status = db.Column(db.String(20), default='Pending', nullable=False, index=True)  # Pending, Offline, Available, On Trip
     profile_picture = db.Column(db.String(255), nullable=True, default='static/img/default_user.svg')
-    license_document = db.Column(db.String(255), nullable=True)
-    vehicle_document = db.Column(db.String(255), nullable=True)
+    license_document = db.Column(db.String(255), nullable=True)  # License photo/document
+    vehicle_document = db.Column(db.String(255), nullable=True)  # Vehicle registration
+    plate_photo = db.Column(db.String(255), nullable=True)  # Plate photo
+    id_document = db.Column(db.String(255), nullable=True)  # ID card photo
     join_date = db.Column(db.DateTime, server_default=db.func.now())
     current_lat = db.Column(db.Float, nullable=True)
     current_lon = db.Column(db.Float, nullable=True)
     is_blocked = db.Column(db.Boolean, default=False, nullable=False, index=True)
     blocked_reason = db.Column(db.String(255), nullable=True)
     blocked_at = db.Column(db.DateTime, nullable=True)
+    
+    def check_password(self, password):
+        """Check if provided password matches"""
+        if not self.password_hash:
+            return False
+        from werkzeug.security import check_password_hash
+        return check_password_hash(self.password_hash, password)
 
 class Ride(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -163,6 +174,69 @@ class Commission(db.Model):
     
     # Ensure one active commission rate per vehicle type
     __table_args__ = (db.UniqueConstraint('vehicle_type', 'effective_date', name='_vehicle_commission_uc'),)
+
+class Vehicle(db.Model):
+    """Optional vehicle registry separate from Driver fields"""
+    __tablename__ = 'vehicle'
+    id = db.Column(db.Integer, primary_key=True)
+    make_model = db.Column(db.String(100), nullable=False)
+    plate_no = db.Column(db.String(50), nullable=False, index=True)
+    color = db.Column(db.String(50), nullable=True)
+    capacity = db.Column(db.Integer, nullable=True)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+
+class DriverLocation(db.Model):
+    """Latest known location per driver for nearby search and assignment"""
+    __tablename__ = 'driver_location'
+    id = db.Column(db.Integer, primary_key=True)
+    driver_id = db.Column(db.Integer, db.ForeignKey('driver.id'), nullable=False, index=True)
+    lat = db.Column(db.Float, nullable=False)
+    lon = db.Column(db.Float, nullable=False)
+    heading = db.Column(db.Float, nullable=True)
+    updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now(), index=True)
+
+    driver = db.relationship('Driver', backref=db.backref('location', uselist=False))
+
+class RideOffer(db.Model):
+    """Broadcast offers to drivers; first acceptance wins"""
+    __tablename__ = 'ride_offer'
+    id = db.Column(db.Integer, primary_key=True)
+    ride_id = db.Column(db.Integer, db.ForeignKey('ride.id'), nullable=False, index=True)
+    driver_id = db.Column(db.Integer, db.ForeignKey('driver.id'), nullable=False, index=True)
+    status = db.Column(db.String(20), nullable=False, default='pending', index=True)  # pending, accepted, expired
+    created_at = db.Column(db.DateTime, server_default=db.func.now(), index=True)
+    expires_at = db.Column(db.DateTime, nullable=True, index=True)
+    accepted_at = db.Column(db.DateTime, nullable=True)
+
+    __table_args__ = (db.UniqueConstraint('ride_id', 'driver_id', name='_ride_driver_offer_uc'),)
+
+    ride = db.relationship('Ride', backref=db.backref('offers', lazy=True))
+    driver = db.relationship('Driver', backref=db.backref('offers', lazy=True))
+
+class ChatMessage(db.Model):
+    """Per-ride chat between passenger and driver"""
+    __tablename__ = 'chat_message'
+    id = db.Column(db.Integer, primary_key=True)
+    ride_id = db.Column(db.Integer, db.ForeignKey('ride.id'), nullable=False, index=True)
+    sender_role = db.Column(db.String(20), nullable=False, index=True)  # passenger or driver
+    sender_id = db.Column(db.Integer, nullable=False, index=True)
+    message = db.Column(db.Text, nullable=False)
+    attachment_url = db.Column(db.String(255), nullable=True)
+    created_at = db.Column(db.DateTime, server_default=db.func.now(), index=True)
+    is_read = db.Column(db.Boolean, default=False, nullable=False, index=True)
+
+    ride = db.relationship('Ride', backref=db.backref('chat_messages', lazy=True))
+
+class DeviceToken(db.Model):
+    """Push notification device tokens per user"""
+    __tablename__ = 'device_token'
+    id = db.Column(db.Integer, primary_key=True)
+    user_type = db.Column(db.String(20), nullable=False, index=True)  # passenger, driver, admin
+    user_id = db.Column(db.Integer, nullable=False, index=True)
+    fcm_token = db.Column(db.String(255), unique=True, nullable=False)
+    platform = db.Column(db.String(20), nullable=True)  # android, ios, web
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+    updated_at = db.Column(db.DateTime, onupdate=db.func.now())
 
 class EmailVerification(db.Model):
     """Email verification codes for passenger signup"""

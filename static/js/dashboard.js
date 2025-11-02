@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let rideLayers = {};
         let currentAnalyticsParams = 'period=week';
         let currentReportParams = 'period=all';
-        let allDrivers = [], allRidesHistory = [], allFeedback = [], allPendingRides = [], allActiveRides = [], allPassengers = [], recentNotifications = [];
+        let allDrivers = [], allRidesHistory = [], allFeedback = [], allPendingRides = [], allActiveRides = [], allPassengers = [], allPendingDrivers = [], recentNotifications = [];
         let rideHistoryPage = 1, RIDES_PER_PAGE = 10, lastPendingCount = 0;
         
         // --- ERROR HANDLING & OFFLINE SUPPORT ---
@@ -108,6 +108,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 handleNewRideNotification(data);
             });
             
+            socket.on('new_driver_registration', (data) => {
+                console.log('👤 New driver registration received:', data);
+                handleNewDriverRegistration(data);
+            });
+            
+            socket.on('new_passenger_registration', (data) => {
+                console.log('👥 New passenger registration received:', data);
+                handleNewPassengerRegistration(data);
+            });
+            
             socket.on('connected', (data) => {
                 console.log('SocketIO:', data.status);
             });
@@ -147,6 +157,70 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
             refreshDashboardData();
         }, 1000);
+    };
+    
+    const handleNewDriverRegistration = (driverData) => {
+        // Add to recent notifications
+        recentNotifications.unshift(`👤 New driver registration: ${driverData.name} (${driverData.driver_uid || driverData.driver_id})`);
+        
+        // Keep only last 10 notifications
+        if (recentNotifications.length > 10) {
+            recentNotifications.length = 10;
+        }
+        
+        // Update notification badge
+        const badge = document.getElementById('notification-badge');
+        if (badge) {
+            badge.textContent = recentNotifications.length;
+            badge.classList.remove('hidden');
+        }
+        
+        // Play notification sound
+        playNotificationSound();
+        
+        // Show visual notification
+        showToastNotification(`New driver registration: ${driverData.name}`, 'warning');
+        
+        // Update pending drivers badge
+        const pendingBadge = document.getElementById('pending-drivers-badge');
+        if (pendingBadge) {
+            const current = parseInt(pendingBadge.textContent) || 0;
+            pendingBadge.textContent = current + 1;
+            pendingBadge.classList.remove('hidden');
+        }
+        
+        // Refresh pending drivers if on that pane
+        if (document.getElementById('pending-drivers-pane')?.classList.contains('active')) {
+            setTimeout(() => refreshPendingDrivers(), 1000);
+        }
+    };
+    
+    const handleNewPassengerRegistration = (passengerData) => {
+        // Add to recent notifications
+        recentNotifications.unshift(`👥 New passenger registration: ${passengerData.username} (${passengerData.passenger_uid || passengerData.passenger_id})`);
+        
+        // Keep only last 10 notifications
+        if (recentNotifications.length > 10) {
+            recentNotifications.length = 10;
+        }
+        
+        // Update notification badge
+        const badge = document.getElementById('notification-badge');
+        if (badge) {
+            badge.textContent = recentNotifications.length;
+            badge.classList.remove('hidden');
+        }
+        
+        // Play notification sound
+        playNotificationSound();
+        
+        // Show visual notification
+        showToastNotification(`New passenger registration: ${passengerData.username}`, 'info');
+        
+        // Refresh passengers if on that pane
+        if (document.getElementById('passengers-pane')?.classList.contains('active')) {
+            setTimeout(() => refreshAllData(), 1000);
+        }
     };
     
         const showToastNotification = (message, type = 'info') => {
@@ -552,6 +626,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if(paneId === 'settings') refreshAdminUsers(); 
         if (paneId === 'pending-rides') refreshPendingRides();
         if (paneId === 'active-rides') refreshActiveRides();
+        if (paneId === 'pending-drivers') refreshPendingDrivers();
         if (dashboardMap) setTimeout(() => dashboardMap.invalidateSize(), 310); 
     };
 
@@ -677,8 +752,18 @@ document.addEventListener('DOMContentLoaded', () => {
       const updateBadges = (stats, unreadCount) => {
           if (stats) {
               const driversBadge = document.getElementById('drivers-badge');
-              driversBadge.textContent = stats.drivers_online;
-              driversBadge.classList.toggle('hidden', stats.drivers_online === 0);
+              if (driversBadge) {
+                  driversBadge.textContent = stats.drivers_online;
+                  driversBadge.classList.toggle('hidden', stats.drivers_online === 0);
+              }
+
+              // Update pending drivers badge
+              const pendingDriversBadge = document.getElementById('pending-drivers-badge');
+              if (pendingDriversBadge) {
+                  const pendingCount = stats.pending_drivers || 0;
+                  pendingDriversBadge.textContent = pendingCount;
+                  pendingDriversBadge.classList.toggle('hidden', pendingCount === 0);
+              }
 
               // Support both legacy and new pending badges
               const pendingBadgeLegacy = document.getElementById('pending-requests-badge');
@@ -693,8 +778,10 @@ document.addEventListener('DOMContentLoaded', () => {
               }
 
               const activeBadge = document.getElementById('active-rides-badge');
-              activeBadge.textContent = stats.active_rides;
-              activeBadge.classList.toggle('hidden', stats.active_rides === 0);
+              if (activeBadge) {
+                  activeBadge.textContent = stats.active_rides;
+                  activeBadge.classList.toggle('hidden', stats.active_rides === 0);
+              }
 
               // Update support tickets badge
               const ticketsBadge = document.getElementById('tickets-badge');
@@ -1551,7 +1638,316 @@ document.addEventListener('DOMContentLoaded', () => {
           }
       };
 
-      const showDriverDetails = (data) => { const content = document.getElementById('driver-details-content'); const p = data.profile; const docLink = (path, name) => path ? `<a href="/${path}" target="_blank" class="text-blue-500 hover:underline">${name}</a>` : 'Not Uploaded'; content.innerHTML = `<div class="grid md:grid-cols-3 gap-6"><div class="text-center"><img src="/${p.avatar}" class="rounded-full w-32 h-32 mx-auto border-4 object-cover" onerror="this.src='/static/img/default_avatar.png'"><h3 class="text-xl font-bold mt-4">${p.name}</h3><p class="text-sm font-mono">${p.driver_uid}</p><p class="text-sm">${p.phone_number}</p><span class="status-badge status-${p.status.replace(' ','-')} mt-2 inline-block">${p.status}</span></div><div class="md:col-span-2 space-y-4"><div><h4 class="font-bold border-b pb-1 mb-2">Vehicle & Docs</h4><div class="text-sm space-y-1"><p><strong>Type:</strong> ${p.vehicle_type}</p><p><strong>Details:</strong> ${p.vehicle_details}</p><p><strong>Plate:</strong> ${p.plate_number}</p><p><strong>License:</strong> ${p.license}</p><p><strong>License Doc:</strong> ${docLink(p.license_document, 'View')}</p><p><strong>Vehicle Doc:</strong> ${docLink(p.vehicle_document, 'View')}</p></div></div><div><h4 class="font-bold border-b pb-1 mb-2">Performance</h4><div class="grid grid-cols-2 gap-4 mt-2 text-sm"><div class="card p-3"><p class="font-semibold">Completed Rides</p><p class="text-2xl font-bold">${data.stats.completed_rides}</p></div><div class="card p-3"><p class="font-semibold">Avg. Rating</p><p class="text-2xl font-bold">${data.stats.avg_rating.toFixed(2)} ★</p></div><div class="card p-3"><p class="font-semibold">Weekly Earnings</p><p class="text-2xl font-bold">${data.stats.total_earnings_weekly} ETB</p></div><div class="card p-3"><p class="font-semibold">Total Earnings</p><p class="text-2xl font-bold">${data.stats.total_earnings_all_time} ETB</p></div></div></div></div></div><div class="mt-6"><h4 class="font-bold border-b pb-1 mb-2">Recent History</h4>${data.history.length ? data.history.map(r => `<div class="grid grid-cols-4 text-sm p-2 border-b"><span>#${r.id}</span><span>${r.date}</span><span>${r.fare} ETB</span><span class="status-badge status-${r.status}">${r.status}</span></div>`).join('') : '<p class="text-center p-4">No recent history.</p>'}</div>`; showModal('driver-details-modal'); };
+      const showDriverDetails = (data) => { 
+          const content = document.getElementById('driver-details-content'); 
+          const p = data.profile; 
+          const docLink = (path, name) => path ? `<a href="/${path}" target="_blank" class="text-blue-500 hover:underline inline-flex items-center gap-1"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>${name}</a>` : '<span class="text-gray-400 italic">Not Uploaded</span>'; 
+          
+          const showStats = p.status !== 'Pending';
+          content.innerHTML = `
+              <div class="grid md:grid-cols-3 gap-6">
+                  <div class="text-center">
+                      <img src="/${p.avatar}" class="rounded-full w-32 h-32 mx-auto border-4 object-cover" onerror="this.src='/static/img/default_avatar.png'">
+                      <h3 class="text-xl font-bold mt-4">${p.name}</h3>
+                      <p class="text-sm font-mono">${p.driver_uid || 'N/A'}</p>
+                      <p class="text-sm">${p.phone_number}</p>
+                      ${p.email ? `<p class="text-sm text-gray-500">${p.email}</p>` : ''}
+                      ${p.join_date ? `<p class="text-xs text-gray-400 mt-1">Joined: ${p.join_date}</p>` : ''}
+                      <span class="status-badge status-${p.status.replace(' ','-')} mt-2 inline-block">${p.status}</span>
+                  </div>
+                  <div class="md:col-span-2 space-y-4">
+                      <div>
+                          <h4 class="font-bold border-b pb-1 mb-2">Vehicle & Documents</h4>
+                          <div class="text-sm space-y-2">
+                              <p><strong>Type:</strong> ${p.vehicle_type}</p>
+                              <p><strong>Details:</strong> ${p.vehicle_details}</p>
+                              <p><strong>Plate Number:</strong> ${p.plate_number || 'N/A'}</p>
+                              <p><strong>License Info:</strong> ${p.license || 'N/A'}</p>
+                              <div class="mt-3 pt-3 border-t">
+                                  <p class="font-semibold mb-2">Uploaded Documents:</p>
+                                  <div class="space-y-1">
+                                      <p><strong>License:</strong> ${docLink(p.license_document, 'View License')}</p>
+                                      <p><strong>Vehicle Registration:</strong> ${docLink(p.vehicle_document, 'View Registration')}</p>
+                                      <p><strong>Plate Photo:</strong> ${docLink(p.plate_photo, 'View Plate Photo')}</p>
+                                      <p><strong>ID Document:</strong> ${docLink(p.id_document, 'View ID')}</p>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                      ${showStats ? `<div>
+                          <h4 class="font-bold border-b pb-1 mb-2">Performance</h4>
+                          <div class="grid grid-cols-2 gap-4 mt-2 text-sm">
+                              <div class="card p-3">
+                                  <p class="font-semibold">Completed Rides</p>
+                                  <p class="text-2xl font-bold">${data.stats.completed_rides}</p>
+                              </div>
+                              <div class="card p-3">
+                                  <p class="font-semibold">Avg. Rating</p>
+                                  <p class="text-2xl font-bold">${data.stats.avg_rating.toFixed(2)} ★</p>
+                              </div>
+                              <div class="card p-3">
+                                  <p class="font-semibold">Weekly Earnings</p>
+                                  <p class="text-2xl font-bold">${data.stats.total_earnings_weekly} ETB</p>
+                              </div>
+                              <div class="card p-3">
+                                  <p class="font-semibold">Total Earnings</p>
+                                  <p class="text-2xl font-bold">${data.stats.total_earnings_all_time} ETB</p>
+                              </div>
+                          </div>
+                      </div>` : ''}
+                  </div>
+              </div>
+              ${showStats ? `<div class="mt-6">
+                  <h4 class="font-bold border-b pb-1 mb-2">Recent History</h4>
+                  ${data.history.length ? data.history.map(r => `
+                      <div class="grid grid-cols-4 text-sm p-2 border-b">
+                          <span>#${r.id}</span>
+                          <span>${r.date}</span>
+                          <span>${r.fare} ETB</span>
+                          <span class="status-badge status-${r.status}">${r.status}</span>
+                      </div>
+                  `).join('') : '<p class="text-center p-4">No recent history.</p>'}
+              </div>` : ''}
+          `; 
+          showModal('driver-details-modal'); 
+      };
+      
+      const refreshPendingDrivers = async () => {
+          try {
+              allPendingDrivers = await fetchData('pending-drivers') || [];
+              updatePendingDriversTable();
+              
+              const pendingBadge = document.getElementById('pending-drivers-badge');
+              if (pendingBadge) {
+                  pendingBadge.textContent = allPendingDrivers.length;
+                  pendingBadge.classList.toggle('hidden', allPendingDrivers.length === 0);
+              }
+          } catch (error) {
+              console.error('Error loading pending drivers:', error);
+          }
+      };
+      
+      const updatePendingDriversTable = () => {
+          const tbody = document.getElementById('pending-drivers-table-body');
+          if (!tbody) return;
+          
+          tbody.innerHTML = '';
+          if (!allPendingDrivers.length) {
+              tbody.innerHTML = '<tr><td colspan="7" class="text-center p-8 text-secondary">No pending drivers.</td></tr>';
+              return;
+          }
+          
+          allPendingDrivers.forEach(d => {
+              const row = tbody.insertRow();
+              const requiredDocsComplete = d.license_document && d.vehicle_document;
+              const hasAllOptionalDocs = d.plate_photo && d.id_document;
+              
+              let docsStatus = '';
+              if (requiredDocsComplete) {
+                  docsStatus = hasAllOptionalDocs
+                      ? '<span class="px-2 py-1 text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded font-semibold">✓ Complete</span>'
+                      : '<span class="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 rounded">⚠ Required Only</span>';
+              } else {
+                  docsStatus = '<span class="px-2 py-1 text-xs bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 rounded">✗ Missing</span>';
+              }
+              
+              row.innerHTML = `
+                  <td class="p-2 font-mono text-xs">
+                      <span class="font-semibold">${d.driver_uid || `#${d.id}`}</span>
+                  </td>
+                  <td class="p-2">
+                      <div class="flex items-center">
+                          <img src="/${d.profile_picture}" class="h-10 w-10 rounded-full mr-3 object-cover border-2 border-gray-200 dark:border-gray-700" onerror="this.src='/static/img/default_avatar.png'">
+                          <div>
+                              <span class="cursor-pointer hover:text-blue-600 font-medium block" onclick="showPendingDriverDetails(${d.id})">${d.name}</span>
+                              <span class="text-xs text-gray-500">${d.join_date || 'Recently registered'}</span>
+                          </div>
+                      </div>
+                  </td>
+                  <td class="p-2">
+                      <a href="tel:${d.phone_number}" class="text-blue-600 hover:underline font-medium block">${d.phone_number}</a>
+                      ${d.email ? `<a href="mailto:${d.email}" class="text-xs text-gray-500 hover:underline">${d.email}</a>` : '<span class="text-xs text-gray-400 italic">No email</span>'}
+                  </td>
+                  <td class="p-2">
+                      <div class="space-y-1">
+                          <span class="px-2 py-1 bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 rounded text-xs font-semibold">${d.vehicle_type}</span>
+                          <p class="text-xs text-gray-600 dark:text-gray-400">${d.vehicle_details || 'N/A'}</p>
+                          ${d.vehicle_plate_number ? `<p class="text-xs text-gray-500">Plate: ${d.vehicle_plate_number}</p>` : ''}
+                      </div>
+                  </td>
+                  <td class="p-2">${docsStatus}</td>
+                  <td class="p-2 text-xs text-gray-500">${d.join_date ? new Date(d.join_date).toLocaleDateString() : 'N/A'}</td>
+                  <td class="p-2">
+                      <div class="flex gap-2">
+                          <button class="action-btn view px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600" data-driver-id="${d.id}" title="View All Details">👁️ View</button>
+                          <button class="action-btn approve px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600" data-driver-id="${d.id}" title="Approve Driver">✓ Approve</button>
+                          <button class="action-btn reject px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600" data-driver-id="${d.id}" title="Reject Driver">✗ Reject</button>
+                      </div>
+                  </td>
+              `;
+          });
+      };
+      
+      const showPendingDriverDetails = async (driverId) => {
+          const driver = allPendingDrivers.find(d => d.id === driverId);
+          if (!driver) {
+              const data = await fetchData(`driver-details/${driverId}`);
+              if (data) showDriverDetails(data);
+              return;
+          }
+          
+          const docLink = (path, name) => path ? `<a href="/${path}" target="_blank" class="text-blue-500 hover:underline inline-flex items-center gap-1"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>${name}</a>` : '<span class="text-gray-400 italic">Not Uploaded</span>';
+          
+          const content = document.getElementById('driver-details-content');
+          const hasAllDocs = driver.license_document && driver.vehicle_document;
+          const docsStatus = hasAllDocs 
+              ? '<span class="px-3 py-1 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded-full text-sm font-semibold">✓ All Required Documents</span>'
+              : '<span class="px-3 py-1 bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 rounded-full text-sm font-semibold">⚠ Some Documents Missing</span>';
+          
+          content.innerHTML = `
+              <div class="space-y-6">
+                  <!-- Header with Status -->
+                  <div class="flex items-center justify-between border-b pb-4">
+                      <div>
+                          <h3 class="text-2xl font-bold text-primary">${driver.name}</h3>
+                          <p class="text-sm text-secondary mt-1">Driver ID: ${driver.driver_uid || `#${driver.id}`}</p>
+                      </div>
+                      <div class="text-right">
+                          ${docsStatus}
+                          <p class="mt-2"><span class="status-badge status-Pending">Pending Approval</span></p>
+                      </div>
+                  </div>
+                  
+                  <!-- Main Content Grid -->
+                  <div class="grid md:grid-cols-3 gap-6">
+                      <!-- Left Column: Profile -->
+                      <div class="space-y-4">
+                          <div class="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                              <img src="/${driver.profile_picture}" class="rounded-full w-24 h-24 mx-auto border-4 border-white shadow-lg object-cover" onerror="this.src='/static/img/default_avatar.png'">
+                              <h4 class="text-lg font-bold mt-3">${driver.name}</h4>
+                          </div>
+                          
+                          <div class="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                              <h5 class="font-semibold mb-2 text-primary">Contact Information</h5>
+                              <div class="space-y-2 text-sm">
+                                  <p><strong>Phone:</strong> <a href="tel:${driver.phone_number}" class="text-blue-600 hover:underline">${driver.phone_number}</a></p>
+                                  ${driver.email ? `<p><strong>Email:</strong> <a href="mailto:${driver.email}" class="text-blue-600 hover:underline">${driver.email}</a></p>` : '<p><strong>Email:</strong> <span class="text-gray-400 italic">Not provided</span></p>'}
+                                  <p><strong>Registered:</strong> ${driver.join_date || 'N/A'}</p>
+                              </div>
+                          </div>
+                      </div>
+                      
+                      <!-- Middle Column: Vehicle Info -->
+                      <div class="space-y-4">
+                          <div class="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                              <h5 class="font-semibold mb-3 text-primary">Vehicle Information</h5>
+                              <div class="space-y-2 text-sm">
+                                  <div class="flex justify-between">
+                                      <span class="text-secondary">Type:</span>
+                                      <span class="font-medium">${driver.vehicle_type}</span>
+                                  </div>
+                                  <div class="flex justify-between">
+                                      <span class="text-secondary">Details:</span>
+                                      <span class="font-medium">${driver.vehicle_details || 'N/A'}</span>
+                                  </div>
+                                  <div class="flex justify-between">
+                                      <span class="text-secondary">Plate Number:</span>
+                                      <span class="font-medium">${driver.vehicle_plate_number || '<span class="text-gray-400 italic">Not provided</span>'}</span>
+                                  </div>
+                                  <div class="flex justify-between">
+                                      <span class="text-secondary">License Info:</span>
+                                      <span class="font-medium">${driver.license_info || '<span class="text-gray-400 italic">Not provided</span>'}</span>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                      
+                      <!-- Right Column: Documents -->
+                      <div class="space-y-4">
+                          <div class="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                              <h5 class="font-semibold mb-3 text-primary">Uploaded Documents</h5>
+                              <div class="space-y-3">
+                                  <div class="flex items-center justify-between p-2 rounded ${driver.license_document ? 'bg-green-50 dark:bg-green-900/20' : 'bg-red-50 dark:bg-red-900/20'}">
+                                      <span class="text-sm font-medium">License Document</span>
+                                      ${docLink(driver.license_document, 'View')}
+                                  </div>
+                                  <div class="flex items-center justify-between p-2 rounded ${driver.vehicle_document ? 'bg-green-50 dark:bg-green-900/20' : 'bg-red-50 dark:bg-red-900/20'}">
+                                      <span class="text-sm font-medium">Vehicle Registration</span>
+                                      ${docLink(driver.vehicle_document, 'View')}
+                                  </div>
+                                  <div class="flex items-center justify-between p-2 rounded ${driver.plate_photo ? 'bg-green-50 dark:bg-green-900/20' : 'bg-gray-100 dark:bg-gray-700'}">
+                                      <span class="text-sm font-medium">Plate Photo</span>
+                                      ${docLink(driver.plate_photo, 'View')}
+                                  </div>
+                                  <div class="flex items-center justify-between p-2 rounded ${driver.id_document ? 'bg-green-50 dark:bg-green-900/20' : 'bg-gray-100 dark:bg-gray-700'}">
+                                      <span class="text-sm font-medium">ID Document</span>
+                                      ${docLink(driver.id_document, 'View')}
+                                  </div>
+                              </div>
+                              <p class="text-xs text-secondary mt-3">License and Vehicle Registration are required for approval.</p>
+                          </div>
+                      </div>
+                  </div>
+                  
+                  <!-- Action Buttons -->
+                  <div class="flex gap-4 pt-4 border-t">
+                      <button onclick="approveDriver(${driver.id})" class="btn-modern btn-success flex-1 py-3 text-lg font-semibold">
+                          <svg class="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                          </svg>
+                          Approve Driver
+                      </button>
+                      <button onclick="rejectDriver(${driver.id})" class="btn-modern btn-danger flex-1 py-3 text-lg font-semibold">
+                          <svg class="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                          </svg>
+                          Reject Driver
+                      </button>
+                  </div>
+              </div>
+          `;
+          showModal('driver-details-modal');
+      };
+      
+      window.approveDriver = async (driverId) => {
+          if (!confirm('Approve this driver? They will be able to go online after approval.')) return;
+          const result = await postData('drivers/approve', { driver_id: driverId });
+          if (result && result.success) {
+              showSuccessNotification('Driver approved successfully!');
+              hideModals();
+              await refreshAllData();
+          } else {
+              showErrorNotification(result?.error || 'Failed to approve driver');
+          }
+      };
+      
+      window.rejectDriver = async (driverId) => {
+          const reason = prompt('Enter rejection reason (optional):');
+          const result = await postData('drivers/reject', { driver_id: driverId, reason: reason || '' });
+          if (result && result.success) {
+              showSuccessNotification('Driver rejected.');
+              hideModals();
+              await refreshAllData();
+          } else {
+              showErrorNotification(result?.error || 'Failed to reject driver');
+          }
+      };
+      
+      // Event listeners for pending drivers
+      document.getElementById('pending-drivers-table-body')?.addEventListener('click', async e => {
+          const btn = e.target.closest('.action-btn');
+          if (!btn) return;
+          const id = parseInt(btn.dataset.driverId);
+          if (btn.classList.contains('view')) {
+              await showPendingDriverDetails(id);
+          } else if (btn.classList.contains('approve')) {
+              await window.approveDriver(id);
+          } else if (btn.classList.contains('reject')) {
+              await window.rejectDriver(id);
+          }
+      });
+      
+      document.getElementById('refresh-pending-drivers-btn')?.addEventListener('click', refreshPendingDrivers);
       
       const showPassengerDetails = (data) => {
           const content = document.getElementById('passenger-details-content');
@@ -2034,19 +2430,30 @@ document.addEventListener('DOMContentLoaded', () => {
           }, 1000); // 1 second debounce
       };
       const refreshAllData = async () => { 
-          const [drivers, rides, passengers] = await Promise.all([ 
+          const [drivers, rides, passengers, pendingDrivers] = await Promise.all([ 
               fetchData('drivers'), 
               fetchData('all-rides-data'),
-              fetchData('passengers')
+              fetchData('passengers'),
+              fetchData('pending-drivers').catch(() => [])
           ]); 
           allDrivers = drivers || []; 
           allRidesHistory = rides || []; 
           allPassengers = passengers || [];
+          allPendingDrivers = pendingDrivers || [];
           
           // Update tables - they handle empty data internally
           updateDriversTable(); 
           updatePassengersTable();
-          updateRideHistoryTable(); 
+          updateRideHistoryTable();
+          updatePendingDriversTable();
+          
+          // Update pending drivers badge
+          const pendingBadge = document.getElementById('pending-drivers-badge');
+          if (pendingBadge) {
+              pendingBadge.textContent = allPendingDrivers.length;
+              pendingBadge.classList.toggle('hidden', allPendingDrivers.length === 0);
+          }
+          
           refreshDashboardData(); 
           refreshUnreadCount(); 
       };

@@ -42,3 +42,29 @@ def emit_ride_assignment(assignment_data):
         print(f"✅ Emitted ride assignment: {assignment_data.get('ride_id', 'Unknown')}")
     except Exception as e:
         print(f"❌ Error emitting ride assignment: {e}")
+
+def emit_driver_registration_notification(driver_data):
+    """
+    Emit new driver registration notification to dispatchers
+    
+    Args:
+        driver_data (dict): Driver information including name, phone, etc.
+    """
+    try:
+        socketio.emit('new_driver_registration', driver_data, room='dispatchers')
+        print(f"✅ Emitted new driver registration: {driver_data.get('name', 'Unknown')}")
+    except Exception as e:
+        print(f"❌ Error emitting driver registration notification: {e}")
+
+def emit_passenger_registration_notification(passenger_data):
+    """
+    Emit new passenger registration notification to dispatchers
+    
+    Args:
+        passenger_data (dict): Passenger information including name, phone, etc.
+    """
+    try:
+        socketio.emit('new_passenger_registration', passenger_data, room='dispatchers')
+        print(f"✅ Emitted new passenger registration: {passenger_data.get('username', 'Unknown')}")
+    except Exception as e:
+        print(f"❌ Error emitting passenger registration notification: {e}")
