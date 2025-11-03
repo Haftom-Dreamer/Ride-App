@@ -2,11 +2,12 @@
 Admin operations API endpoints
 """
 
-from flask import request, jsonify
+from flask import request, jsonify, current_app
 from datetime import datetime, timezone
-from app.models import db, Driver, Passenger, Admin
+from app.models import db, Driver, Passenger, Admin, DeviceToken
 from app.api import api, admin_required
 from app.utils import handle_file_upload
+from app.services.push import send_push_to_user
 from flask_login import current_user
 
 @api.route('/users/block', methods=['POST'])
@@ -137,15 +138,16 @@ def get_admins():
             {
                 'id': admin.id,
                 'username': admin.username,
-                'email': admin.email,
-                'created_at': admin.created_at.isoformat() if admin.created_at else None,
-                'profile_picture': admin.profile_picture
+                'profile_picture': admin.profile_picture if admin.profile_picture else 'static/img/default_user.svg'
             }
             for admin in admins
         ]
         return jsonify(admins_data)
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        import traceback
+        error_trace = traceback.format_exc()
+        current_app.logger.error(f"Error getting admins: {str(e)}\n{error_trace}")
+        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
 
 @api.route('/admins/add', methods=['POST'])
 @admin_required
@@ -277,7 +279,7 @@ def list_pending_drivers():
 @api.route('/drivers/approve', methods=['POST'])
 @admin_required
 def approve_driver():
-    """Approve a pending driver; set status to Offline"""
+    """Approve a pending driver; set status to Offline and send notification"""
     try:
         data = request.get_json() or {}
         driver_id = data.get('driver_id')
@@ -287,11 +289,67 @@ def approve_driver():
         if not d:
             return jsonify({'error': 'Driver not found'}), 404
         d.status = 'Offline'
+        d.is_blocked = False
+        d.blocked_reason = None
         db.session.commit()
+        
+        # Send notification to driver (push + email if available)
+        try:
+            notification_message = f"Your driver registration has been approved! Your Driver ID is {d.driver_uid}. You can now log in and start driving."
+            send_push_to_user('driver', d.id, 'Registration Approved', notification_message, {
+                'type': 'driver_approved',
+                'driver_id': d.id,
+                'driver_uid': d.driver_uid
+            })
+            # Send email if driver has email
+            if d.email:
+                try:
+                    from app.utils.email_service import mail, Message
+                    msg = Message(
+                        subject='Driver Registration Approved - Selamawi Ride',
+                        recipients=[d.email],
+                        sender=('Selamawi Ride', current_app.config.get('MAIL_DEFAULT_SENDER', 'noreply@selamawiride.com')),
+                        body=f'''Hello {d.name},
+
+Congratulations! Your driver registration has been approved.
+
+Your Driver ID: {d.driver_uid}
+
+You can now log in to your driver account and start driving. Download the Selamawi Ride app and log in using your phone number and password.
+
+Thank you for joining Selamawi Ride!
+
+Best regards,
+Selamawi Ride Team
+                        ''',
+                        html=f'''
+                        <html>
+                        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                            <h2 style="color: #2563eb;">Driver Registration Approved!</h2>
+                            <p>Hello {d.name},</p>
+                            <p>Congratulations! Your driver registration has been <strong style="color: #10b981;">approved</strong>.</p>
+                            <div style="background-color: #f3f4f6; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                                <p style="margin: 0;"><strong>Your Driver ID:</strong> <span style="font-size: 18px; font-weight: bold; color: #2563eb;">{d.driver_uid}</span></p>
+                            </div>
+                            <p>You can now log in to your driver account and start driving. Download the Selamawi Ride app and log in using your phone number and password.</p>
+                            <p>Thank you for joining Selamawi Ride!</p>
+                            <p>Best regards,<br><strong>Selamawi Ride Team</strong></p>
+                        </body>
+                        </html>
+                        '''
+                    )
+                    mail.send(msg)
+                    current_app.logger.info(f"Approval email sent to driver {d.id} ({d.email})")
+                except Exception as email_error:
+                    current_app.logger.error(f"Failed to send approval email to driver {d.id}: {email_error}")
+        except Exception as e:
+            current_app.logger.error(f"Failed to send approval notification to driver {d.id}: {e}")
+        
         return jsonify({
             'success': True,
             'message': 'Driver approved',
             'driver_id': d.id,
+            'driver_uid': d.driver_uid,
             'status': d.status
         }), 200
     except Exception as e:
@@ -302,7 +360,7 @@ def approve_driver():
 @api.route('/drivers/reject', methods=['POST'])
 @admin_required
 def reject_driver():
-    """Reject a pending driver; set status to Blocked and optional reason"""
+    """Reject a pending driver; set status to Blocked and optional reason, then send notification"""
     try:
         data = request.get_json() or {}
         driver_id = data.get('driver_id')
@@ -317,6 +375,60 @@ def reject_driver():
         d.blocked_at = datetime.now(timezone.utc)
         d.status = 'Offline'
         db.session.commit()
+        
+        # Send notification to driver (push + email if available)
+        try:
+            notification_message = f"Your driver registration has been rejected. Reason: {reason}. You can update your information and re-apply."
+            send_push_to_user('driver', d.id, 'Registration Rejected', notification_message, {
+                'type': 'driver_rejected',
+                'driver_id': d.id,
+                'reason': reason
+            })
+            # Send email if driver has email
+            if d.email:
+                try:
+                    from app.utils.email_service import mail, Message
+                    msg = Message(
+                        subject='Driver Registration Rejected - Selamawi Ride',
+                        recipients=[d.email],
+                        sender=('Selamawi Ride', current_app.config.get('MAIL_DEFAULT_SENDER', 'noreply@selamawiride.com')),
+                        body=f'''Hello {d.name},
+
+Unfortunately, your driver registration has been rejected.
+
+Reason: {reason}
+
+You can update your information and submit a new registration request. Please ensure all required documents are complete and valid.
+
+If you have any questions, please contact our support team.
+
+Best regards,
+Selamawi Ride Team
+                        ''',
+                        html=f'''
+                        <html>
+                        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                            <h2 style="color: #dc2626;">Driver Registration Rejected</h2>
+                            <p>Hello {d.name},</p>
+                            <p>Unfortunately, your driver registration has been <strong style="color: #dc2626;">rejected</strong>.</p>
+                            <div style="background-color: #fef2f2; padding: 15px; border-radius: 5px; border-left: 4px solid #dc2626; margin: 20px 0;">
+                                <p style="margin: 0;"><strong>Reason:</strong></p>
+                                <p style="margin: 10px 0 0 0;">{reason}</p>
+                            </div>
+                            <p>You can update your information and submit a new registration request. Please ensure all required documents are complete and valid.</p>
+                            <p>If you have any questions, please contact our support team.</p>
+                            <p>Best regards,<br><strong>Selamawi Ride Team</strong></p>
+                        </body>
+                        </html>
+                        '''
+                    )
+                    mail.send(msg)
+                    current_app.logger.info(f"Rejection email sent to driver {d.id} ({d.email})")
+                except Exception as email_error:
+                    current_app.logger.error(f"Failed to send rejection email to driver {d.id}: {email_error}")
+        except Exception as e:
+            current_app.logger.error(f"Failed to send rejection notification to driver {d.id}: {e}")
+        
         return jsonify({
             'success': True,
             'message': 'Driver rejected',

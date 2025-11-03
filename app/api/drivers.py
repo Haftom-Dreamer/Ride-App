@@ -138,19 +138,70 @@ def update_driver(driver_id):
 @api.route('/delete-driver', methods=['POST'])
 @admin_required
 def delete_driver():
-    """Delete a driver"""
-    data = request.json
-    driver = Driver.query.get(data.get('driver_id'))
-    if not driver:
-        return jsonify({'error': 'Driver not found'}), 404
-    
+    """Delete a driver and all related records"""
     try:
+        data = request.get_json() or {}
+        driver_id = data.get('driver_id')
+        if not driver_id:
+            return jsonify({'error': 'driver_id is required'}), 400
+        
+        driver = Driver.query.get(driver_id)
+        if not driver:
+            return jsonify({'error': 'Driver not found'}), 404
+        
+        # Store driver info for notification before deletion
+        driver_uid = driver.driver_uid
+        driver_name = driver.name
+        
+        # Import related models
+        from app.models import DriverEarnings, DriverLocation, RideOffer, Ride, DeviceToken, ChatMessage
+        from app.services.push import send_push_to_user
+        
+        # Send push notification to driver before deletion (if they're logged in)
+        try:
+            notification_message = "Your driver account has been deleted by an administrator. You will be logged out."
+            send_push_to_user('driver', driver_id, 'Account Deleted', notification_message, {
+                'type': 'account_deleted',
+                'driver_id': driver_id,
+                'action': 'logout'
+            })
+        except Exception as push_error:
+            current_app.logger.warning(f"Failed to send deletion notification to driver {driver_id}: {push_error}")
+        
+        # Delete related records first (in order of dependencies)
+        # 1. Delete chat messages where driver is sender
+        ChatMessage.query.filter_by(sender_role='driver', sender_id=driver_id).delete()
+        
+        # 2. Delete driver earnings
+        DriverEarnings.query.filter_by(driver_id=driver_id).delete()
+        
+        # 3. Delete driver location
+        DriverLocation.query.filter_by(driver_id=driver_id).delete()
+        
+        # 4. Delete ride offers
+        RideOffer.query.filter_by(driver_id=driver_id).delete()
+        
+        # 5. Set driver_id to NULL for rides (since it's nullable) - this preserves ride history
+        Ride.query.filter_by(driver_id=driver_id).update({'driver_id': None})
+        
+        # 6. Delete device tokens (after sending notification)
+        DeviceToken.query.filter_by(user_type='driver', user_id=driver_id).delete()
+        
+        # 7. Finally delete the driver
         db.session.delete(driver)
         db.session.commit()
-        return jsonify({'message': 'Driver deleted successfully'})
+        
+        current_app.logger.info(f"Driver {driver_id} ({driver_uid}) deleted successfully")
+        return jsonify({
+            'success': True,
+            'message': 'Driver deleted successfully'
+        }), 200
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+        import traceback
+        error_trace = traceback.format_exc()
+        current_app.logger.error(f"Error deleting driver: {str(e)}\n{error_trace}")
+        return jsonify({'error': f'Failed to delete driver: {str(e)}'}), 500
 
 @api.route('/update-driver-status', methods=['POST'])
 @admin_required

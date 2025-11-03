@@ -4,7 +4,7 @@ Handles driver profile, availability, location updates, and earnings
 """
 
 from flask import Blueprint, request, jsonify
-from datetime import datetime
+from datetime import datetime, timezone
 from werkzeug.security import generate_password_hash
 from app.models import db, Driver, DriverLocation, DriverEarnings
 from app.services.push import register_device_token
@@ -52,6 +52,13 @@ def driver_login():
     if not driver.check_password(password):
         return jsonify({'error': 'Invalid credentials'}), 401
     
+    # Check if driver is pending approval
+    if driver.status == 'Pending':
+        return jsonify({
+            'error': 'Your registration is pending admin approval. Please wait for approval before logging in.',
+            'status': 'Pending'
+        }), 403
+    
     if driver.is_blocked:
         return jsonify({'error': f'Account blocked: {driver.blocked_reason or "No reason provided"}'}), 403
     
@@ -84,11 +91,44 @@ def driver_signup():
             if not locals().get(f, '').strip():
                 return jsonify({'error': f'{f} is required'}), 400
         
-        # Check for duplicate phone
-        if Driver.query.filter_by(phone_number=phone_number).first():
-            return jsonify({'error': 'Phone number already registered'}), 409
+        # Check for existing driver - allow re-registration if rejected
+        existing_driver = Driver.query.filter_by(phone_number=phone_number).first()
+        if existing_driver:
+            # If driver exists and is not rejected, block re-registration
+            if existing_driver.status != 'Pending' and not existing_driver.is_blocked:
+                return jsonify({'error': 'Phone number already registered'}), 409
+            
+            # If rejected/blocked, update the existing record instead of creating new one
+            if existing_driver.is_blocked or (existing_driver.status == 'Pending' and existing_driver.is_blocked):
+                existing_driver.name = name
+                existing_driver.password_hash = generate_password_hash(password)
+                existing_driver.vehicle_type = vehicle_type
+                existing_driver.vehicle_details = vehicle_details
+                existing_driver.vehicle_plate_number = (data.get('vehicle_plate_number') or '').strip() or None
+                existing_driver.license_info = (data.get('license_info') or '').strip() or None
+                existing_driver.email = (data.get('email') or '').strip() or None
+                existing_driver.status = 'Pending'
+                existing_driver.is_blocked = False
+                existing_driver.blocked_reason = None
+                existing_driver.blocked_at = None
+                db.session.commit()
+                # Emit notification
+                try:
+                    from app.utils.socket_utils import emit_driver_registration_notification
+                    emit_driver_registration_notification({
+                        'driver_id': existing_driver.id,
+                        'driver_uid': existing_driver.driver_uid,
+                        'name': existing_driver.name,
+                        'phone_number': existing_driver.phone_number,
+                        'vehicle_type': existing_driver.vehicle_type,
+                        'join_date': existing_driver.join_date.isoformat() if existing_driver.join_date else None
+                    })
+                except Exception as e:
+                    from flask import current_app
+                    current_app.logger.error(f"Failed to emit driver registration notification: {e}")
+                return jsonify({'driver_id': existing_driver.id, 'driver_uid': existing_driver.driver_uid, 'status': existing_driver.status, 'message': 'Registration updated. Awaiting admin approval.'}), 200
         
-        # Create driver
+        # Create new driver
         try:
             d = Driver(
                 name=name,
@@ -106,6 +146,20 @@ def driver_signup():
             if not d.driver_uid:
                 d.driver_uid = f"DRV-{d.id:04d}"
             db.session.commit()
+            # Emit notification
+            try:
+                from app.utils.socket_utils import emit_driver_registration_notification
+                emit_driver_registration_notification({
+                    'driver_id': d.id,
+                    'driver_uid': d.driver_uid,
+                    'name': d.name,
+                    'phone_number': d.phone_number,
+                    'vehicle_type': d.vehicle_type,
+                    'join_date': d.join_date.isoformat() if d.join_date else None
+                })
+            except Exception as e:
+                from flask import current_app
+                current_app.logger.error(f"Failed to emit driver registration notification: {e}")
             return jsonify({'driver_id': d.id, 'driver_uid': d.driver_uid, 'status': d.status}), 201
         except Exception as e:
             db.session.rollback()
@@ -124,9 +178,12 @@ def driver_signup():
                 if not locals().get(f, '').strip():
                     return jsonify({'error': f'{f} is required'}), 400
             
-            # Check for duplicate phone
-            if Driver.query.filter_by(phone_number=phone_number).first():
-                return jsonify({'error': 'Phone number already registered'}), 409
+            # Check for existing driver - allow re-registration if rejected
+            existing_driver = Driver.query.filter_by(phone_number=phone_number).first()
+            if existing_driver:
+                # If driver exists and is not rejected, block re-registration
+                if existing_driver.status != 'Pending' and not existing_driver.is_blocked:
+                    return jsonify({'error': 'Phone number already registered'}), 409
             
             # Handle file uploads
             profile_picture = handle_file_upload(
@@ -138,7 +195,54 @@ def driver_signup():
             plate_photo = handle_file_upload(request.files.get('plate_photo'))
             id_document = handle_file_upload(request.files.get('id_document'))
             
-            # Create driver
+            # Check if existing driver should be updated (rejected case)
+            if existing_driver and (existing_driver.is_blocked or (existing_driver.status == 'Pending' and existing_driver.is_blocked)):
+                # Update existing rejected driver
+                existing_driver.name = name
+                existing_driver.password_hash = generate_password_hash(password)
+                existing_driver.vehicle_type = vehicle_type
+                existing_driver.vehicle_details = vehicle_details
+                existing_driver.vehicle_plate_number = (request.form.get('vehicle_plate_number') or '').strip() or None
+                existing_driver.license_info = (request.form.get('license_info') or '').strip() or None
+                existing_driver.email = (request.form.get('email') or '').strip() or None
+                existing_driver.status = 'Pending'
+                existing_driver.is_blocked = False
+                existing_driver.blocked_reason = None
+                existing_driver.blocked_at = None
+                # Update documents if new ones provided
+                if profile_picture and profile_picture != 'static/img/default_user.svg':
+                    existing_driver.profile_picture = profile_picture
+                if license_document:
+                    existing_driver.license_document = license_document
+                if vehicle_document:
+                    existing_driver.vehicle_document = vehicle_document
+                if plate_photo:
+                    existing_driver.plate_photo = plate_photo
+                if id_document:
+                    existing_driver.id_document = id_document
+                db.session.commit()
+                # Emit notification
+                try:
+                    from app.utils.socket_utils import emit_driver_registration_notification
+                    emit_driver_registration_notification({
+                        'driver_id': existing_driver.id,
+                        'driver_uid': existing_driver.driver_uid,
+                        'name': existing_driver.name,
+                        'phone_number': existing_driver.phone_number,
+                        'vehicle_type': existing_driver.vehicle_type,
+                        'join_date': existing_driver.join_date.isoformat() if existing_driver.join_date else None
+                    })
+                except Exception as e:
+                    from flask import current_app
+                    current_app.logger.error(f"Failed to emit driver registration notification: {e}")
+                return jsonify({
+                    'driver_id': existing_driver.id, 
+                    'driver_uid': existing_driver.driver_uid, 
+                    'status': existing_driver.status,
+                    'message': 'Registration updated. Awaiting admin approval.'
+                }), 200
+            
+            # Create new driver
             d = Driver(
                 name=name,
                 phone_number=phone_number,
@@ -348,7 +452,7 @@ def ride_start():
     if err:
         return err
     ride.status = 'On Trip'
-    ride.start_time = datetime.utcnow()
+    ride.start_time = datetime.now(timezone.utc)
     db.session.commit()
     return jsonify({'message': 'Trip started'}), 200
 
@@ -360,9 +464,162 @@ def ride_end():
     if err:
         return err
     ride.status = 'Completed'
-    ride.end_time = datetime.utcnow()
+    ride.end_time = datetime.now(timezone.utc)
     db.session.commit()
     return jsonify({'message': 'Trip completed'}), 200
+
+
+@driver_api.route('/available-rides', methods=['GET'])
+def get_available_rides():
+    """Get available rides for the current driver (rides with status 'Requested')"""
+    driver = resolve_current_driver()
+    if not driver:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    # Only show available rides if driver is online
+    if driver.status not in ['Available', 'Offline']:
+        return jsonify([]), 200
+    
+    # Get rides with status 'Requested' that match driver's vehicle type
+    rides = Ride.query.filter_by(status='Requested').all()
+    
+    # Filter by vehicle type if driver has a specific vehicle type
+    if driver.vehicle_type:
+        rides = [r for r in rides if r.vehicle_type == driver.vehicle_type or r.vehicle_type == 'Any']
+    
+    rides_data = []
+    for ride in rides:
+        try:
+            passenger = ride.passenger
+            rides_data.append({
+                'id': ride.id,
+                'user_name': passenger.username if passenger else 'Unknown',
+                'user_phone': passenger.phone_number if passenger else 'N/A',
+                'pickup_address': ride.pickup_address,
+                'pickup_lat': float(ride.pickup_lat),
+                'pickup_lon': float(ride.pickup_lon),
+                'dest_address': ride.dest_address,
+                'dest_lat': float(ride.dest_lat) if ride.dest_lat else None,
+                'dest_lon': float(ride.dest_lon) if ride.dest_lon else None,
+                'fare': float(ride.fare),
+                'distance_km': float(ride.distance_km) if ride.distance_km else None,
+                'vehicle_type': ride.vehicle_type,
+                'note': ride.note,
+                'request_time': ride.request_time.strftime('%Y-%m-%d %H:%M:%S') if ride.request_time else None,
+            })
+        except Exception as e:
+            # Skip rides with errors
+            continue
+    
+    return jsonify(rides_data), 200
+
+
+@driver_api.route('/accept-ride', methods=['POST'])
+def accept_ride():
+    """Driver accepts a ride offer"""
+    driver = resolve_current_driver()
+    if not driver:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    data = request.get_json() or {}
+    ride_id = data.get('ride_id')
+    
+    if not ride_id:
+        return jsonify({'error': 'ride_id is required'}), 400
+    
+    ride = Ride.query.get(ride_id)
+    if not ride:
+        return jsonify({'error': 'Ride not found'}), 404
+    
+    # Check if ride is still available
+    if ride.status != 'Requested':
+        return jsonify({'error': 'Ride is no longer available'}), 400
+    
+    # Check if driver is available
+    if driver.status != 'Available':
+        return jsonify({'error': 'Driver is not available'}), 400
+    
+    try:
+        # Assign driver to ride
+        ride.driver_id = driver.id
+        ride.status = 'Assigned'
+        ride.assigned_time = datetime.now(timezone.utc)
+        
+        # Update driver status
+        driver.status = 'On Trip'
+        driver.current_lat = ride.pickup_lat
+        driver.current_lon = ride.pickup_lon
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Ride accepted successfully',
+            'ride_id': ride.id
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@driver_api.route('/decline-offer', methods=['POST'])
+def decline_offer():
+    """Driver declines a ride offer (optional - for tracking purposes)"""
+    driver = resolve_current_driver()
+    if not driver:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    data = request.get_json() or {}
+    ride_id = data.get('ride_id')
+    
+    if ride_id:
+        # Optionally track declined offers here
+        # For now, just return success
+        pass
+    
+    return jsonify({'success': True, 'message': 'Offer declined'}), 200
+
+
+@driver_api.route('/active-ride', methods=['GET'])
+def get_active_ride():
+    """Get active ride for the current driver"""
+    driver = resolve_current_driver()
+    if not driver:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    # Get active ride (status: Assigned, Driver Arriving, or On Trip)
+    ride = Ride.query.filter_by(driver_id=driver.id).filter(
+        Ride.status.in_(['Assigned', 'Driver Arriving', 'On Trip'])
+    ).first()
+    
+    if not ride:
+        return jsonify({'ride': None}), 200
+    
+    try:
+        passenger = ride.passenger
+        ride_data = {
+            'id': ride.id,
+            'status': ride.status,
+            'passenger': {
+                'id': passenger.id if passenger else None,
+                'name': passenger.username if passenger else 'Unknown',
+                'phone': passenger.phone_number if passenger else 'N/A',
+            },
+            'pickup_address': ride.pickup_address,
+            'pickup_lat': float(ride.pickup_lat),
+            'pickup_lon': float(ride.pickup_lon),
+            'dest_address': ride.dest_address,
+            'dest_lat': float(ride.dest_lat) if ride.dest_lat else None,
+            'dest_lon': float(ride.dest_lon) if ride.dest_lon else None,
+            'fare': float(ride.fare),
+            'distance_km': float(ride.distance_km) if ride.distance_km else None,
+            'vehicle_type': ride.vehicle_type,
+            'note': ride.note,
+            'request_time': ride.request_time.isoformat() if ride.request_time else None,
+        }
+        return jsonify({'ride': ride_data}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @driver_api.route('/ride/<int:ride_id>/chat', methods=['GET'])

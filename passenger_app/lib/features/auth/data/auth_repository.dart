@@ -245,4 +245,85 @@ class AuthRepository {
       throw Exception('Password reset failed: $e');
     }
   }
+
+  Future<User> driverLogin({
+    required String identifier,
+    required String password,
+  }) async {
+    try {
+      final response = await _apiClient.post(
+        '/api/driver/login',
+        data: {
+          'identifier': identifier,
+          'password': password,
+        },
+        options: Options(
+          headers: {'Content-Type': 'application/json'},
+          validateStatus: (status) => status! < 400,
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = response.data;
+
+        // Driver login response: {driver_id, driver_uid, name, phone_number, status}
+        final user = User(
+          id: responseData['driver_id'] as int,
+          username: responseData['name'] as String,
+          email: '', // Driver may not have email
+          phoneNumber: responseData['phone_number'] as String,
+          driverUid: responseData['driver_uid'] as String?,
+          profilePicture: null, // Will be fetched from profile if needed
+          role: UserRole.driver,
+        );
+
+        // Set auth token and save user data
+        final token = 'auth_token_${DateTime.now().millisecondsSinceEpoch}';
+        await _apiClient.setAuthToken(token);
+        await StorageService.saveToken(token);
+        await StorageService.saveUser(user);
+        await _apiClient.setUserId(user.id);
+
+        return user;
+      } else {
+        final errorData = response.data;
+        throw Exception(
+            'Login failed: ${errorData['error'] ?? 'Invalid credentials'}');
+      }
+    } catch (e) {
+      // Prefer mapped AuthException messages from ApiClient
+      if (e is AuthException) {
+        throw Exception(e.message);
+      }
+      // Handle DioError specifically for better error messages
+      if (e is DioException) {
+        if (e.response != null) {
+          final statusCode = e.response!.statusCode;
+          final responseData = e.response!.data;
+
+          if (statusCode == 401) {
+            if (responseData is Map && responseData['error'] != null) {
+              throw Exception(responseData['error']);
+            }
+            throw Exception('Invalid phone number, Driver ID, or password');
+          } else if (statusCode == 403) {
+            if (responseData is Map && responseData['error'] != null) {
+              throw Exception(responseData['error']);
+            }
+            throw Exception('Account not approved or blocked');
+          } else if (statusCode == 400) {
+            if (responseData is Map && responseData['error'] != null) {
+              throw Exception(responseData['error']);
+            }
+            throw Exception('Please check your input and try again');
+          } else {
+            throw Exception('Login failed. Please try again.');
+          }
+        } else {
+          throw Exception('Network error. Please check your connection.');
+        }
+      }
+      throw Exception('Login failed: $e');
+    }
+  }
 }

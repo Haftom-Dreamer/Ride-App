@@ -1211,10 +1211,10 @@
 
 <div id="driver-details-modal" class="modal fixed inset-0 z-50 items-center justify-center hidden overflow-y-auto">
     <div class="absolute inset-0 bg-black opacity-50"></div>
-    <div class="modal-content p-8 rounded-lg shadow-xl z-10 w-full max-w-3xl my-8">
+    <div class="modal-content p-8 rounded-lg shadow-xl z-10 w-full max-w-3xl my-8 bg-white dark:bg-gray-800">
         <div class="flex justify-between items-start">
-            <h2 class="text-2xl font-bold mb-4 text-primary">Driver Registration Review</h2>
-            <button type="button" class="cancel-modal-btn -mt-2 -mr-2 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-2xl">&times;</button>
+            <h2 class="text-2xl font-bold mb-4 text-black dark:text-white">Driver Registration Review</h2>
+            <button type="button" class="cancel-modal-btn -mt-2 -mr-2 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-2xl text-black dark:text-white">&times;</button>
         </div>
         <div id="driver-details-content" class="max-h-[75vh] overflow-y-auto pr-4"></div>
     </div>
@@ -1239,6 +1239,52 @@
             <button type="button" class="cancel-modal-btn -mt-2 -mr-2 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">&times;</button>
         </div>
         <div id="ride-details-content" class="max-h-[80vh] overflow-y-auto pr-4"></div>
+    </div>
+</div>
+
+<div id="reject-driver-modal" class="modal fixed inset-0 z-50 items-center justify-center hidden">
+    <div class="absolute inset-0 bg-black opacity-50"></div>
+    <div class="modal-content p-8 rounded-lg shadow-xl z-10 w-full max-w-md bg-white dark:bg-gray-800">
+        <h2 class="text-2xl font-bold mb-6 text-black dark:text-white">Reject Driver</h2>
+        <form id="reject-driver-form" class="space-y-4">
+            <div>
+                <label class="block text-sm font-bold mb-3 text-black dark:text-white">Select rejection reason:</label>
+                <div class="space-y-2">
+                    <label class="flex items-center p-3 border-2 border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 bg-white dark:bg-gray-800 shadow-sm">
+                        <input type="radio" name="rejection_reason" value="Incomplete Documentation" class="mr-3 w-4 h-4" checked>
+                        <span class="text-black dark:text-white font-bold text-base">Incomplete Documentation</span>
+                    </label>
+                    <label class="flex items-center p-3 border-2 border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 bg-white dark:bg-gray-800 shadow-sm">
+                        <input type="radio" name="rejection_reason" value="Invalid License" class="mr-3 w-4 h-4">
+                        <span class="text-black dark:text-white font-bold text-base">Invalid License</span>
+                    </label>
+                    <label class="flex items-center p-3 border-2 border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 bg-white dark:bg-gray-800 shadow-sm">
+                        <input type="radio" name="rejection_reason" value="Vehicle Issues" class="mr-3 w-4 h-4">
+                        <span class="text-black dark:text-white font-bold text-base">Vehicle Issues</span>
+                    </label>
+                    <label class="flex items-center p-3 border-2 border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 bg-white dark:bg-gray-800 shadow-sm">
+                        <input type="radio" name="rejection_reason" value="Background Check Failed" class="mr-3 w-4 h-4">
+                        <span class="text-black dark:text-white font-bold text-base">Background Check Failed</span>
+                    </label>
+                    <label class="flex items-center p-3 border-2 border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 bg-white dark:bg-gray-800 shadow-sm">
+                        <input type="radio" name="rejection_reason" value="Other" class="mr-3 w-4 h-4">
+                        <span class="text-black dark:text-white font-bold text-base">Other</span>
+                    </label>
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-bold mb-2 text-black dark:text-white">Additional notes (optional):</label>
+                <textarea id="rejection-custom-reason" rows="3" class="w-full p-3 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-black dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 font-semibold" placeholder="Provide additional details..."></textarea>
+            </div>
+            <div class="flex gap-3 pt-4">
+                <button type="button" onclick="hideModal('reject-driver-modal');" class="btn-modern btn-secondary flex-1">
+                    Cancel
+                </button>
+                <button type="submit" class="btn-modern btn-danger flex-1">
+                    Reject Driver
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 

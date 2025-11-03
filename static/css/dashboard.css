@@ -193,7 +193,14 @@ body {
 .pane.active { display: block; animation: fadeIn 0.3s ease-in-out; }
 @keyframes fadeIn { from { opacity: 0.8; } to { opacity: 1; } }
 .modal { background-color: rgba(0, 0, 0, 0.6); }
-.modal-content { background-color: var(--card-bg); color: var(--text-primary); }
+.modal-content { 
+    background-color: #ffffff !important;
+    color: #000000 !important;
+}
+.dark .modal-content {
+    background-color: var(--card-bg) !important;
+    color: #ffffff !important;
+}
 .status-badge, .driver-status-select { padding: 4px 10px; border-radius: 6px; font-weight: 600; font-size: 11px; text-transform: uppercase; border: 1px solid transparent; }
 .status-Available, .status-select-Available { background-color: var(--success-bg); color: var(--success-text); }
 .status-On-Trip, .status-Assigned, .status-select-On-Trip { background-color: var(--warning-bg); color: var(--warning-text); }

@@ -130,6 +130,56 @@ class DriverRepository {
       return res.data as Map<String, dynamic>;
     }
   }
+
+  /// Get available rides that need drivers
+  Future<List<Map<String, dynamic>>> getAvailableRides() async {
+    try {
+      final res = await _apiClient.get('/api/driver/available-rides');
+      if (res.data is List) {
+        return (res.data as List).cast<Map<String, dynamic>>();
+      }
+      return [];
+    } catch (e) {
+      // If endpoint doesn't exist or fails, return empty list
+      return [];
+    }
+  }
+
+  /// Accept a ride offer
+  Future<bool> acceptRideOffer(int rideId) async {
+    try {
+      final res = await _apiClient.post('/api/driver/accept-ride', data: {
+        'ride_id': rideId,
+      });
+      return res.statusCode == 200 || res.statusCode == 201;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Decline a ride offer
+  Future<void> declineRideOffer(int rideId) async {
+    try {
+      await _apiClient.post('/api/driver/decline-offer', data: {
+        'ride_id': rideId,
+      });
+    } catch (e) {
+      // Ignore errors
+    }
+  }
+
+  /// Get active ride for the current driver
+  Future<Map<String, dynamic>?> getActiveRide() async {
+    try {
+      final res = await _apiClient.get('/api/driver/active-ride');
+      if (res.data != null && res.data is Map && res.data['ride'] != null) {
+        return res.data['ride'] as Map<String, dynamic>;
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
 }
 
 

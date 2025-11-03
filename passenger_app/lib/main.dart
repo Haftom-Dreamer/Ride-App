@@ -5,7 +5,9 @@ import 'shared/data/api_client.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
 import 'features/auth/presentation/screens/signup_screen.dart';
 import 'features/main/presentation/screens/main_screen.dart';
+import 'features/driver/presentation/screens/driver_main_screen.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
+import 'shared/domain/models/user.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
 
@@ -52,9 +54,13 @@ class AuthWrapper extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
 
-    // Show main screen with bottom nav if authenticated, otherwise show login
+    // Show appropriate main screen based on user role if authenticated
     if (authState.isAuthenticated && authState.user != null) {
-      return const MainScreen();
+      if (authState.user!.role == UserRole.driver) {
+        return const DriverMainScreen();
+      } else {
+        return const MainScreen();
+      }
     } else {
       return const LoginScreen();
     }

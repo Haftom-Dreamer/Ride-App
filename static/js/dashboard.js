@@ -598,10 +598,25 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById(id).classList.add('flex'); 
     };
     
+    const hideModal = (id) => {
+        const modal = document.getElementById(id);
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+        // Clear reject driver ID if canceling rejection modal
+        if (id === 'reject-driver-modal' && window.currentRejectDriverId) {
+            window.currentRejectDriverId = null;
+        }
+    };
+    
     const hideModals = () => document.querySelectorAll('.modal').forEach(m => { 
         m.classList.add('hidden'); 
         m.classList.remove('flex'); 
     });
+    
+    // Make hideModal available globally
+    window.hideModal = hideModal;
 
     // --- UI & NAVIGATION ---
     const showPane = (paneId) => { 
@@ -1641,7 +1656,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const showDriverDetails = (data) => { 
           const content = document.getElementById('driver-details-content'); 
           const p = data.profile; 
-          const docLink = (path, name) => path ? `<a href="/${path}" target="_blank" class="text-blue-500 hover:underline inline-flex items-center gap-1"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>${name}</a>` : '<span class="text-gray-400 italic">Not Uploaded</span>'; 
+          const docLink = (path, name) => path ? `<a href="/${path}" target="_blank" class="text-blue-700 dark:text-blue-300 hover:underline font-semibold inline-flex items-center gap-1"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>${name}</a>` : '<span class="text-gray-600 dark:text-gray-400 italic font-medium">Not Uploaded</span>'; 
           
           const showStats = p.status !== 'Pending';
           content.innerHTML = `
@@ -1796,7 +1811,7 @@ document.addEventListener('DOMContentLoaded', () => {
               return;
           }
           
-          const docLink = (path, name) => path ? `<a href="/${path}" target="_blank" class="text-blue-500 hover:underline inline-flex items-center gap-1"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>${name}</a>` : '<span class="text-gray-400 italic">Not Uploaded</span>';
+          const docLink = (path, name) => path ? `<a href="/${path}" target="_blank" class="text-blue-700 dark:text-blue-300 hover:underline font-semibold inline-flex items-center gap-1"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>${name}</a>` : '<span class="text-gray-600 dark:text-gray-400 italic font-medium">Not Uploaded</span>';
           
           const content = document.getElementById('driver-details-content');
           const hasAllDocs = driver.license_document && driver.vehicle_document;
@@ -1807,10 +1822,10 @@ document.addEventListener('DOMContentLoaded', () => {
           content.innerHTML = `
               <div class="space-y-6">
                   <!-- Header with Status -->
-                  <div class="flex items-center justify-between border-b pb-4">
+                  <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-4">
                       <div>
-                          <h3 class="text-2xl font-bold text-primary">${driver.name}</h3>
-                          <p class="text-sm text-secondary mt-1">Driver ID: ${driver.driver_uid || `#${driver.id}`}</p>
+                          <h3 class="text-2xl font-bold text-black dark:text-white">${driver.name}</h3>
+                          <p class="text-sm text-black dark:text-gray-200 mt-1 font-semibold">Driver ID: ${driver.driver_uid || `#${driver.id}`}</p>
                       </div>
                       <div class="text-right">
                           ${docsStatus}
@@ -1822,41 +1837,41 @@ document.addEventListener('DOMContentLoaded', () => {
                   <div class="grid md:grid-cols-3 gap-6">
                       <!-- Left Column: Profile -->
                       <div class="space-y-4">
-                          <div class="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                              <img src="/${driver.profile_picture}" class="rounded-full w-24 h-24 mx-auto border-4 border-white shadow-lg object-cover" onerror="this.src='/static/img/default_avatar.png'">
-                              <h4 class="text-lg font-bold mt-3">${driver.name}</h4>
+                          <div class="text-center p-4 bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 shadow-sm">
+                              <img src="/${driver.profile_picture}" class="rounded-full w-24 h-24 mx-auto border-4 border-white dark:border-gray-700 shadow-lg object-cover" onerror="this.src='/static/img/default_avatar.png'">
+                              <h4 class="text-lg font-bold mt-3 text-black dark:text-white">${driver.name}</h4>
                           </div>
                           
-                          <div class="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                              <h5 class="font-semibold mb-2 text-primary">Contact Information</h5>
-                              <div class="space-y-2 text-sm">
-                                  <p><strong>Phone:</strong> <a href="tel:${driver.phone_number}" class="text-blue-600 hover:underline">${driver.phone_number}</a></p>
-                                  ${driver.email ? `<p><strong>Email:</strong> <a href="mailto:${driver.email}" class="text-blue-600 hover:underline">${driver.email}</a></p>` : '<p><strong>Email:</strong> <span class="text-gray-400 italic">Not provided</span></p>'}
-                                  <p><strong>Registered:</strong> ${driver.join_date || 'N/A'}</p>
+                          <div class="p-4 bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 shadow-sm">
+                              <h5 class="font-bold mb-3 text-black dark:text-white text-base">Contact Information</h5>
+                              <div class="space-y-2.5 text-sm">
+                                  <p class="text-black dark:text-white"><strong class="font-bold text-black dark:text-white">Phone:</strong> <a href="tel:${driver.phone_number}" class="text-blue-700 dark:text-blue-300 hover:underline font-semibold ml-2">${driver.phone_number}</a></p>
+                                  ${driver.email ? `<p class="text-black dark:text-white"><strong class="font-bold text-black dark:text-white">Email:</strong> <a href="mailto:${driver.email}" class="text-blue-700 dark:text-blue-300 hover:underline font-semibold ml-2">${driver.email}</a></p>` : '<p class="text-black dark:text-white"><strong class="font-bold text-black dark:text-white">Email:</strong> <span class="text-gray-600 dark:text-gray-300 italic ml-2 font-medium">Not provided</span></p>'}
+                                  <p class="text-black dark:text-white"><strong class="font-bold text-black dark:text-white">Registered:</strong> <span class="text-black dark:text-white ml-2 font-semibold">${driver.join_date || 'N/A'}</span></p>
                               </div>
                           </div>
                       </div>
                       
                       <!-- Middle Column: Vehicle Info -->
                       <div class="space-y-4">
-                          <div class="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                              <h5 class="font-semibold mb-3 text-primary">Vehicle Information</h5>
-                              <div class="space-y-2 text-sm">
+                          <div class="p-4 bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 shadow-sm">
+                              <h5 class="font-bold mb-3 text-black dark:text-white text-base">Vehicle Information</h5>
+                              <div class="space-y-2.5 text-sm">
                                   <div class="flex justify-between">
-                                      <span class="text-secondary">Type:</span>
-                                      <span class="font-medium">${driver.vehicle_type}</span>
+                                      <span class="text-black dark:text-gray-200 font-bold">Type:</span>
+                                      <span class="font-bold text-black dark:text-white">${driver.vehicle_type}</span>
                                   </div>
                                   <div class="flex justify-between">
-                                      <span class="text-secondary">Details:</span>
-                                      <span class="font-medium">${driver.vehicle_details || 'N/A'}</span>
+                                      <span class="text-black dark:text-gray-200 font-bold">Details:</span>
+                                      <span class="font-bold text-black dark:text-white">${driver.vehicle_details || 'N/A'}</span>
                                   </div>
                                   <div class="flex justify-between">
-                                      <span class="text-secondary">Plate Number:</span>
-                                      <span class="font-medium">${driver.vehicle_plate_number || '<span class="text-gray-400 italic">Not provided</span>'}</span>
+                                      <span class="text-black dark:text-gray-200 font-bold">Plate Number:</span>
+                                      <span class="font-bold text-black dark:text-white">${driver.vehicle_plate_number || '<span class="text-gray-600 dark:text-gray-300 italic font-medium">Not provided</span>'}</span>
                                   </div>
                                   <div class="flex justify-between">
-                                      <span class="text-secondary">License Info:</span>
-                                      <span class="font-medium">${driver.license_info || '<span class="text-gray-400 italic">Not provided</span>'}</span>
+                                      <span class="text-black dark:text-gray-200 font-bold">License Info:</span>
+                                      <span class="font-bold text-black dark:text-white">${driver.license_info || '<span class="text-gray-600 dark:text-gray-300 italic font-medium">Not provided</span>'}</span>
                                   </div>
                               </div>
                           </div>
@@ -1864,33 +1879,33 @@ document.addEventListener('DOMContentLoaded', () => {
                       
                       <!-- Right Column: Documents -->
                       <div class="space-y-4">
-                          <div class="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                              <h5 class="font-semibold mb-3 text-primary">Uploaded Documents</h5>
+                          <div class="p-4 bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 shadow-sm">
+                              <h5 class="font-bold mb-3 text-black dark:text-white text-base">Uploaded Documents</h5>
                               <div class="space-y-3">
-                                  <div class="flex items-center justify-between p-2 rounded ${driver.license_document ? 'bg-green-50 dark:bg-green-900/20' : 'bg-red-50 dark:bg-red-900/20'}">
-                                      <span class="text-sm font-medium">License Document</span>
+                                  <div class="flex items-center justify-between p-3 rounded-lg border-2 ${driver.license_document ? 'bg-green-50 dark:bg-green-900/30 border-green-300 dark:border-green-700' : 'bg-red-50 dark:bg-red-900/30 border-red-300 dark:border-red-700'} shadow-sm">
+                                      <span class="text-sm font-bold text-black dark:text-white">License Document</span>
                                       ${docLink(driver.license_document, 'View')}
                                   </div>
-                                  <div class="flex items-center justify-between p-2 rounded ${driver.vehicle_document ? 'bg-green-50 dark:bg-green-900/20' : 'bg-red-50 dark:bg-red-900/20'}">
-                                      <span class="text-sm font-medium">Vehicle Registration</span>
+                                  <div class="flex items-center justify-between p-3 rounded-lg border-2 ${driver.vehicle_document ? 'bg-green-50 dark:bg-green-900/30 border-green-300 dark:border-green-700' : 'bg-red-50 dark:bg-red-900/30 border-red-300 dark:border-red-700'} shadow-sm">
+                                      <span class="text-sm font-bold text-black dark:text-white">Vehicle Registration</span>
                                       ${docLink(driver.vehicle_document, 'View')}
                                   </div>
-                                  <div class="flex items-center justify-between p-2 rounded ${driver.plate_photo ? 'bg-green-50 dark:bg-green-900/20' : 'bg-gray-100 dark:bg-gray-700'}">
-                                      <span class="text-sm font-medium">Plate Photo</span>
+                                  <div class="flex items-center justify-between p-3 rounded-lg border-2 ${driver.plate_photo ? 'bg-green-50 dark:bg-green-900/30 border-green-300 dark:border-green-700' : 'bg-gray-100 dark:bg-gray-700 border-gray-400 dark:border-gray-600'} shadow-sm">
+                                      <span class="text-sm font-bold text-black dark:text-white">Plate Photo</span>
                                       ${docLink(driver.plate_photo, 'View')}
                                   </div>
-                                  <div class="flex items-center justify-between p-2 rounded ${driver.id_document ? 'bg-green-50 dark:bg-green-900/20' : 'bg-gray-100 dark:bg-gray-700'}">
-                                      <span class="text-sm font-medium">ID Document</span>
+                                  <div class="flex items-center justify-between p-3 rounded-lg border-2 ${driver.id_document ? 'bg-green-50 dark:bg-green-900/30 border-green-300 dark:border-green-700' : 'bg-gray-100 dark:bg-gray-700 border-gray-400 dark:border-gray-600'} shadow-sm">
+                                      <span class="text-sm font-bold text-black dark:text-white">ID Document</span>
                                       ${docLink(driver.id_document, 'View')}
                                   </div>
                               </div>
-                              <p class="text-xs text-secondary mt-3">License and Vehicle Registration are required for approval.</p>
+                              <p class="text-xs text-black dark:text-gray-200 mt-3 font-bold">License and Vehicle Registration are required for approval.</p>
                           </div>
                       </div>
                   </div>
                   
                   <!-- Action Buttons -->
-                  <div class="flex gap-4 pt-4 border-t">
+                  <div class="flex gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                       <button onclick="approveDriver(${driver.id})" class="btn-modern btn-success flex-1 py-3 text-lg font-semibold">
                           <svg class="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
@@ -1922,16 +1937,40 @@ document.addEventListener('DOMContentLoaded', () => {
       };
       
       window.rejectDriver = async (driverId) => {
-          const reason = prompt('Enter rejection reason (optional):');
-          const result = await postData('drivers/reject', { driver_id: driverId, reason: reason || '' });
+          // Store driver ID for form submission
+          window.currentRejectDriverId = driverId;
+          // Reset form
+          document.getElementById('reject-driver-form').reset();
+          document.querySelector('input[name="rejection_reason"][value="Incomplete Documentation"]').checked = true;
+          document.getElementById('rejection-custom-reason').value = '';
+          showModal('reject-driver-modal');
+      };
+      
+      // Handle rejection form submission
+      document.getElementById('reject-driver-form')?.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const driverId = window.currentRejectDriverId;
+          if (!driverId) return;
+          
+          const selectedReason = document.querySelector('input[name="rejection_reason"]:checked')?.value || 'Rejected by admin';
+          const customReason = document.getElementById('rejection-custom-reason').value.trim();
+          
+          // Combine selected reason with custom notes
+          let finalReason = selectedReason;
+          if (customReason) {
+              finalReason = selectedReason === 'Other' ? customReason : `${selectedReason}: ${customReason}`;
+          }
+          
+          const result = await postData('drivers/reject', { driver_id: driverId, reason: finalReason });
           if (result && result.success) {
               showSuccessNotification('Driver rejected.');
               hideModals();
+              window.currentRejectDriverId = null;
               await refreshAllData();
           } else {
               showErrorNotification(result?.error || 'Failed to reject driver');
           }
-      };
+      });
       
       // Event listeners for pending drivers
       document.getElementById('pending-drivers-table-body')?.addEventListener('click', async e => {

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../../../shared/data/api_client.dart';
-import '../../../driver/presentation/screens/driver_home_screen.dart';
+import '../../../driver/presentation/screens/driver_main_screen.dart';
 import '../../../driver/data/driver_repository.dart';
+import '../providers/auth_provider.dart';
 
 class DriverAuthScreen extends ConsumerStatefulWidget {
   const DriverAuthScreen({super.key});
@@ -81,25 +81,43 @@ class _DriverAuthScreenState extends ConsumerState<DriverAuthScreen>
 
   Future<void> _loginDriver() async {
     if (!_loginFormKey.currentState!.validate()) return;
+    
+    final authNotifier = ref.read(authProvider.notifier);
     setState(() => _loginLoading = true);
+    
     try {
-      final res = await _repo.loginDriver(
+      await authNotifier.driverLogin(
         identifier: _loginIdentifierController.text.trim(),
         password: _loginPasswordController.text,
       );
+      
       if (!mounted) return;
       
-      await ApiClient().setUserId(res['driver_id']);
+      // Check for errors
+      final authState = ref.read(authProvider);
+      if (authState.error != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(authState.error!),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
       
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const DriverHomeScreen()),
-        (route) => false,
-      );
+      // If login successful, navigation will be handled by AuthWrapper
+      // Just pop back or navigate to main
+      if (authState.isAuthenticated && authState.user != null) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const DriverMainScreen()),
+          (route) => false,
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Login failed: ${e.toString().replaceAll('AuthException: ', '').replaceAll('NetworkException: ', '')}'),
+          content: Text('Login failed: ${e.toString().replaceAll('Exception: ', '')}'),
           backgroundColor: Colors.red,
         ),
       );

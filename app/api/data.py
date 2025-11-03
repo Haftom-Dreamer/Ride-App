@@ -89,55 +89,66 @@ def commission_settings():
 @admin_required
 def get_dashboard_stats():
     """Get dashboard statistics"""
-    # Calculate total revenue from completed rides
-    total_revenue = db.session.query(func.sum(Ride.fare)).filter(Ride.status == 'Completed').scalar() or 0
-    
-    # Count all rides
-    total_rides = Ride.query.count()
-    
-    # Count drivers by status
-    drivers_online = Driver.query.filter(Driver.status == 'Available').count()
-    total_drivers = Driver.query.count()
-    pending_drivers = Driver.query.filter(Driver.status == 'Pending').count()
-    
-    # Count passengers
-    total_passengers = Passenger.query.count()
-    
-    # Count rides by status
-    pending_requests = Ride.query.filter(Ride.status == 'Requested').count()
-    active_rides = Ride.query.filter(Ride.status.in_(['Assigned', 'On Trip'])).count()
-    completed_rides = Ride.query.filter(Ride.status == 'Completed').count()
-    
-    # Calculate today's revenue
-    today = datetime.now(timezone.utc).date()
-    today_start = datetime.combine(today, datetime.min.time()).replace(tzinfo=timezone.utc)
-    today_end = datetime.combine(today, datetime.max.time()).replace(tzinfo=timezone.utc)
-    
-    today_revenue = db.session.query(func.sum(Ride.fare)).filter(
-        Ride.status == 'Completed',
-        Ride.request_time >= today_start,
-        Ride.request_time <= today_end
-    ).scalar() or 0
-    
-    # Count support tickets
-    from app.models import SupportTicket
-    open_tickets = SupportTicket.query.filter(SupportTicket.status == 'Open').count()
-    total_tickets = SupportTicket.query.count()
-    
-    return jsonify({
-        'total_revenue': round(float(total_revenue), 2),
-        'total_rides': total_rides,
-        'drivers_online': drivers_online,
-        'total_drivers': total_drivers,
-        'pending_drivers': pending_drivers,
-        'total_passengers': total_passengers,
-        'pending_requests': pending_requests,
-        'active_rides': active_rides,
-        'completed_rides': completed_rides,
-        'today_revenue': round(float(today_revenue), 2),
-        'open_tickets': open_tickets,
-        'total_tickets': total_tickets
-    })
+    try:
+        # Calculate total revenue from completed rides
+        total_revenue = db.session.query(func.sum(Ride.fare)).filter(Ride.status == 'Completed').scalar() or 0
+        
+        # Count all rides
+        total_rides = Ride.query.count()
+        
+        # Count drivers by status
+        drivers_online = Driver.query.filter(Driver.status == 'Available').count()
+        total_drivers = Driver.query.count()
+        pending_drivers = Driver.query.filter(Driver.status == 'Pending').count()
+        
+        # Count passengers
+        total_passengers = Passenger.query.count()
+        
+        # Count rides by status
+        pending_requests = Ride.query.filter(Ride.status == 'Requested').count()
+        active_rides = Ride.query.filter(Ride.status.in_(['Assigned', 'On Trip'])).count()
+        completed_rides = Ride.query.filter(Ride.status == 'Completed').count()
+        
+        # Calculate today's revenue
+        today = datetime.now(timezone.utc).date()
+        today_start = datetime.combine(today, datetime.min.time()).replace(tzinfo=timezone.utc)
+        today_end = datetime.combine(today, datetime.max.time()).replace(tzinfo=timezone.utc)
+        
+        today_revenue = db.session.query(func.sum(Ride.fare)).filter(
+            Ride.status == 'Completed',
+            Ride.request_time >= today_start,
+            Ride.request_time <= today_end
+        ).scalar() or 0
+        
+        # Count support tickets
+        try:
+            from app.models import SupportTicket
+            open_tickets = SupportTicket.query.filter(SupportTicket.status == 'Open').count()
+            total_tickets = SupportTicket.query.count()
+        except Exception:
+            # If SupportTicket model doesn't exist or has issues, use defaults
+            open_tickets = 0
+            total_tickets = 0
+        
+        return jsonify({
+            'total_revenue': round(float(total_revenue), 2),
+            'total_rides': total_rides,
+            'drivers_online': drivers_online,
+            'total_drivers': total_drivers,
+            'pending_drivers': pending_drivers,
+            'total_passengers': total_passengers,
+            'pending_requests': pending_requests,
+            'active_rides': active_rides,
+            'completed_rides': completed_rides,
+            'today_revenue': round(float(today_revenue), 2),
+            'open_tickets': open_tickets,
+            'total_tickets': total_tickets
+        })
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        current_app.logger.error(f"Error getting dashboard stats: {str(e)}\n{error_trace}")
+        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
 
 # --- Ride Data ---
 @api.route('/pending-rides')
@@ -172,29 +183,61 @@ def get_pending_rides():
 @admin_required
 def get_active_rides():
     """Get active rides (assigned or in progress)"""
-    rides = Ride.query.filter(
-        Ride.status.in_(['Assigned', 'On Trip'])
-    ).options(
-        db.joinedload(Ride.passenger),
-        db.joinedload(Ride.driver)
-    ).order_by(Ride.request_time.desc()).all()
-    
-    rides_data = []
-    for ride in rides:
-        rides_data.append({
-            'id': ride.id,
-            'user_name': ride.passenger.username,
-            'driver_name': ride.driver.name if ride.driver else "N/A",
-            'dest_address': ride.dest_address,
-            'status': ride.status,
-            'request_time': to_eat(ride.request_time).strftime('%Y-%m-%d %H:%M'),
-            'pickup_lat': ride.pickup_lat,
-            'pickup_lon': ride.pickup_lon,
-            'dest_lat': ride.dest_lat,
-            'dest_lon': ride.dest_lon
-        })
-    
-    return jsonify(rides_data)
+    try:
+        rides = Ride.query.filter(
+            Ride.status.in_(['Assigned', 'On Trip'])
+        ).options(
+            db.joinedload(Ride.passenger),
+            db.joinedload(Ride.driver)
+        ).order_by(Ride.request_time.desc()).all()
+        
+        rides_data = []
+        for ride in rides:
+            try:
+                user_name = ride.passenger.username if ride.passenger and ride.passenger.username else "N/A"
+                driver_name = ride.driver.name if ride.driver and ride.driver.name else "N/A"
+                dest_address = ride.dest_address if ride.dest_address else "N/A"
+                request_time_str = "N/A"
+                if ride.request_time:
+                    try:
+                        request_time_str = to_eat(ride.request_time).strftime('%Y-%m-%d %H:%M')
+                    except Exception:
+                        request_time_str = "N/A"
+                
+                rides_data.append({
+                    'id': ride.id,
+                    'user_name': user_name,
+                    'driver_name': driver_name,
+                    'dest_address': dest_address,
+                    'status': ride.status if ride.status else "Unknown",
+                    'request_time': request_time_str,
+                    'pickup_lat': ride.pickup_lat,
+                    'pickup_lon': ride.pickup_lon,
+                    'dest_lat': ride.dest_lat,
+                    'dest_lon': ride.dest_lon
+                })
+            except Exception as ride_error:
+                current_app.logger.warning(f"Error processing active ride {ride.id}: {ride_error}")
+                # Add minimal data for this ride
+                rides_data.append({
+                    'id': ride.id,
+                    'user_name': "Error",
+                    'driver_name': "N/A",
+                    'dest_address': "N/A",
+                    'status': ride.status if ride.status else "Unknown",
+                    'request_time': "N/A",
+                    'pickup_lat': ride.pickup_lat,
+                    'pickup_lon': ride.pickup_lon,
+                    'dest_lat': ride.dest_lat,
+                    'dest_lon': ride.dest_lon
+                })
+        
+        return jsonify(rides_data)
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        current_app.logger.error(f"Error getting active rides: {str(e)}\n{error_trace}")
+        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
 
 @api.route('/all-rides-data')
 @admin_required
@@ -212,7 +255,7 @@ def get_all_rides_data():
         if ride_ids:
             feedbacks = Feedback.query.filter(Feedback.ride_id.in_(ride_ids)).all()
             feedbacks_dict = {fb.ride_id: fb for fb in feedbacks}
-
+        
         rides_data = []
         for ride in rides:
             try:
@@ -283,7 +326,7 @@ def get_all_rides_data():
                     'rating': None,
                     'request_time': "N/A"
                 })
-
+        
         current_app.logger.info(f"Successfully processed {len(rides_data)} rides")
         return jsonify(rides_data)
     except Exception as e:
@@ -570,33 +613,89 @@ def get_unread_feedback_count():
 def get_all_feedback():
     """Get all feedback with ride and passenger details"""
     try:
-        feedbacks = Feedback.query.options(
-            db.joinedload(Feedback.ride).joinedload(Ride.passenger),
-            db.joinedload(Feedback.ride).joinedload(Ride.driver)
-        ).order_by(Feedback.submitted_at.desc()).all()
+        # Query feedbacks without relationship loading since Feedback model doesn't have a ride relationship
+        feedbacks = Feedback.query.order_by(Feedback.submitted_at.desc()).all()
         
         feedback_data = []
         for fb in feedbacks:
-            if fb.ride:
+            try:
+                # Query ride directly using ride_id
+                ride = Ride.query.options(
+                    db.joinedload(Ride.passenger),
+                    db.joinedload(Ride.driver)
+                ).filter_by(id=fb.ride_id).first()
+                
+                passenger_name = 'N/A'
+                driver_name = 'N/A'
+                pickup_address = 'N/A'
+                dest_address = 'N/A'
+                
+                if ride:
+                    if ride.passenger:
+                        passenger_name = ride.passenger.username if ride.passenger.username else 'N/A'
+                    
+                    if ride.driver:
+                        driver_name = ride.driver.name if ride.driver.name else 'N/A'
+                    
+                    if ride.pickup_address:
+                        pickup_address = ride.pickup_address
+                    
+                    if ride.dest_address:
+                        dest_address = ride.dest_address
+                
+                submitted_at_str = 'N/A'
+                if fb.submitted_at:
+                    try:
+                        submitted_at_str = to_eat(fb.submitted_at).strftime('%b %d, %Y at %I:%M %p')
+                    except Exception:
+                        submitted_at_str = 'N/A'
+                
                 feedback_data.append({
                     'id': fb.id,
                     'ride_id': fb.ride_id,
-                    'passenger_name': fb.ride.passenger.username if fb.ride.passenger else 'N/A',
-                    'driver_name': fb.ride.driver.name if fb.ride.driver else 'N/A',
+                    'passenger_name': passenger_name,
+                    'driver_name': driver_name,
                     'rating': fb.rating,
                     'comment': fb.comment,
-                    'feedback_type': fb.feedback_type,
+                    'feedback_type': fb.feedback_type if fb.feedback_type else 'General',
                     'details': fb.details,
-                    'is_resolved': fb.is_resolved,
-                    'submitted_at': to_eat(fb.submitted_at).strftime('%b %d, %Y at %I:%M %p') if fb.submitted_at else 'N/A',
-                    'pickup_address': fb.ride.pickup_address,
-                    'dest_address': fb.ride.dest_address
+                    'is_resolved': fb.is_resolved if fb.is_resolved is not None else False,
+                    'submitted_at': submitted_at_str,
+                    'pickup_address': pickup_address,
+                    'dest_address': dest_address
+                })
+            except Exception as fb_error:
+                current_app.logger.warning(f"Error processing feedback {fb.id}: {fb_error}")
+                # Still add minimal feedback data
+                submitted_at_str = 'N/A'
+                if fb.submitted_at:
+                    try:
+                        submitted_at_str = to_eat(fb.submitted_at).strftime('%b %d, %Y at %I:%M %p')
+                    except Exception:
+                        submitted_at_str = 'N/A'
+                
+                feedback_data.append({
+                    'id': fb.id,
+                    'ride_id': fb.ride_id,
+                    'passenger_name': 'Error',
+                    'driver_name': 'N/A',
+                    'rating': fb.rating,
+                    'comment': fb.comment,
+                    'feedback_type': fb.feedback_type if fb.feedback_type else 'General',
+                    'details': fb.details,
+                    'is_resolved': fb.is_resolved if fb.is_resolved is not None else False,
+                    'submitted_at': submitted_at_str,
+                    'pickup_address': 'N/A',
+                    'dest_address': 'N/A'
                 })
         
         return jsonify(feedback_data)
         
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        import traceback
+        error_trace = traceback.format_exc()
+        current_app.logger.error(f"Error getting all feedback: {str(e)}\n{error_trace}")
+        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
 
 @api.route('/analytics-data')
 @admin_required

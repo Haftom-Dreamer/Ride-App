@@ -160,9 +160,15 @@ class ApiClient {
         final path = e.requestOptions.path;
         
         if (statusCode == 401) {
-          // Preserve meaningful message for login endpoint
-          if (path.contains('/auth/passenger/login')) {
-            return AuthException('Invalid phone number or password');
+          // Preserve meaningful message for login endpoints
+          if (path.contains('/auth/passenger/login') || path.contains('/api/driver/login')) {
+            // Use server error message if available, otherwise use generic message
+            final errorMessage = message != 'Server error' 
+                ? message 
+                : (path.contains('/api/driver/login') 
+                    ? 'Invalid phone number, Driver ID, or password'
+                    : 'Invalid phone number or password');
+            return AuthException(errorMessage);
           }
           clearAuthToken();
           return AuthException('Session expired. Please login again.');

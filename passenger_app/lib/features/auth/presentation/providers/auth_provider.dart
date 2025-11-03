@@ -217,4 +217,42 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
     }
   }
+
+  Future<void> driverLogin({
+    required String identifier,
+    required String password,
+  }) async {
+    state = state.copyWith(isLoading: true, error: null);
+
+    try {
+      final user = await _authRepository.driverLogin(
+        identifier: identifier,
+        password: password,
+      );
+
+      state = state.copyWith(
+        user: user,
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+      );
+    } catch (e) {
+      // Trust repository message; minimal connectivity fallback
+      String message = e.toString();
+      if (message.startsWith('Exception: ')) {
+        message = message.substring('Exception: '.length);
+      }
+      if (message.contains('Network error') ||
+          message.contains('Connection refused')) {
+        message = 'Network error. Please check your connection';
+      }
+
+      state = state.copyWith(
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: message,
+      );
+    }
+  }
 }
