@@ -180,6 +180,27 @@ class DriverRepository {
       return null;
     }
   }
+
+  /// Mark driver as arrived at pickup
+  Future<void> markArrived(int rideId) async {
+    await _apiClient.post('/api/driver/ride/arrived', data: {
+      'ride_id': rideId,
+    });
+  }
+
+  /// Start the trip (passenger picked up)
+  Future<void> startTrip(int rideId) async {
+    await _apiClient.post('/api/driver/ride/start', data: {
+      'ride_id': rideId,
+    });
+  }
+
+  /// End the trip (passenger dropped off)
+  Future<void> endTrip(int rideId) async {
+    await _apiClient.post('/api/driver/ride/end', data: {
+      'ride_id': rideId,
+    });
+  }
 }
 
 

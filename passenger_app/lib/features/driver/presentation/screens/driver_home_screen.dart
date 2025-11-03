@@ -2,14 +2,17 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../data/driver_repository.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../widgets/driver_stats_widget.dart';
 import '../widgets/today_earnings_widget.dart';
 import '../widgets/ride_offer_card.dart';
+import '../widgets/active_trip_card.dart';
 import '../providers/ride_offer_provider.dart';
 import '../screens/driver_offer_dialog.dart';
 import '../screens/available_rides_screen.dart';
+import '../screens/active_trip_screen.dart';
 
 class DriverHomeScreen extends ConsumerStatefulWidget {
   const DriverHomeScreen({super.key});
@@ -24,6 +27,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
   Timer? _locationTimer;
   bool _updating = false;
   Map<String, dynamic>? _profile;
+  Map<String, dynamic>? _activeRide;
   
   // Today's stats (will be fetched from earnings API)
   int _todayRides = 0;
@@ -35,6 +39,12 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
     super.initState();
     _loadProfile();
     _loadTodayStats();
+    _loadActiveRide();
+    
+    // Refresh active ride periodically
+    Timer.periodic(const Duration(seconds: 10), (_) {
+      if (mounted) _loadActiveRide();
+    });
   }
 
   Future<void> _loadProfile() async {
@@ -65,6 +75,19 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
       }
     } catch (_) {
       // Ignore errors for now
+    }
+  }
+
+  Future<void> _loadActiveRide() async {
+    try {
+      final activeRide = await _repo.getActiveRide();
+      if (mounted) {
+        setState(() {
+          _activeRide = activeRide;
+        });
+      }
+    } catch (_) {
+      // Ignore errors
     }
   }
 
@@ -111,6 +134,31 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
     } catch (_) {}
   }
 
+  Future<void> _openNavigation(double lat, double lon, String? address) async {
+    // Try Google Maps first
+    final googleMapsUrl = Uri.parse(
+      'https://www.google.com/maps/dir/?api=1&destination=$lat,$lon&destination_place_id=$address',
+    );
+    
+    if (await canLaunchUrl(googleMapsUrl)) {
+      await launchUrl(googleMapsUrl, mode: LaunchMode.externalApplication);
+    } else {
+      // Fallback to generic maps URL
+      final mapsUrl = Uri.parse('geo:$lat,$lon?q=$lat,$lon($address)');
+      if (await canLaunchUrl(mapsUrl)) {
+        await launchUrl(mapsUrl, mode: LaunchMode.externalApplication);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Could not open navigation app'),
+            ),
+          );
+        }
+      }
+    }
+  }
+
   @override
   void dispose() {
     _locationTimer?.cancel();
@@ -131,7 +179,12 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
           await Future.wait([
             _loadProfile(),
             _loadTodayStats(),
+            _loadActiveRide(),
           ]);
+          // Also refresh ride offers if online
+          if (_online && mounted) {
+            ref.read(rideOfferProvider.notifier).refresh();
+          }
         },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -218,36 +271,49 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Active Trip Section (placeholder - will be implemented in Task 4)
-              if (_profile != null && _profile!['status'] == 'On Trip')
-                Card(
-                  color: Colors.blue.shade50,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(Icons.directions_car, color: Colors.blue.shade700),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Active Trip',
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        const Text('Trip details will be shown here'),
-                        // Will be replaced with ActiveTripCard in Task 4
-                      ],
-                    ),
-                  ),
+              // Active Trip Section
+              if (_activeRide != null) ...[
+                ActiveTripCard(
+                  ride: _activeRide!,
+                  onViewDetails: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => ActiveTripScreen(ride: _activeRide!),
+                      ),
+                    );
+                  },
+                  onNavigate: () {
+                    final status = _activeRide!['status'] as String?;
+                    final pickupLat = _activeRide!['pickup_lat'] as num?;
+                    final pickupLon = _activeRide!['pickup_lon'] as num?;
+                    final destLat = _activeRide!['dest_lat'] as num?;
+                    final destLon = _activeRide!['dest_lon'] as num?;
+                    final pickupAddress = _activeRide!['pickup_address'] as String?;
+                    final destAddress = _activeRide!['dest_address'] as String?;
+                    
+                    if (status == 'Assigned' || status == 'Driver Arriving') {
+                      // Navigate to pickup
+                      if (pickupLat != null && pickupLon != null) {
+                        _openNavigation(
+                          pickupLat.toDouble(),
+                          pickupLon.toDouble(),
+                          pickupAddress ?? 'Pickup',
+                        );
+                      }
+                    } else if (status == 'On Trip') {
+                      // Navigate to destination
+                      if (destLat != null && destLon != null) {
+                        _openNavigation(
+                          destLat.toDouble(),
+                          destLon.toDouble(),
+                          destAddress ?? 'Destination',
+                        );
+                      }
+                    }
+                  },
                 ),
-              
-              const SizedBox(height: 24),
+                const SizedBox(height: 24),
+              ],
 
               // Available Rides Section
               Consumer(
