@@ -329,12 +329,26 @@ def set_availability():
     if not driver:
         return jsonify({'error': 'Unauthorized'}), 401
     data = request.get_json() or {}
-    status = (data.get('status') or '').strip().capitalize()
-    if status not in ['Online', 'Offline']:
-        return jsonify({'error': 'Invalid status'}), 400
-    driver.status = status
+    status_param = (data.get('status') or '').strip()
+    
+    # Map various inputs to correct status
+    status_lower = status_param.lower()
+    if status_lower in ['online', 'available']:
+        new_status = 'Available'
+    elif status_lower == 'offline':
+        new_status = 'Offline'
+    elif status_param in ['Available', 'Offline']:
+        new_status = status_param
+    else:
+        return jsonify({'error': f'Invalid status: {status_param}. Must be Available/Online or Offline'}), 400
+    
+    # Only update if not on trip
+    if driver.status == 'On Trip':
+        return jsonify({'error': 'Cannot change availability while on trip'}), 400
+    
+    driver.status = new_status
     db.session.commit()
-    return jsonify({'message': 'Availability updated', 'status': status}), 200
+    return jsonify({'message': 'Availability updated', 'status': new_status}), 200
 
 @driver_api.route('/location', methods=['POST'])
 def update_location():
@@ -477,15 +491,16 @@ def get_available_rides():
         return jsonify({'error': 'Unauthorized'}), 401
     
     # Only show available rides if driver is online
-    if driver.status not in ['Available', 'Offline']:
+    if driver.status not in ['Available', 'Online']:
         return jsonify([]), 200
     
     # Get rides with status 'Requested' that match driver's vehicle type
+    # Filter by vehicle type - driver only sees rides matching their vehicle type
     rides = Ride.query.filter_by(status='Requested').all()
     
-    # Filter by vehicle type if driver has a specific vehicle type
+    # Filter by vehicle type - driver only sees rides matching their vehicle type
     if driver.vehicle_type:
-        rides = [r for r in rides if r.vehicle_type == driver.vehicle_type or r.vehicle_type == 'Any']
+        rides = [r for r in rides if r.vehicle_type == driver.vehicle_type]
     
     rides_data = []
     for ride in rides:
@@ -640,5 +655,200 @@ def get_ride_chat(ride_id: int):
             'created_at': m.created_at.isoformat() if m.created_at else None,
         } for m in msgs
     ]), 200
+
+@driver_api.route('/ride/<int:ride_id>/chat', methods=['POST'])
+def send_ride_chat(ride_id: int):
+    """Send a chat message for a ride (driver side)"""
+    driver = resolve_current_driver()
+    if not driver:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    ride = Ride.query.filter_by(id=ride_id, driver_id=driver.id).first()
+    if not ride:
+        return jsonify({'error': 'Ride not found'}), 404
+    
+    data = request.get_json() or {}
+    message = (data.get('message') or '').strip()
+    
+    if not message:
+        return jsonify({'error': 'Message is required'}), 400
+    
+    try:
+        chat_msg = ChatMessage(
+            ride_id=ride.id,
+            sender_role='driver',
+            sender_id=driver.id,
+            message=message,
+        )
+        db.session.add(chat_msg)
+        db.session.commit()
+        
+        # Send push notification to passenger
+        try:
+            from app.services.push import send_push_to_user
+            send_push_to_user(
+                'passenger',
+                ride.passenger_id,
+                'New message from driver',
+                message,
+                {
+                    'type': 'chat_message',
+                    'ride_id': ride.id,
+                    'message_id': chat_msg.id,
+                }
+            )
+        except Exception as e:
+            from flask import current_app
+            current_app.logger.error(f"Failed to send push notification: {e}")
+        
+        return jsonify({
+            'id': chat_msg.id,
+            'sender_role': chat_msg.sender_role,
+            'sender_id': chat_msg.sender_id,
+            'message': chat_msg.message,
+            'created_at': chat_msg.created_at.isoformat() if chat_msg.created_at else None,
+        }), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@driver_api.route('/support', methods=['POST'])
+def submit_support():
+    """Submit a support request or report"""
+    driver = resolve_current_driver()
+    if not driver:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    data = request.get_json() or {}
+    subject = (data.get('subject') or '').strip()
+    message = (data.get('message') or '').strip()
+    support_type = (data.get('type') or 'support').strip()
+    
+    if not subject or not message:
+        return jsonify({'error': 'Subject and message are required'}), 400
+    
+    try:
+        try:
+            from app.models import SupportTicket
+            ticket = SupportTicket(
+                user_type='driver',
+                user_id=driver.id,
+                subject=subject,
+                message=message,
+                status='Open',
+                ticket_type=support_type,
+            )
+            db.session.add(ticket)
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'message': 'Support request submitted successfully',
+                'ticket_id': ticket.id,
+            }), 201
+        except ImportError:
+            from flask import current_app
+            current_app.logger.info(
+                f"Driver {driver.id} support request: [{support_type}] {subject}: {message}"
+            )
+            return jsonify({
+                'success': True,
+                'message': 'Support request received. We will contact you soon.',
+            }), 201
+    except Exception as e:
+        db.session.rollback()
+        from flask import current_app
+        current_app.logger.error(f"Error submitting support request: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@driver_api.route('/dispatcher-messages', methods=['GET'])
+def get_dispatcher_messages():
+    """Get messages between dispatcher and this driver (two-way)"""
+    driver = resolve_current_driver()
+    if not driver:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    from app.models import DispatcherMessage
+    
+    # Get messages TO driver from dispatcher
+    from_dispatcher = DispatcherMessage.query.filter(
+        (DispatcherMessage.recipient_type == 'driver') &
+        (DispatcherMessage.recipient_id == driver.id) &
+        (DispatcherMessage.sender_type == 'admin')
+    ).all()
+    
+    # Get messages FROM driver to dispatcher
+    to_dispatcher = DispatcherMessage.query.filter(
+        (DispatcherMessage.recipient_type == 'dispatcher') &
+        (DispatcherMessage.recipient_id == 0) &
+        (DispatcherMessage.sender_type == 'driver') &
+        (DispatcherMessage.sender_id == driver.id)
+    ).all()
+    
+    # Combine and sort by created_at
+    all_messages = from_dispatcher + to_dispatcher
+    all_messages.sort(key=lambda m: m.created_at if m.created_at else datetime.min.replace(tzinfo=timezone.utc))
+    
+    messages_data = []
+    for m in all_messages[-50:]:  # Last 50 messages
+        sender_name = 'You'  # Default for driver's own messages
+        is_from_driver = m.sender_type == 'driver' and m.sender_id == driver.id
+        
+        if not is_from_driver:
+            if m.sender_admin:
+                sender_name = m.sender_admin.username
+            else:
+                sender_name = 'Dispatcher'
+        
+        messages_data.append({
+            'id': m.id,
+            'sender_type': m.sender_type,
+            'sender_name': sender_name,
+            'message': m.message,
+            'is_read': m.is_read,
+            'created_at': m.created_at.isoformat() if m.created_at else None,
+            'is_from_me': is_from_driver,
+        })
+    
+    return jsonify(messages_data), 200
+
+@driver_api.route('/dispatcher-messages', methods=['POST'])
+def send_to_dispatcher():
+    """Send message from driver to dispatcher"""
+    driver = resolve_current_driver()
+    if not driver:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    data = request.get_json() or {}
+    message = (data.get('message') or '').strip()
+    
+    if not message:
+        return jsonify({'error': 'Message is required'}), 400
+    
+    # Create a DispatcherMessage from driver to dispatcher
+    # We'll use a special format where recipient_type='dispatcher' and recipient_id=0
+    try:
+        from app.models import DispatcherMessage
+        
+        # Store driver message - recipient_type='dispatcher', recipient_id=0 means "to dispatcher"
+        msg = DispatcherMessage(
+            recipient_type='dispatcher',
+            recipient_id=0,
+            sender_type='driver',
+            sender_id=driver.id,
+            message=message,
+        )
+        db.session.add(msg)
+        db.session.commit()
+        
+        return jsonify({
+            'id': msg.id,
+            'success': True,
+            'message': msg.message,
+            'created_at': msg.created_at.isoformat() if msg.created_at else None,
+        }), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 
 

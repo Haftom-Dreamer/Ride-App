@@ -142,6 +142,10 @@ def assign_ride():
             return jsonify({'error': f'Ride is not available for assignment. Current status: {ride.status}'}), 400
         if driver.status != 'Available':
             return jsonify({'error': 'Driver is not available'}), 400
+        
+        # Check if driver's vehicle type matches ride's vehicle type
+        if ride.vehicle_type and driver.vehicle_type != ride.vehicle_type:
+            return jsonify({'error': f'Driver vehicle type ({driver.vehicle_type}) does not match ride vehicle type ({ride.vehicle_type})'}), 400
 
         # Assign driver to ride
         ride.driver_id = driver.id

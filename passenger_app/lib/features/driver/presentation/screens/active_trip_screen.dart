@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../data/driver_repository.dart';
+import 'driver_chat_screen.dart';
+import 'driver_ride_map_screen.dart';
 
 class ActiveTripScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic> ride;
@@ -303,12 +305,34 @@ class _ActiveTripScreenState extends ConsumerState<ActiveTripScreen> {
                               ],
                             ),
                           ),
-                          Text(
-                            fareStr,
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: Theme.of(context).colorScheme.primary,
+                          Column(
+                            children: [
+                              Text(
+                                fareStr,
+                                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: Theme.of(context).colorScheme.primary,
+                                    ),
+                              ),
+                              const SizedBox(height: 8),
+                              IconButton(
+                                onPressed: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => DriverChatScreen(
+                                        rideId: ride['id'] as int,
+                                        passengerName: passengerName,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(Icons.message),
+                                tooltip: 'Chat with passenger',
+                                style: IconButton.styleFrom(
+                                  backgroundColor: Theme.of(context).colorScheme.primaryContainer,
                                 ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -359,21 +383,50 @@ class _ActiveTripScreenState extends ConsumerState<ActiveTripScreen> {
                                             fontWeight: FontWeight.w600,
                                           ),
                                     ),
-                                    if (pickupLat != null && pickupLon != null)
-                                      TextButton.icon(
-                                        onPressed: () => _openNavigation(
-                                          pickupLat.toDouble(),
-                                          pickupLon.toDouble(),
-                                          pickupAddress,
-                                        ),
-                                        icon: const Icon(Icons.navigation, size: 16),
-                                        label: const Text('Navigate'),
-                                        style: TextButton.styleFrom(
-                                          padding: EdgeInsets.zero,
-                                          minimumSize: Size.zero,
-                                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                        ),
-                                      ),
+                                    Row(
+                                      children: [
+                                        if (pickupLat != null && pickupLon != null) ...[
+                                          TextButton.icon(
+                                            onPressed: () => _openNavigation(
+                                              pickupLat.toDouble(),
+                                              pickupLon.toDouble(),
+                                              pickupAddress,
+                                            ),
+                                            icon: const Icon(Icons.navigation, size: 16),
+                                            label: const Text('Navigate'),
+                                            style: TextButton.styleFrom(
+                                              padding: EdgeInsets.zero,
+                                              minimumSize: Size.zero,
+                                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          TextButton.icon(
+                                            onPressed: () {
+                                              Navigator.of(context).push(
+                                                MaterialPageRoute(
+                                                  builder: (_) => DriverRideMapScreen(
+                                                    pickupLat: pickupLat.toDouble(),
+                                                    pickupLon: pickupLon.toDouble(),
+                                                    pickupAddress: pickupAddress,
+                                                    destLat: destLat?.toDouble(),
+                                                    destLon: destLon?.toDouble(),
+                                                    destAddress: destAddress,
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                            icon: const Icon(Icons.map, size: 16),
+                                            label: const Text('View Map'),
+                                            style: TextButton.styleFrom(
+                                              padding: EdgeInsets.zero,
+                                              minimumSize: Size.zero,
+                                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
                                   ],
                                 ),
                               ),
@@ -409,21 +462,50 @@ class _ActiveTripScreenState extends ConsumerState<ActiveTripScreen> {
                                             fontWeight: FontWeight.w600,
                                           ),
                                     ),
-                                    if (destLat != null && destLon != null)
-                                      TextButton.icon(
-                                        onPressed: () => _openNavigation(
-                                          destLat.toDouble(),
-                                          destLon.toDouble(),
-                                          destAddress,
-                                        ),
-                                        icon: const Icon(Icons.navigation, size: 16),
-                                        label: const Text('Navigate'),
-                                        style: TextButton.styleFrom(
-                                          padding: EdgeInsets.zero,
-                                          minimumSize: Size.zero,
-                                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                        ),
-                                      ),
+                                    Row(
+                                      children: [
+                                        if (destLat != null && destLon != null) ...[
+                                          TextButton.icon(
+                                            onPressed: () => _openNavigation(
+                                              destLat.toDouble(),
+                                              destLon.toDouble(),
+                                              destAddress,
+                                            ),
+                                            icon: const Icon(Icons.navigation, size: 16),
+                                            label: const Text('Navigate'),
+                                            style: TextButton.styleFrom(
+                                              padding: EdgeInsets.zero,
+                                              minimumSize: Size.zero,
+                                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          TextButton.icon(
+                                            onPressed: () {
+                                              Navigator.of(context).push(
+                                                MaterialPageRoute(
+                                                  builder: (_) => DriverRideMapScreen(
+                                                    pickupLat: pickupLat?.toDouble() ?? 0,
+                                                    pickupLon: pickupLon?.toDouble() ?? 0,
+                                                    pickupAddress: pickupAddress,
+                                                    destLat: destLat.toDouble(),
+                                                    destLon: destLon.toDouble(),
+                                                    destAddress: destAddress,
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                            icon: const Icon(Icons.map, size: 16),
+                                            label: const Text('View Map'),
+                                            style: TextButton.styleFrom(
+                                              padding: EdgeInsets.zero,
+                                              minimumSize: Size.zero,
+                                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
                                   ],
                                 ),
                               ),

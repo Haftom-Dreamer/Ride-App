@@ -54,6 +54,11 @@
                         <span class="sidebar-link-text">Pending Rides</span>
                         <span class="sidebar-badge hidden" id="pending-rides-badge" style="background-color:#ef4444;color:#fff">0</span>
                     </a>
+                    <a href="#" class="sidebar-link flex items-center p-3 rounded-lg" data-pane="driver-map" title="Driver Map">
+                        <span class="icon-outline"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 6.75V15m6-6v8.25m.513 12.26C15.47 20.501 14.25 21 12.75 21c-3.314 0-6-2.686-6-6 0-1.593.622-3.038 1.636-4.112L12 3l5.364 7.888C18.378 11.962 19 13.407 19 15c0 1.5-.498 2.721-1.237 3.26z" /></svg></span>
+                        <span class="icon-solid"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9.69 18.933l.003.001C9.89 19.02 10 19 10 19s.002-.01.009-.062l-.062-.001-.062-.002-.001-.003C9.838 18.931 9.693 18.9 9.69 18.933zM2.016 5.36c.036 2.33-.698 4.894-2.016 6.653l-.001.002C.009 12.013 0 12 0 12s.002-.01.009-.062L2.016 5.36zm17.968 8.682l-.002-.003c-.044-2.33.687-4.894 2.016-6.653l.001-.002C22.009 5.987 22 6 22 6s-.002.01-.009.062l-2.007 6.982zm-8.99-6.636l.002.003c.044 2.33-.687 4.894-2.016 6.653l-.001.002C9.991 12.987 10 12 10 12s.002-.01.009-.062l2.007-6.982z" clip-rule="evenodd" /></svg></span>
+                        <span class="sidebar-link-text">Driver Map</span>
+                    </a>
                     
                 </div>
             </details>
@@ -867,6 +872,33 @@
                 <div class="card p-6 rounded-lg shadow">
                     <div class="flex justify-between items-center mb-4"><input type="text" id="ride-history-search" placeholder="{{ _('search_by_passenger_driver') }}" class="border p-2 rounded w-1/3"><div><button id="ride-history-prev" class="px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600">&lt; {{ _('prev') }}</button><span id="ride-history-page-info" class="mx-2 text-primary">{{ _('page') }} 1</span><button id="ride-history-next" class="px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600">{{ _('next') }} &gt;</button></div></div>
                     <table class="w-full text-left"><thead><tr class="border-b border-border"><th class="p-2">ID</th><th>Passenger</th><th>Driver</th><th>Fare</th><th>Status</th><th>Rating</th><th>Date</th><th>Actions</th></tr></thead><tbody id="rides-history-table-body"></tbody></table>
+                </div>
+            </div>
+
+            <div id="driver-map-pane" class="pane">
+                <div class="mb-4 flex items-center justify-between">
+                    <h3 class="text-xl font-bold">Driver Locations Map</h3>
+                    <button onclick="refreshDriverMap()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                        Refresh
+                    </button>
+                </div>
+                <div id="driver-map-container" style="height: 600px; width: 100%; border-radius: 8px; overflow: hidden;"></div>
+                <div class="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 shadow-sm">
+                    <h4 class="font-bold mb-3 text-black dark:text-white">Legend</h4>
+                    <div class="flex flex-wrap gap-4 text-sm">
+                        <div class="flex items-center gap-2 px-3 py-2 bg-white dark:bg-gray-700 rounded-lg shadow-sm">
+                            <div class="w-4 h-4 rounded-full bg-green-500 border-2 border-white dark:border-gray-600"></div>
+                            <span class="font-semibold text-black dark:text-white">Available</span>
+                        </div>
+                        <div class="flex items-center gap-2 px-3 py-2 bg-white dark:bg-gray-700 rounded-lg shadow-sm">
+                            <div class="w-4 h-4 rounded-full bg-blue-500 border-2 border-white dark:border-gray-600"></div>
+                            <span class="font-semibold text-black dark:text-white">On Trip</span>
+                        </div>
+                        <div class="flex items-center gap-2 px-3 py-2 bg-white dark:bg-gray-700 rounded-lg shadow-sm">
+                            <div class="w-4 h-4 rounded-full bg-gray-500 border-2 border-white dark:border-gray-600"></div>
+                            <span class="font-semibold text-black dark:text-white">Offline</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 

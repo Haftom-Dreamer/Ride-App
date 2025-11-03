@@ -198,6 +198,8 @@ def create_app(config_name=None):
     # Import API blueprints and all their routes BEFORE registering
     from app.api.passenger_api import passenger_api  # Import passenger API blueprint
     from app.api.driver_api import driver_api  # Driver API blueprint
+    from app.api.dispatcher_messaging import dispatcher_messaging  # Dispatcher messaging API
+    from app.api.driver_locations import driver_locations  # Driver locations API
     from app.api import api, init_limiter as api_init_limiter  # Import main API blueprint
     
     # Initialize limiter for blueprints
@@ -216,6 +218,8 @@ def create_app(config_name=None):
     app.register_blueprint(api, url_prefix='/api')  # Register main API blueprint
     app.register_blueprint(passenger_api, url_prefix='/api/passenger')  # Passenger API under /api/passenger
     app.register_blueprint(driver_api, url_prefix='/api/driver')  # Driver API under /api/driver
+    app.register_blueprint(dispatcher_messaging)  # Dispatcher messaging API
+    app.register_blueprint(driver_locations)  # Driver locations API
     app.register_blueprint(admin)
     app.register_blueprint(passenger)
     

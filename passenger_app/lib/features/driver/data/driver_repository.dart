@@ -12,7 +12,7 @@ class DriverRepository {
 
   Future<void> setAvailability(bool online) async {
     await _apiClient.post('/api/driver/availability', data: {
-      'status': online ? 'Online' : 'Offline',
+      'status': online ? 'Available' : 'Offline',
     });
   }
 
@@ -199,6 +199,72 @@ class DriverRepository {
   Future<void> endTrip(int rideId) async {
     await _apiClient.post('/api/driver/ride/end', data: {
       'ride_id': rideId,
+    });
+  }
+
+  /// Get chat messages for a ride
+  Future<List<Map<String, dynamic>>> getRideChat(int rideId) async {
+    try {
+      final res = await _apiClient.get('/api/driver/ride/$rideId/chat');
+      if (res.data is List) {
+        return (res.data as List).cast<Map<String, dynamic>>();
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  /// Send a chat message for a ride
+  Future<Map<String, dynamic>> sendRideChatMessage(int rideId, String message) async {
+    final res = await _apiClient.post('/api/driver/ride/$rideId/chat', data: {
+      'message': message,
+    });
+    return res.data as Map<String, dynamic>;
+  }
+
+  /// Upload profile picture
+  Future<String> uploadProfilePicture(String imagePath) async {
+    final formData = FormData.fromMap({
+      'profile_picture': await MultipartFile.fromFile(imagePath),
+    });
+    final res = await _apiClient.post(
+      '/api/driver/profile-picture',
+      data: formData,
+    );
+    return res.data['profile_picture'] as String;
+  }
+
+  /// Submit support request or report
+  Future<void> submitSupportRequest({
+    required String subject,
+    required String message,
+    String? type,
+  }) async {
+    await _apiClient.post('/api/driver/support', data: {
+      'subject': subject,
+      'message': message,
+      'type': type ?? 'support',
+    });
+  }
+
+  /// Get messages from dispatcher
+  Future<List<Map<String, dynamic>>> getDispatcherMessages() async {
+    try {
+      final res = await _apiClient.get('/api/driver/dispatcher-messages');
+      if (res.data is List) {
+        return (res.data as List).cast<Map<String, dynamic>>();
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  /// Send message to dispatcher
+  Future<void> sendToDispatcher(String message) async {
+    await _apiClient.post('/api/driver/dispatcher-messages', data: {
+      'message': message,
     });
   }
 }

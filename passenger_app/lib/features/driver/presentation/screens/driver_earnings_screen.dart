@@ -179,24 +179,46 @@ class _DriverEarningsScreenState extends State<DriverEarningsScreen> {
                       children: [
                         Expanded(
                           child: Card(
-                            color: Theme.of(context).colorScheme.primaryContainer,
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
+                            elevation: 4,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Theme.of(context).colorScheme.primary,
+                                    Theme.of(context).colorScheme.primary.withOpacity(0.8),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              padding: const EdgeInsets.all(20),
                               child: Column(
                                 children: [
+                                  Icon(
+                                    Icons.account_balance_wallet,
+                                    size: 40,
+                                    color: Colors.white,
+                                  ),
+                                  const SizedBox(height: 12),
                                   Text(
                                     'ETB ${totalEarnings.toStringAsFixed(2)}',
-                                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                          color: Theme.of(context).colorScheme.primary,
-                                        ),
+                                    style: const TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
                                   ),
                                   const SizedBox(height: 4),
-                                  Text(
+                                  const Text(
                                     'Total Earnings',
-                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                          color: Colors.grey,
-                                        ),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.white70,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -206,24 +228,46 @@ class _DriverEarningsScreenState extends State<DriverEarningsScreen> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: Card(
-                            color: Theme.of(context).colorScheme.secondaryContainer,
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
+                            elevation: 4,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Colors.green.shade600,
+                                    Colors.green.shade400,
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              padding: const EdgeInsets.all(20),
                               child: Column(
                                 children: [
+                                  const Icon(
+                                    Icons.directions_car,
+                                    size: 40,
+                                    color: Colors.white,
+                                  ),
+                                  const SizedBox(height: 12),
                                   Text(
                                     tripCount.toString(),
-                                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                          color: Theme.of(context).colorScheme.secondary,
-                                        ),
+                                    style: const TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
                                   ),
                                   const SizedBox(height: 4),
-                                  Text(
+                                  const Text(
                                     'Total Rides',
-                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                          color: Colors.grey,
-                                        ),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.white70,
+                                    ),
                                   ),
                                 ],
                               ),

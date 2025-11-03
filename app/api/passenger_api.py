@@ -114,6 +114,40 @@ def request_ride():
         db.session.add(new_ride)
         db.session.commit()
 
+        # Send push notifications to available drivers matching vehicle type
+        try:
+            from app.models import Driver, DeviceToken
+            from app.services.push import send_push_to_user
+            
+            # Find available drivers matching the vehicle type
+            matching_drivers = Driver.query.filter(
+                Driver.status.in_(['Available', 'Online']),
+                Driver.vehicle_type == new_ride.vehicle_type
+            ).all()
+            
+            # Send push notification to each matching driver
+            for driver in matching_drivers:
+                try:
+                    notification_message = f"New ride request: {new_ride.pickup_address or 'Pickup location'} to {new_ride.dest_address}"
+                    send_push_to_user(
+                        'driver',
+                        driver.id,
+                        'New Ride Available',
+                        notification_message,
+                        {
+                            'type': 'new_ride_request',
+                            'ride_id': new_ride.id,
+                            'vehicle_type': new_ride.vehicle_type,
+                            'fare': float(new_ride.fare),
+                        }
+                    )
+                except Exception as e:
+                    from flask import current_app
+                    current_app.logger.error(f"Failed to send push to driver {driver.id}: {e}")
+        except Exception as e:
+            from flask import current_app
+            current_app.logger.error(f"Failed to send ride notifications: {e}")
+
         # Broadcast offers to nearby drivers (non-blocking best-effort)
         try:
             from app.services.assigner import broadcast_offers
@@ -489,6 +523,110 @@ def get_ride_chat(ride_id: int):
         ]), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+
+@passenger_api.route('/dispatcher-messages', methods=['GET'])
+def get_dispatcher_messages():
+    """Get messages from dispatcher to this passenger"""
+    user = resolve_current_passenger()
+    if not user:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    from app.models import DispatcherMessage
+    messages = DispatcherMessage.query.filter_by(
+        recipient_type='passenger',
+        recipient_id=user.id
+    ).order_by(DispatcherMessage.created_at.desc()).limit(50).all()
+    
+    return jsonify([
+        {
+            'id': m.id,
+            'sender_name': m.sender.username if m.sender else 'Dispatcher',
+            'message': m.message,
+            'is_read': m.is_read,
+            'created_at': m.created_at.isoformat() if m.created_at else None,
+        }
+        for m in messages
+    ]), 200
+
+@passenger_api.route('/dispatcher-messages', methods=['POST'])
+def send_to_dispatcher():
+    """Send message from passenger to dispatcher"""
+    user = resolve_current_passenger()
+    if not user:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    data = request.get_json() or {}
+    message = (data.get('message') or '').strip()
+    
+    if not message:
+        return jsonify({'error': 'Message is required'}), 400
+    
+    # Log passenger message to dispatcher
+    from flask import current_app
+    current_app.logger.info(f"Passenger {user.id} message to dispatcher: {message}")
+    
+    return jsonify({
+        'success': True,
+        'message': 'Message received. Dispatcher will respond soon.',
+    }), 201
+
+@passenger_api.route('/ride/<int:ride_id>/chat', methods=['POST'])
+def send_ride_chat(ride_id: int):
+    """Send a chat message for a ride (passenger side)"""
+    try:
+        user = resolve_current_passenger()
+        if not user:
+            return jsonify({'error': 'Unauthorized'}), 401
+        
+        ride = Ride.query.filter_by(id=ride_id, passenger_id=user.id).first()
+        if not ride:
+            return jsonify({'error': 'Ride not found'}), 404
+        
+        data = request.get_json() or {}
+        message = (data.get('message') or '').strip()
+        
+        if not message:
+            return jsonify({'error': 'Message is required'}), 400
+        
+        chat_msg = ChatMessage(
+            ride_id=ride.id,
+            sender_role='passenger',
+            sender_id=user.id,
+            message=message,
+        )
+        db.session.add(chat_msg)
+        db.session.commit()
+        
+        # Send push notification to driver
+        try:
+            from app.services.push import send_push_to_user
+            if ride.driver_id:
+                send_push_to_user(
+                    'driver',
+                    ride.driver_id,
+                    'New message from passenger',
+                    message,
+                    {
+                        'type': 'chat_message',
+                        'ride_id': ride.id,
+                        'message_id': chat_msg.id,
+                    }
+                )
+        except Exception as e:
+            # Log but don't fail if push fails
+            from flask import current_app
+            current_app.logger.error(f"Failed to send push notification: {e}")
+        
+        return jsonify({
+            'id': chat_msg.id,
+            'sender_role': chat_msg.sender_role,
+            'sender_id': chat_msg.sender_id,
+            'message': chat_msg.message,
+            'created_at': chat_msg.created_at.isoformat() if chat_msg.created_at else None,
+        }), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 
 @passenger_api.route('/profile-picture', methods=['POST'])
 def upload_profile_picture():

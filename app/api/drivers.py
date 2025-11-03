@@ -250,7 +250,9 @@ def get_all_drivers():
                 'join_date': driver.join_date.strftime('%Y-%m-%d') if driver.join_date else None,
                 'avg_rating': round(avg_rating, 2) if avg_rating else 0,
                 'is_blocked': driver.is_blocked,
-                'blocked_reason': driver.blocked_reason if driver.is_blocked else None
+                'blocked_reason': driver.blocked_reason if driver.is_blocked else None,
+                'current_lat': float(driver.current_lat) if driver.current_lat else None,
+                'current_lon': float(driver.current_lon) if driver.current_lon else None,
             }
             drivers_data.append(driver_info)
         

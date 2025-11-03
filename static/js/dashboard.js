@@ -559,6 +559,7 @@ document.addEventListener('DOMContentLoaded', () => {
         selects.forEach(sel => {
             const rideId = parseInt(sel.dataset.rideId);
             const ride = allPendingRides.find(x => x.id === rideId);
+            // Filter drivers by vehicle type matching the ride
             const filtered = (available || []).filter(d => !ride || d.vehicle_type === ride.vehicle_type);
             sel.innerHTML = `<option value="">Select driver</option>` + filtered.map(d => `<option value="${d.id}">${d.name} (${d.vehicle_type})</option>`).join('');
         });
@@ -1201,7 +1202,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Pending rides UI removed
 
-      const updateDriversTable = () => { const searchTerm = document.getElementById('driver-search-input').value.toLowerCase(); const statusFilter = document.getElementById('driver-status-filter').value; const filtered = allDrivers.filter(d => (d.name.toLowerCase().includes(searchTerm) || d.phone_number.includes(searchTerm) || (d.driver_uid && d.driver_uid.toLowerCase().includes(searchTerm))) && (statusFilter === 'All' || d.status === statusFilter)); const tbody = document.getElementById('drivers-table-body'); tbody.innerHTML = ''; if (!filtered.length) { tbody.innerHTML = '<tr><td colspan="8" class="text-center p-4">No drivers found.</td></tr>'; return; } filtered.forEach(d => { const row = tbody.insertRow(); const blockedBadge = d.is_blocked ? '<span class="ml-2 px-2 py-1 text-xs bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 rounded">BLOCKED</span>' : ''; const blockBtn = d.is_blocked ? `<button class="action-btn text-green-600" onclick="unblockUser(${d.id}, 'driver', '${d.name}')" title="Unblock">🔓</button>` : `<button class="action-btn text-red-600" onclick="blockUser(${d.id}, 'driver', '${d.name}')" title="Block">🔒</button>`; row.innerHTML = `<td class="p-2 font-mono text-xs">${d.driver_uid||'N/A'}</td><td class="flex items-center"><img src="/${d.profile_picture}" class="h-8 w-8 rounded-full mr-3 object-cover" onerror="this.src='/static/img/default_avatar.png'"><span class="cursor-pointer hover:text-blue-600" onclick="showDriverDetails(${d.id})">${d.name}</span>${blockedBadge}</td><td><a href="tel:${d.phone_number}" class="text-blue-500">${d.phone_number}</a></td><td>${d.vehicle_type}</td><td><select class="driver-status-select status-select-${d.status.replace(' ','-')}" data-driver-id="${d.id}">${['Available','On Trip','Offline'].map(s => `<option value="${s}" ${d.status===s?'selected':''}>${s}</option>`).join('')}</select></td><td>${d.avg_rating.toFixed(1)} ★</td><td class="space-x-2"><button class="action-btn view" data-driver-id="${d.id}" title="View Details">👁️</button><button class="action-btn edit" data-driver-id="${d.id}" title="Edit">✏️</button><button class="action-btn delete" data-driver-id="${d.id}" title="Delete">🗑️</button>${blockBtn}</td>`; }); };
+      const updateDriversTable = () => { const searchTerm = document.getElementById('driver-search-input').value.toLowerCase(); const statusFilter = document.getElementById('driver-status-filter').value; const filtered = allDrivers.filter(d => (d.name.toLowerCase().includes(searchTerm) || d.phone_number.includes(searchTerm) || (d.driver_uid && d.driver_uid.toLowerCase().includes(searchTerm))) && (statusFilter === 'All' || d.status === statusFilter)); const tbody = document.getElementById('drivers-table-body'); tbody.innerHTML = ''; if (!filtered.length) { tbody.innerHTML = '<tr><td colspan="8" class="text-center p-4">No drivers found.</td></tr>'; return; } filtered.forEach(d => { const row = tbody.insertRow(); const blockedBadge = d.is_blocked ? '<span class="ml-2 px-2 py-1 text-xs bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 rounded">BLOCKED</span>' : ''; const blockBtn = d.is_blocked ? `<button class="action-btn text-green-600" onclick="unblockUser(${d.id}, 'driver', '${d.name}')" title="Unblock">🔓</button>` : `<button class="action-btn text-red-600" onclick="blockUser(${d.id}, 'driver', '${d.name}')" title="Block">🔒</button>`; row.innerHTML = `<td class="p-2 font-mono text-xs">${d.driver_uid||'N/A'}</td><td class="flex items-center"><img src="/${d.profile_picture}" class="h-8 w-8 rounded-full mr-3 object-cover" onerror="this.src='/static/img/default_avatar.png'"><span class="cursor-pointer hover:text-blue-600" onclick="showDriverDetails(${d.id})">${d.name}</span>${blockedBadge}</td><td><a href="tel:${d.phone_number}" class="text-blue-500">${d.phone_number}</a></td><td>${d.vehicle_type}</td><td><select class="driver-status-select status-select-${d.status.replace(' ','-')}" data-driver-id="${d.id}">${['Available','On Trip','Offline'].map(s => `<option value="${s}" ${d.status===s?'selected':''}>${s}</option>`).join('')}</select></td><td>${d.avg_rating.toFixed(1)} ★</td><td class="space-x-2"><button class="action-btn view" data-driver-id="${d.id}" title="View Details">👁️</button><button class="action-btn text-blue-600" onclick="openDispatcherMessageModal('driver', ${d.id}, '${d.name.replace(/'/g, "\\'")}')" title="Message">💬</button><button class="action-btn edit" data-driver-id="${d.id}" title="Edit">✏️</button><button class="action-btn delete" data-driver-id="${d.id}" title="Delete">🗑️</button>${blockBtn}</td>`; }); };
       
       const updatePassengersTable = () => {
           const searchTerm = document.getElementById('passenger-search-input').value.toLowerCase();
@@ -1235,6 +1236,7 @@ document.addEventListener('DOMContentLoaded', () => {
                   <td>${p.join_date}</td>
                   <td class="space-x-2">
                       <button class="action-btn view view-passenger-btn" data-passenger-id="${p.id}" title="View Details">👁️</button>
+                      <button class="action-btn text-blue-600" onclick="openDispatcherMessageModal('passenger', ${p.id}, '${p.username}')" title="Message">💬</button>
                       ${blockBtn}
                   </td>
               `;
@@ -3522,4 +3524,154 @@ document.addEventListener('DOMContentLoaded', () => {
       document.addEventListener('click', initAudioOnInteraction);
       document.addEventListener('keydown', initAudioOnInteraction);
       document.addEventListener('touchstart', initAudioOnInteraction);
+
+      // Driver Map
+      let driverMap = null;
+      let driverMarkers = [];
+
+      window.refreshDriverMap = async () => {
+          if (!driverMap) {
+              driverMap = L.map('driver-map-container').setView([9.0192, 38.7525], 12); // Addis Ababa
+              L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                  attribution: '© OpenStreetMap contributors'
+              }).addTo(driverMap);
+          }
+
+          // Clear existing markers
+          driverMarkers.forEach(m => driverMap.removeLayer(m));
+          driverMarkers = [];
+
+          try {
+              const drivers = await fetchData('drivers') || [];
+              
+              // Get driver locations from DriverLocation model as fallback
+              const driverLocations = await fetchData('driver-locations') || {};
+              
+              // Merge current_lat/lon with DriverLocation data
+              const driversWithLocation = drivers.filter(d => {
+                  const hasCurrentLocation = d.current_lat && d.current_lon;
+                  const hasLocationRecord = driverLocations[d.id];
+                  return hasCurrentLocation || hasLocationRecord;
+              }).map(d => {
+                  // Use current location if available, otherwise use DriverLocation
+                  if (!d.current_lat && driverLocations[d.id]) {
+                      d.current_lat = driverLocations[d.id].lat;
+                      d.current_lon = driverLocations[d.id].lon;
+                  }
+                  return d;
+              });
+
+              driversWithLocation.forEach(driver => {
+                  const color = driver.status === 'Available' ? 'green' : 
+                               driver.status === 'On Trip' ? 'blue' : 'gray';
+                  
+                  const icon = L.divIcon({
+                      className: 'driver-marker',
+                      html: `<div style="background-color: ${color}; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
+                      iconSize: [20, 20],
+                      iconAnchor: [10, 10]
+                  });
+
+                  const marker = L.marker([driver.current_lat, driver.current_lon], { icon })
+                      .addTo(driverMap)
+                      .bindPopup(`
+                          <div>
+                              <strong>${driver.name}</strong><br>
+                              ${driver.driver_uid || ''}<br>
+                              Status: ${driver.status}<br>
+                              Vehicle: ${driver.vehicle_type}<br>
+                              <button onclick="openDispatcherMessageModal('driver', ${driver.id}, '${driver.name.replace(/'/g, "\\'")}')" class="mt-2 px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600">
+                                  Message
+                              </button>
+                          </div>
+                      `);
+                  
+                  driverMarkers.push(marker);
+              });
+
+              // Fit map to show all drivers
+              if (driversWithLocation.length > 0) {
+                  const group = new L.featureGroup(driverMarkers);
+                  driverMap.fitBounds(group.getBounds().pad(0.1));
+              }
+          } catch (e) {
+              console.error('Failed to load driver map:', e);
+          }
+      };
+
+      // Initialize map when driver-map pane is shown
+      document.querySelector('[data-pane="driver-map"]')?.addEventListener('click', () => {
+          setTimeout(() => {
+              if (!driverMap) {
+                  window.refreshDriverMap();
+              }
+          }, 100);
+      });
+
+      // Dispatcher Messaging Functions
+      window.openDispatcherMessageModal = async (recipientType, recipientId, recipientName) => {
+          window.currentMessageRecipient = { type: recipientType, id: recipientId, name: recipientName };
+          document.getElementById('message-recipient-type').value = recipientType;
+          document.getElementById('message-recipient-id').value = recipientId;
+          document.getElementById('message-recipient-name').textContent = recipientName;
+          
+          // Load message history
+          await loadMessageHistory(recipientType, recipientId);
+          showModal('dispatcher-message-modal');
+      };
+
+      const loadMessageHistory = async (recipientType, recipientId) => {
+          try {
+              const messages = await fetchData(`dispatcher/get-messages/${recipientType}/${recipientId}`);
+              const historyDiv = document.getElementById('message-history');
+              
+              if (!messages || messages.length === 0) {
+                  historyDiv.innerHTML = '<p class="text-gray-500 dark:text-gray-400 text-center">No messages yet. Start the conversation!</p>';
+                  return;
+              }
+              
+              historyDiv.innerHTML = messages.map(msg => {
+                  const date = new Date(msg.created_at);
+                  const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                  const isFromRecipient = msg.is_from_recipient || false;
+                  return `
+                      <div class="p-3 rounded-lg ${isFromRecipient ? 'bg-gray-200 dark:bg-gray-700 mr-auto w-3/4' : 'bg-blue-100 dark:bg-blue-900 ml-auto w-3/4'}">
+                          <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">${msg.sender_name || 'Dispatcher'} • ${timeStr}</div>
+                          <div class="text-black dark:text-white">${msg.message}</div>
+                      </div>
+                  `;
+              }).join('');
+              
+              historyDiv.scrollTop = historyDiv.scrollHeight;
+          } catch (e) {
+              console.error('Failed to load messages:', e);
+              document.getElementById('message-history').innerHTML = '<p class="text-red-500">Failed to load messages</p>';
+          }
+      };
+
+      document.getElementById('dispatcher-message-form')?.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const recipientType = document.getElementById('message-recipient-type').value;
+          const recipientId = parseInt(document.getElementById('message-recipient-id').value);
+          const message = document.getElementById('message-text').value.trim();
+          
+          if (!message) return;
+          
+          try {
+              const endpoint = recipientType === 'driver' 
+                  ? `dispatcher/send-to-driver/${recipientId}`
+                  : `dispatcher/send-to-passenger/${recipientId}`;
+              
+              const result = await postData(endpoint, { message });
+              if (result && result.id) {
+                  document.getElementById('message-text').value = '';
+                  await loadMessageHistory(recipientType, recipientId);
+                  showSuccessNotification('Message sent successfully');
+              } else {
+                  showErrorNotification('Failed to send message');
+              }
+          } catch (e) {
+              showErrorNotification('Error: ' + e.message);
+          }
+      });
   });

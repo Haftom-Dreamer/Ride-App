@@ -13,6 +13,7 @@ import '../providers/ride_offer_provider.dart';
 import '../screens/driver_offer_dialog.dart';
 import '../screens/available_rides_screen.dart';
 import '../screens/active_trip_screen.dart';
+import '../screens/driver_dispatcher_chat_screen.dart';
 
 class DriverHomeScreen extends ConsumerStatefulWidget {
   const DriverHomeScreen({super.key});
@@ -95,18 +96,37 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
     setState(() => _updating = true);
     try {
       await _repo.setAvailability(v);
-      setState(() => _online = v);
+      // Update local state immediately
+      setState(() {
+        _online = v;
+      });
       _startOrStopLocation();
-      
-      // Refresh profile to get updated status
-      await _loadProfile();
       
       // If going online, refresh available rides
       if (v && mounted) {
         ref.read(rideOfferProvider.notifier).refresh();
       }
+      
+      // Only refresh profile status if toggle failed (to sync)
+      // Don't override the local state we just set
+      try {
+        final p = await _repo.getProfile();
+        if (mounted && p['status'] != null) {
+          final status = p['status'] as String;
+          final shouldBeOnline = status == 'Available' || status == 'On Trip';
+          // Only update if there's a mismatch (server changed it)
+          if (shouldBeOnline != v) {
+            setState(() => _online = shouldBeOnline);
+            _startOrStopLocation();
+          }
+        }
+      } catch (_) {
+        // Ignore profile refresh errors - we already set the state
+      }
     } catch (e) {
+      // Revert on error
       if (mounted) {
+        setState(() => _online = !v);
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text('Failed: $e')));
       }
@@ -172,7 +192,46 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
     
     return Scaffold(
       appBar: AppBar(
-        title: Text('Hi, $driverName'),
+        leading: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Image.asset(
+            'assets/images/Selamawi-logo 1 png.png',
+            errorBuilder: (context, error, stackTrace) {
+              // Fallback to icon if logo not found
+              return const Icon(Icons.local_taxi);
+            },
+          ),
+        ),
+        title: Row(
+          children: [
+            if (driverName.isNotEmpty) ...[
+              const Icon(Icons.local_taxi, size: 24),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  driverName,
+                  style: const TextStyle(fontSize: 18),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ] else
+              const Text('Driver Dashboard'),
+          ],
+        ),
+        actions: [
+          // Chat with dispatcher button
+          IconButton(
+            icon: const Icon(Icons.message),
+            tooltip: 'Chat with Dispatcher',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const DriverDispatcherChatScreen(),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: () async {

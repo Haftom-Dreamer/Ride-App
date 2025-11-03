@@ -281,3 +281,18 @@ class PasswordReset(db.Model):
     def is_expired(self):
         from datetime import datetime
         return datetime.utcnow() > self.expires_at
+
+class DispatcherMessage(db.Model):
+    """Messages between dispatcher and drivers/passengers (two-way)"""
+    __tablename__ = 'dispatcher_message'
+    id = db.Column(db.Integer, primary_key=True)
+    recipient_type = db.Column(db.String(20), nullable=False, index=True)  # 'driver' or 'passenger'
+    recipient_id = db.Column(db.Integer, nullable=False, index=True)
+    sender_type = db.Column(db.String(20), nullable=False, default='admin', index=True)  # 'admin', 'driver', 'passenger'
+    sender_id = db.Column(db.Integer, nullable=False, index=True)  # admin_id, driver_id, or passenger_id
+    sender_admin_id = db.Column(db.Integer, db.ForeignKey('admin.id'), nullable=True, index=True)
+    message = db.Column(db.Text, nullable=False)
+    is_read = db.Column(db.Boolean, default=False, nullable=False, index=True)
+    created_at = db.Column(db.DateTime, server_default=db.func.now(), index=True)
+    
+    sender_admin = db.relationship('Admin', foreign_keys=[sender_admin_id], backref=db.backref('dispatcher_messages', lazy=True))
