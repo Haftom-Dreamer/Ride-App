@@ -108,13 +108,14 @@ class _AddressAutocompleteWidgetState extends State<AddressAutocompleteWidget> {
             border: InputBorder.none,
             contentPadding: EdgeInsets.zero,
             hintStyle: TextStyle(
-              color: Colors.grey.shade400,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
               fontSize: 16,
             ),
           ),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w500,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
           onChanged: _onTextChanged,
         ),
@@ -124,7 +125,7 @@ class _AddressAutocompleteWidgetState extends State<AddressAutocompleteWidget> {
           Container(
             margin: const EdgeInsets.only(top: 8),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(8),
               boxShadow: [
                 BoxShadow(
@@ -166,7 +167,7 @@ class _AddressAutocompleteWidgetState extends State<AddressAutocompleteWidget> {
           children: [
             Icon(
               Icons.location_on,
-              color: Colors.grey.shade400,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
               size: 16,
             ),
             const SizedBox(width: 12),
@@ -176,9 +177,10 @@ class _AddressAutocompleteWidgetState extends State<AddressAutocompleteWidget> {
                 children: [
                   Text(
                     suggestion.displayName,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -187,7 +189,10 @@ class _AddressAutocompleteWidgetState extends State<AddressAutocompleteWidget> {
                     Text(
                       suggestion.city!,
                       style: TextStyle(
-                        color: Colors.grey.shade500,
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withOpacity(0.6),
                         fontSize: 12,
                       ),
                     ),

@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import '../../../../core/data/tigray_locations.dart';
 import 'package:geolocator/geolocator.dart';
-import '../services/route_service.dart';
 
 class MapWidget extends StatefulWidget {
   final MapController mapController;
   final LatLng? currentLocation;
   final LatLng? pickupLocation;
   final LatLng? destinationLocation;
+  final List<LatLng>? routePoints;
   final Function(LatLng) onLocationUpdate;
   final Function(LatLng) onPickupSelected;
   final Function(LatLng) onDestinationSelected;
-  final Function(LatLng)? onMapMoved;
-  final bool enableTapSelection; // New parameter to control tap handling
+  final Function(LatLng)? onMapMoved; // Callback for when map moves
 
   const MapWidget({
     super.key,
@@ -21,12 +21,11 @@ class MapWidget extends StatefulWidget {
     this.currentLocation,
     this.pickupLocation,
     this.destinationLocation,
+    this.routePoints,
     required this.onLocationUpdate,
     required this.onPickupSelected,
     required this.onDestinationSelected,
-  this.onMapMoved,
-  this.enableTapSelection =
-    true, // Default to true for backward compatibility
+    this.onMapMoved,
   });
 
   @override
@@ -35,41 +34,11 @@ class MapWidget extends StatefulWidget {
 
 class _MapWidgetState extends State<MapWidget> {
   bool _isLocationPermissionGranted = false;
-  List<LatLng>? _routePoints;
 
   @override
   void initState() {
     super.initState();
     _requestLocationPermission();
-  }
-
-  @override
-  void didUpdateWidget(MapWidget oldWidget) {
-    super.didUpdateWidget(oldWidget);
-
-    // Update route when pickup or destination changes
-    if (widget.pickupLocation != null && widget.destinationLocation != null) {
-      _updateRoute();
-    } else {
-      setState(() {
-        _routePoints = null;
-      });
-    }
-  }
-
-  Future<void> _updateRoute() async {
-    if (widget.pickupLocation != null && widget.destinationLocation != null) {
-      final route = await RouteService.getRoute(
-        widget.pickupLocation!,
-        widget.destinationLocation!,
-      );
-
-      if (mounted) {
-        setState(() {
-          _routePoints = route;
-        });
-      }
-    }
   }
 
   Future<void> _requestLocationPermission() async {
@@ -117,10 +86,11 @@ class _MapWidgetState extends State<MapWidget> {
       mapController: widget.mapController,
       options: MapOptions(
         initialCenter: widget.currentLocation ??
-            const LatLng(9.0192, 38.7525), // Addis Ababa
+            TigrayLocations.defaultCenter,
         initialZoom: 12.0,
         minZoom: 8.0,
         maxZoom: 18.0,
+        rotationThreshold: 0.0, // Disable rotation
         // Notify parent when map position changes (user pans/zooms)
         onPositionChanged: (position, hasGesture) {
           if (position.center != null && widget.onMapMoved != null) {
@@ -131,11 +101,9 @@ class _MapWidgetState extends State<MapWidget> {
             }
           }
         },
-        onTap: widget.enableTapSelection
-            ? (tapPosition, point) {
-                _handleMapTap(point);
-              }
-            : null,
+        onTap: (tapPosition, point) {
+          _handleMapTap(point);
+        },
       ),
       children: [
         // Tile layer
@@ -238,12 +206,12 @@ class _MapWidgetState extends State<MapWidget> {
           ),
 
         // Route polyline
-        if (_routePoints != null && _routePoints!.isNotEmpty)
+        if (widget.routePoints != null && widget.routePoints!.isNotEmpty)
           PolylineLayer(
             polylines: [
               Polyline(
-                points: _routePoints!,
-                color: Colors.blue,
+                points: widget.routePoints!,
+                color: const Color(0xFF2563EB), // Use blue brand color
                 strokeWidth: 4.0,
               ),
             ],

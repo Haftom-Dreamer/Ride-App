@@ -119,7 +119,7 @@ class _MapSelectionScreenState extends State<MapSelectionScreen> {
             ? 'Set ${widget.placeLabel} location'
             : 'Select location'),
         backgroundColor: AppColors.primaryBlue,
-        foregroundColor: Theme.of(context).colorScheme.onPrimary,
+        foregroundColor: Colors.white,
       ),
       body: Stack(
         children: [
@@ -129,6 +129,7 @@ class _MapSelectionScreenState extends State<MapSelectionScreen> {
             currentLocation: _currentLocation,
             pickupLocation: null,
             destinationLocation: _selectedLocation,
+            routePoints: null,
             onLocationUpdate: (location) {},
             onPickupSelected: (location) {},
             onDestinationSelected: _onMapTapped,
@@ -143,11 +144,11 @@ class _MapSelectionScreenState extends State<MapSelectionScreen> {
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Theme.of(context).colorScheme.shadow.withOpacity(0.1),
+                    color: Colors.black.withOpacity(0.1),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -181,7 +182,7 @@ class _MapSelectionScreenState extends State<MapSelectionScreen> {
                                 : _selectedAddress,
                             style:
                                 Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                      color: AppColors.textSecondary,
                                     ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
@@ -230,14 +231,14 @@ class _MapSelectionScreenState extends State<MapSelectionScreen> {
                 bottom: 16 + MediaQuery.of(context).padding.bottom,
               ),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
+                color: Colors.white,
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(24),
                   topRight: Radius.circular(24),
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Theme.of(context).colorScheme.shadow.withOpacity(0.1),
+                    color: Colors.black.withOpacity(0.1),
                     blurRadius: 10,
                     offset: const Offset(0, -2),
                   ),
@@ -290,7 +291,7 @@ class _MapSelectionScreenState extends State<MapSelectionScreen> {
                                         .textTheme
                                         .bodyMedium
                                         ?.copyWith(
-                                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                          color: AppColors.textSecondary,
                                         ),
                                   ),
                           ],
@@ -304,10 +305,10 @@ class _MapSelectionScreenState extends State<MapSelectionScreen> {
                     child: ElevatedButton.icon(
                       onPressed:
                           _selectedLocation != null ? _saveLocation : null,
-                      icon: Icon(Icons.check, color: Theme.of(context).colorScheme.onPrimary),
-                      label: Text(
+                      icon: const Icon(Icons.check, color: Colors.white),
+                      label: const Text(
                         'Save Location',
-                        style: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
+                        style: TextStyle(color: Colors.white),
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primaryBlue,
